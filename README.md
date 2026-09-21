@@ -1,4 +1,4 @@
-# skills-frontend-mrydex 🚀
+# Skills-frontend-mrydex 🚀
 
 > **Skill universal de Angular 22+ (2026) y Frontend Moderno para Agentes de IA.**  
 > Compatible con **Google Antigravity**, **Claude Code**, **Cursor**, **Windsurf**, **GitHub Copilot**, **Codex** y cualquier agente que soporte el estándar de Agent Skills o archivos de contexto.  
