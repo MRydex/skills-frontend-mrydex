@@ -10,3 +10,4 @@ if (fs.existsSync(skillPath)) {
   fs.writeFileSync(skillPath, content, 'utf8');
   console.log(`Sincronizada la versión de SKILL.md a v${pkg.version}`);
 }
+
