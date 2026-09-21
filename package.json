@@ -1,0 +1,47 @@
+{
+  "name": "skills-frontend-mrydex",
+  "version": "1.0.0",
+  "description": "Angular 22+ & Modern Frontend Best Practices Skill for AI Coding Assistants (Antigravity, Claude Code, Cursor, Windsurf, Copilot, Codex)",
+  "main": "bin/cli.js",
+  "bin": {
+    "skills-frontend": "./bin/cli.js",
+    "skills-frontend-mrydex": "./bin/cli.js"
+  },
+  "scripts": {
+    "test": "node bin/cli.js --help",
+    "install:global": "node bin/cli.js --global",
+    "install:workspace": "node bin/cli.js --workspace",
+    "install:all": "node bin/cli.js --agent all"
+  },
+  "keywords": [
+    "antigravity",
+    "claude-code",
+    "cursor",
+    "copilot",
+    "codex",
+    "agent-skills",
+    "skills",
+    "angular",
+    "angular-22",
+    "signals",
+    "zoneless",
+    "frontend"
+  ],
+  "author": "mrydex",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mrydex/skills-frontend-mrydex.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mrydex/skills-frontend-mrydex/issues"
+  },
+  "homepage": "https://github.com/mrydex/skills-frontend-mrydex#readme",
+  "files": [
+    "bin",
+    "skills",
+    "templates",
+    "README.md",
+    "LICENSE"
+  ]
+}
