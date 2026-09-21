@@ -101,7 +101,7 @@ function getArgValue(flags) {
 const agentArg = getArgValue(['-a', '--agent']);
 const customTarget = getArgValue(['-t', '--target']);
 
-const sourceSkillDir = path.join(__dirname, '..', 'skills', 'angular-buenas-practicas');
+const sourceSkillDir = path.join(__dirname, '..', 'skills', 'desarrollo-buenas-practicas');
 const templatesDir = path.join(__dirname, '..', 'templates');
 
 if (!fs.existsSync(sourceSkillDir)) {
@@ -152,7 +152,6 @@ function copyBridgeFiles(projectRoot) {
 }
 
 function installTarget(destDir, label) {
-  console.log(`\n${colors.cyan}Instalando para ${colors.bold}${label}${colors.reset}...`);
   const isUpdate = fs.existsSync(destDir);
   const actionText = isUpdate ? 'Actualizando' : 'Instalando';
   console.log(`\n${colors.cyan}${actionText} para ${colors.bold}${label}${colors.reset}...`);
@@ -164,7 +163,6 @@ function installTarget(destDir, label) {
   }
 
   copyFolderRecursive(sourceSkillDir, destDir);
-  console.log(`  ${colors.green}✔ Instalación completada con éxito.${colors.reset}`);
   console.log(`  ${colors.green}✔ ${isUpdate ? 'Actualización' : 'Instalación'} completada con éxito (v${pkgVersion}).${colors.reset}`);
 }
 
@@ -191,10 +189,10 @@ async function run() {
 
     if (agent === 'all') {
       // Install all
-      installTarget(path.join(homeDir, '.gemini', 'config', 'skills', 'angular-buenas-practicas'), 'Antigravity (Global)');
-      installTarget(path.join(homeDir, '.claude', 'skills', 'angular-buenas-practicas'), 'Claude Code (Global)');
-      installTarget(path.join(cwd, '.agents', 'skills', 'angular-buenas-practicas'), 'Workspace (.agents/skills)');
-      installTarget(path.join(cwd, 'skills', 'angular-buenas-practicas'), 'Workspace (skills/)');
+      installTarget(path.join(homeDir, '.gemini', 'config', 'skills', 'desarrollo-buenas-practicas'), 'Antigravity (Global)');
+      installTarget(path.join(homeDir, '.claude', 'skills', 'desarrollo-buenas-practicas'), 'Claude Code (Global)');
+      installTarget(path.join(cwd, '.agents', 'skills', 'desarrollo-buenas-practicas'), 'Workspace (.agents/skills)');
+      installTarget(path.join(cwd, 'skills', 'desarrollo-buenas-practicas'), 'Workspace (skills/)');
       copyBridgeFiles(cwd);
       finish();
       return;
@@ -202,20 +200,20 @@ async function run() {
 
     if (agent === 'antigravity') {
       const dest = scope === 'global'
-        ? path.join(homeDir, '.gemini', 'config', 'skills', 'angular-buenas-practicas')
-        : path.join(cwd, '.agents', 'skills', 'angular-buenas-practicas');
+        ? path.join(homeDir, '.gemini', 'config', 'skills', 'desarrollo-buenas-practicas')
+        : path.join(cwd, '.agents', 'skills', 'desarrollo-buenas-practicas');
       installTarget(dest, `Antigravity (${scope})`);
     } else if (agent === 'claude') {
       const dest = scope === 'global'
-        ? path.join(homeDir, '.claude', 'skills', 'angular-buenas-practicas')
-        : path.join(cwd, '.claude', 'skills', 'angular-buenas-practicas');
+        ? path.join(homeDir, '.claude', 'skills', 'desarrollo-buenas-practicas')
+        : path.join(cwd, '.claude', 'skills', 'desarrollo-buenas-practicas');
       installTarget(dest, `Claude Code (${scope})`);
     } else if (agent === 'cursor' || agent === 'windsurf') {
-      const dest = path.join(cwd, 'skills', 'angular-buenas-practicas');
+      const dest = path.join(cwd, 'skills', 'desarrollo-buenas-practicas');
       installTarget(dest, `Cursor/Windsurf (Workspace)`);
       copyBridgeFiles(cwd);
     } else if (agent === 'universal' || agent === 'codex' || agent === 'copilot') {
-      const dest = path.join(cwd, 'skills', 'angular-buenas-practicas');
+      const dest = path.join(cwd, 'skills', 'desarrollo-buenas-practicas');
       installTarget(dest, `Universal / AGENTS.md (Workspace)`);
       copyBridgeFiles(cwd);
     }
@@ -247,22 +245,22 @@ async function run() {
   rl.close();
 
   if (answer === '1') {
-    const dest = path.join(homeDir, '.gemini', 'config', 'skills', 'angular-buenas-practicas');
+    const dest = path.join(homeDir, '.gemini', 'config', 'skills', 'desarrollo-buenas-practicas');
     installTarget(dest, 'Antigravity Global');
   } else if (answer === '2') {
-    const dest = path.join(homeDir, '.claude', 'skills', 'angular-buenas-practicas');
+    const dest = path.join(homeDir, '.claude', 'skills', 'desarrollo-buenas-practicas');
     installTarget(dest, 'Claude Code Global');
   } else if (answer === '3') {
-    const destAgents = path.join(cwd, '.agents', 'skills', 'angular-buenas-practicas');
-    const destSkills = path.join(cwd, 'skills', 'angular-buenas-practicas');
+    const destAgents = path.join(cwd, '.agents', 'skills', 'desarrollo-buenas-practicas');
+    const destSkills = path.join(cwd, 'skills', 'desarrollo-buenas-practicas');
     installTarget(destAgents, 'Antigravity Workspace (.agents)');
     installTarget(destSkills, 'Standard Workspace (skills)');
     copyBridgeFiles(cwd);
   } else if (answer === '4') {
-    installTarget(path.join(homeDir, '.gemini', 'config', 'skills', 'angular-buenas-practicas'), 'Antigravity (Global)');
-    installTarget(path.join(homeDir, '.claude', 'skills', 'angular-buenas-practicas'), 'Claude Code (Global)');
-    installTarget(path.join(cwd, '.agents', 'skills', 'angular-buenas-practicas'), 'Workspace (.agents)');
-    installTarget(path.join(cwd, 'skills', 'angular-buenas-practicas'), 'Workspace (skills)');
+    installTarget(path.join(homeDir, '.gemini', 'config', 'skills', 'desarrollo-buenas-practicas'), 'Antigravity (Global)');
+    installTarget(path.join(homeDir, '.claude', 'skills', 'desarrollo-buenas-practicas'), 'Claude Code (Global)');
+    installTarget(path.join(cwd, '.agents', 'skills', 'desarrollo-buenas-practicas'), 'Workspace (.agents)');
+    installTarget(path.join(cwd, 'skills', 'desarrollo-buenas-practicas'), 'Workspace (skills)');
     copyBridgeFiles(cwd);
   } else {
     console.log(`${colors.yellow}Instalación cancelada.${colors.reset}`);
@@ -277,7 +275,7 @@ function finish() {
 ${colors.bold}${colors.green}✔ ¡Configuración completada!${colors.reset}
 
 ${colors.bold}¿Cómo lo usan los agentes de IA?${colors.reset}
-- ${colors.bold}Antigravity:${colors.reset} Detecta automáticamente el skill ${colors.cyan}angular-buenas-practicas${colors.reset}.
+- ${colors.bold}Antigravity:${colors.reset} Detecta automáticamente el skill ${colors.cyan}desarrollo-buenas-practicas${colors.reset}.
 - ${colors.bold}Claude Code:${colors.reset} Lee las directivas desde ${colors.cyan}~/.claude/skills/${colors.reset} o ${colors.cyan}CLAUDE.md${colors.reset}.
 - ${colors.bold}Cursor / Windsurf:${colors.reset} Guiado por ${colors.cyan}.cursorrules${colors.reset} referenciando las reglas modulares.
 - ${colors.bold}Codex / Copilot Workspace:${colors.reset} Sigue el estándar ${colors.cyan}AGENTS.md${colors.reset} en la raíz del proyecto.

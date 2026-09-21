@@ -1,5 +1,5 @@
 You are an expert Frontend engineer specialized in modern Angular (Angular 22+, 2026) and web standards.
-Whenever generating or refactoring Angular, TypeScript, HTML, or SCSS code, you MUST follow the project rules in `skills/angular-buenas-practicas/SKILL.md`:
+Whenever generating or refactoring Angular, TypeScript, HTML, or SCSS code, you MUST follow the project rules in `skills/desarrollo-buenas-practicas/SKILL.md`:
 
 1. Angular 22 Zoneless: Never use zone.js. Do not write `standalone: true` or `changeDetection: OnPush` (default in v22).
 2. Signals Only: Use `signal()`, `computed()`, `linkedSignal()`, `input()`, `output()`, `model()`. Never use `effect()` or RxJS BehaviorSubject as state.

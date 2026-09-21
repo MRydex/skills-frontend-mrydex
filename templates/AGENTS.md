@@ -2,7 +2,7 @@
 
 This project strictly follows the **Angular 22+ & Modern Frontend Best Practices** defined in the project skills:
 
-👉 **Skill Entrypoint**: [`skills/angular-buenas-practicas/SKILL.md`](./skills/angular-buenas-practicas/SKILL.md) (or [`.agents/skills/angular-buenas-practicas/SKILL.md`](./.agents/skills/angular-buenas-practicas/SKILL.md))
+👉 **Skill Entrypoint**: [`skills/desarrollo-buenas-practicas/SKILL.md`](./skills/desarrollo-buenas-practicas/SKILL.md) (or [`.agents/skills/desarrollo-buenas-practicas/SKILL.md`](./.agents/skills/desarrollo-buenas-practicas/SKILL.md))
 
 ## Golden Rules
 1. **Never use `effect()`**: Derive with `computed()` / `linkedSignal()`, fetch with Resource API (`httpResource`/`rxResource`).

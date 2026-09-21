@@ -65,8 +65,8 @@ skills-frontend
 
 | Agente de IA | Ubicación de Instalación | Comando Rápido |
 | :--- | :--- | :--- |
-| **Google Antigravity** | `~/.gemini/config/skills/angular-buenas-practicas` o `.agents/skills/` | `npx github:MRydex/skills-frontend-mrydex -a antigravity -g` |
-| **Claude Code** | `~/.claude/skills/angular-buenas-practicas` o `.claude/skills/` | `npx github:MRydex/skills-frontend-mrydex -a claude -g` |
+| **Google Antigravity** | `~/.gemini/config/skills/desarrollo-buenas-practicas` o `.agents/skills/` | `npx github:MRydex/skills-frontend-mrydex -a antigravity -g` |
+| **Claude Code** | `~/.claude/skills/desarrollo-buenas-practicas` o `.claude/skills/` | `npx github:MRydex/skills-frontend-mrydex -a claude -g` |
 | **Cursor / Windsurf** | `skills/` + `.cursorrules` en la raíz del proyecto | `npx github:MRydex/skills-frontend-mrydex -a cursor -b` |
 | **GitHub Copilot / Codex** | `skills/` + `AGENTS.md` en la raíz del proyecto | `npx github:MRydex/skills-frontend-mrydex -a universal -b` |
 | **Todos los agentes** | Configura entornos globales y puentes locales a la vez | `npx github:MRydex/skills-frontend-mrydex -a all -w -b` |
@@ -93,10 +93,10 @@ Opciones:
 
 ## 📂 Estructura Modular del Skill
 
-- **Diseño Modular con Progressive Disclosure**: El skill se compone de un archivo maestro [`SKILL.md`](./skills/angular-buenas-practicas/SKILL.md) y 13 manuales especializados en `references/`. La IA solo lee en su contexto lo que necesita para la tarea activa, ahorrando miles de tokens:
+- **Diseño Modular con Progressive Disclosure**: El skill se compone de un archivo maestro [`SKILL.md`](./skills/desarrollo-buenas-practicas/SKILL.md) y 13 manuales especializados en `references/`. La IA solo lee en su contexto lo que necesita para la tarea activa, ahorrando miles de tokens:
 
 ```text
-skills/angular-buenas-practicas/
+skills/desarrollo-buenas-practicas/
 ├── SKILL.md                          # Entrada principal, 5 reglas de oro y stack v22
 └── references/
     ├── 01-project-structure.md       # Arquitectura vertical slices, core/shared, naming sin sufijos
@@ -123,7 +123,7 @@ Como este paquete se distribuye directamente desde GitHub, **no necesitas cuenta
 
 Tu flujo para publicar cambios o mejoras es simplemente:
 
-1. Modifica o agrega lo que necesites en los archivos de `skills/angular-buenas-practicas/`.
+1. Modifica o agrega lo que necesites en los archivos de `skills/desarrollo-buenas-practicas/`.
 2. *(Opcional)* Incrementa la versión en `package.json` para llevar control:
    ```bash
    npm version patch   # 1.0.0 -> 1.0.1
