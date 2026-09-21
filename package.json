@@ -8,6 +8,8 @@
     "skills-frontend-mrydex": "./bin/cli.js"
   },
   "scripts": {
+    "version": "node bin/sync-version.js && git add skills/desarrollo-buenas-practicas/SKILL.md",
+    "sync-version": "node bin/sync-version.js",
     "test": "node bin/cli.js --help",
     "install:global": "node bin/cli.js --global",
     "install:workspace": "node bin/cli.js --workspace",
