@@ -152,6 +152,7 @@ function copyBridgeFiles(projectRoot) {
 }
 
 function installTarget(destDir, label) {
+  console.log(`\n${colors.cyan}Instalando para ${colors.bold}${label}${colors.reset}...`);
   const isUpdate = fs.existsSync(destDir);
   const actionText = isUpdate ? 'Actualizando' : 'Instalando';
   console.log(`\n${colors.cyan}${actionText} para ${colors.bold}${label}${colors.reset}...`);
@@ -163,6 +164,7 @@ function installTarget(destDir, label) {
   }
 
   copyFolderRecursive(sourceSkillDir, destDir);
+  console.log(`  ${colors.green}✔ Instalación completada con éxito.${colors.reset}`);
   console.log(`  ${colors.green}✔ ${isUpdate ? 'Actualización' : 'Instalación'} completada con éxito (v${pkgVersion}).${colors.reset}`);
 }
 

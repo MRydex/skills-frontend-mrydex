@@ -27,16 +27,16 @@
     "zoneless",
     "frontend"
   ],
-  "author": "mrydex",
+  "author": "MRydex",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mrydex/skills-frontend-mrydex.git"
+    "url": "https://github.com/MRydex/skills-frontend-mrydex.git"
   },
   "bugs": {
-    "url": "https://github.com/mrydex/skills-frontend-mrydex/issues"
+    "url": "https://github.com/MRydex/skills-frontend-mrydex/issues"
   },
-  "homepage": "https://github.com/mrydex/skills-frontend-mrydex#readme",
+  "homepage": "https://github.com/MRydex/skills-frontend-mrydex#readme",
   "files": [
     "bin",
     "skills",

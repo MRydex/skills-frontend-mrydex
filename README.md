@@ -1,48 +1,61 @@
 # skills-frontend-mrydex 🚀
 
 > **Skill universal de Angular 22+ (2026) y Frontend Moderno para Agentes de IA.**  
-> Compatible con **Google Antigravity**, **Claude Code**, **Cursor**, **Windsurf**, **GitHub Copilot**, **Codex** y cualquier agente que soporte el estándar de Agent Skills o archivos de contexto.
+> Compatible con **Google Antigravity**, **Claude Code**, **Cursor**, **Windsurf**, **GitHub Copilot**, **Codex** y cualquier agente que soporte el estándar de Agent Skills o archivos de contexto.  
+> **Distribuido directamente vía GitHub sin intermediarios.**
 
 ---
 
-## 🌟 Características
+## 📦 Instalación y Actualización desde Cualquier PC
 
-- **Diseño Modular con Progressive Disclosure**: Dividido en un `SKILL.md` principal y 13 módulos especializados en `references/`. La IA solo carga en contexto lo que necesita para la tarea activa, ahorrando miles de tokens.
-- **Instalador Universal Zero-Dependencies**: Un CLI ultra-ligero en Node.js que instala y configura las rutas para cualquier agente con un solo comando.
-- **Angular 22 (2026) Ready**:
-  - Signals como único modelo de estado (`signal`, `computed`, `linkedSignal`).
-  - Detección de cambios Zoneless y OnPush por defecto.
-  - Resource API (`httpResource`, `rxResource`, `resource`).
-  - Signal Forms (`@angular/forms/signals`).
-  - Control Flow nativo (`@if`, `@for`, `@switch`, `@let`) y `@defer`.
-  - Interceptores funcionales para spinner y errores transversales.
-- **Fundamentos Frontend**: Semántica HTML5 estricta, accesibilidad WCAG AA (`@angular/aria`), BEM, SCSS anidado, Flexbox, Grid y animaciones CSS modernas.
+Puedes instalar y actualizar este skill en cualquier ordenador directamente desde este repositorio de GitHub usando `npx`:
+
+### 1. Instalación Rápida (Recomendada)
+Ejecuta en tu terminal desde cualquier directorio o proyecto:
+```bash
+# Modo interactivo (te preguntará qué agente usas y dónde instalarlo):
+npx github:MRydex/skills-frontend-mrydex
+```
+
+### 2. Comandos Directos por Agente
+
+```bash
+# Para Google Antigravity (instalación global):
+npx github:MRydex/skills-frontend-mrydex --agent antigravity --global
+
+# Para Claude Code (instalación global):
+npx github:MRydex/skills-frontend-mrydex --agent claude --global
+
+# Para el Proyecto Actual (configura todos los agentes a la vez con puentes AGENTS/CLAUDE/Cursor):
+npx github:MRydex/skills-frontend-mrydex --agent all --workspace --bridge
+```
+
+### 3. Instalación Global con NPM
+Si prefieres tener el comando `skills-frontend` siempre disponible en tu terminal:
+```bash
+npm install -g github:MRydex/skills-frontend-mrydex
+
+# Luego solo ejecutas:
+skills-frontend
+```
 
 ---
 
-## 📦 Instalación Rápida desde Cualquier PC
+## 🔄 ¿Cómo Actualizar cuando hayan cambios en el repositorio?
 
-Puedes instalar el skill en cualquier ordenador utilizando `npm` o `npx`:
+El comando es **exactamente el mismo**. El instalador detecta automáticamente si el skill ya está instalado en la máquina, elimina archivos viejos/obsoletos y copia la última versión:
 
-### 1. Desde NPM (una vez publicado)
 ```bash
-# Modo interactivo (te preguntará qué agente usas y dónde instalarlo)
-npx skills-frontend-mrydex
+# Actualizar a la última versión de la rama principal:
+npx github:MRydex/skills-frontend-mrydex
 
-# O directamente por comando:
-npx skills-frontend-mrydex --agent antigravity --global
-npx skills-frontend-mrydex --agent claude --global
-npx skills-frontend-mrydex --agent all --workspace --bridge
+# Si npx llega a usar una copia en caché temporal, especifica la rama directamente:
+npx github:MRydex/skills-frontend-mrydex#main
 ```
 
-### 2. Directamente desde GitHub (¡Sin necesidad de publicar en NPM!)
-Puedes usar este comando desde cualquier máquina apuntando a tu repositorio de GitHub:
+Si lo habías instalado globalmente con `npm install -g`:
 ```bash
-npx github:mrydex/skills-frontend-mrydex
-```
-O instalarlo globalmente:
-```bash
-npm install -g github:mrydex/skills-frontend-mrydex
+npm install -g github:MRydex/skills-frontend-mrydex
 skills-frontend
 ```
 
@@ -50,13 +63,13 @@ skills-frontend
 
 ## 🤖 Compatibilidad Multi-Agente
 
-| Agente de IA | Ubicación de Instalación | Flag del CLI |
+| Agente de IA | Ubicación de Instalación | Comando Rápido |
 | :--- | :--- | :--- |
-| **Google Antigravity** | `~/.gemini/config/skills/angular-buenas-practicas` o `.agents/skills/` | `--agent antigravity` |
-| **Claude Code** | `~/.claude/skills/angular-buenas-practicas` o `.claude/skills/` | `--agent claude` |
-| **Cursor / Windsurf** | `skills/` + `.cursorrules` en la raíz del proyecto | `--agent cursor --bridge` |
-| **GitHub Copilot / Codex** | `skills/` + `AGENTS.md` en la raíz del proyecto | `--agent universal --bridge` |
-| **Todos los agentes** | Configura entornos globales y puentes locales de una sola vez | `--agent all` |
+| **Google Antigravity** | `~/.gemini/config/skills/angular-buenas-practicas` o `.agents/skills/` | `npx github:MRydex/skills-frontend-mrydex -a antigravity -g` |
+| **Claude Code** | `~/.claude/skills/angular-buenas-practicas` o `.claude/skills/` | `npx github:MRydex/skills-frontend-mrydex -a claude -g` |
+| **Cursor / Windsurf** | `skills/` + `.cursorrules` en la raíz del proyecto | `npx github:MRydex/skills-frontend-mrydex -a cursor -b` |
+| **GitHub Copilot / Codex** | `skills/` + `AGENTS.md` en la raíz del proyecto | `npx github:MRydex/skills-frontend-mrydex -a universal -b` |
+| **Todos los agentes** | Configura entornos globales y puentes locales a la vez | `npx github:MRydex/skills-frontend-mrydex -a all -w -b` |
 
 ---
 
@@ -80,6 +93,8 @@ Opciones:
 
 ## 📂 Estructura Modular del Skill
 
+- **Diseño Modular con Progressive Disclosure**: El skill se compone de un archivo maestro [`SKILL.md`](./skills/angular-buenas-practicas/SKILL.md) y 13 manuales especializados en `references/`. La IA solo lee en su contexto lo que necesita para la tarea activa, ahorrando miles de tokens:
+
 ```text
 skills/angular-buenas-practicas/
 ├── SKILL.md                          # Entrada principal, 5 reglas de oro y stack v22
@@ -102,61 +117,28 @@ skills/angular-buenas-practicas/
 
 ---
 
-## 🚀 Guía: Cómo Publicar en GitHub y NPM
+## 👨‍💻 Para el Desarrollador: Cómo Publicar Cambios
 
-### Paso A: Publicar en tu Repositorio de GitHub
+Como este paquete se distribuye directamente desde GitHub, **no necesitas cuenta en npmjs.com ni hacer `npm publish`**.
 
-1. En esta carpeta, inicializa Git y haz tu primer commit:
+Tu flujo para publicar cambios o mejoras es simplemente:
+
+1. Modifica o agrega lo que necesites en los archivos de `skills/angular-buenas-practicas/`.
+2. *(Opcional)* Incrementa la versión en `package.json` para llevar control:
    ```bash
-   git init
+   npm version patch   # 1.0.0 -> 1.0.1
+   ```
+3. Guarda y sube a GitHub:
+   ```bash
    git add .
-   git commit -m "feat: initial release of modular frontend skill"
-   ```
-2. Crea el repositorio en GitHub (por ejemplo `skills-frontend-mrydex` en tu cuenta).
-3. Conecta el repositorio remoto y sube los cambios:
-   ```bash
-   git branch -M main
-   git remote add origin https://github.com/mrydex/skills-frontend-mrydex.git
-   git push -u origin main
-   ```
-*(¡En este punto ya cualquiera puede instalar tu skill con `npx github:mrydex/skills-frontend-mrydex`!)*
-
----
-
-### Paso B: Publicar en el Registro Público de NPM
-
-1. Crea una cuenta gratuita en [npmjs.com](https://www.npmjs.com/) si aún no tienes una.
-2. Inicia sesión desde tu terminal:
-   ```bash
-   npm login
-   ```
-   *(Te pedirá tu usuario, contraseña y código 2FA o confirmación en el navegador).*
-3. Publica el paquete:
-   ```bash
-   npm publish --access public
-   ```
-4. ¡Listo! A partir de ese momento, tú y cualquier persona en cualquier PC del mundo puede ejecutar:
-   ```bash
-   npx skills-frontend-mrydex
+   git commit -m "feat: actualización de directivas"
+   git push origin main
    ```
 
-#### 🔄 ¿Cómo publicar actualizaciones futuras?
-Cuando realices mejoras en los archivos del skill:
-1. Incrementa la versión:
-   ```bash
-   npm version patch   # Para correcciones (1.0.0 -> 1.0.1)
-   # o
-   npm version minor   # Para nuevas funcionalidades (1.0.0 -> 1.1.0)
-   ```
-2. Sube los cambios a Git y publica en NPM:
-   ```bash
-   git push --follow-tags
-   npm publish
-   ```
+¡Eso es todo! Cualquier persona que vuelva a correr `npx github:MRydex/skills-frontend-mrydex` obtendrá tus cambios al instante.
 
 ---
 
 ## 📄 Licencia
 
-MIT © [mrydex](https://github.com/mrydex)
-
+MIT © [MRydex](https://github.com/MRydex)
