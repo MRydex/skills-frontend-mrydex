@@ -117,7 +117,7 @@ skills/angular-buenas-practicas/
 
 ---
 
-## 👨‍💻 Para el Desarrollador: Cómo Publicar Cambios
+## ‍💻 Para el Desarrollador: Cómo Publicar Cambios
 
 Como este paquete se distribuye directamente desde GitHub, **no necesitas cuenta en npmjs.com ni hacer `npm publish`**.
 
