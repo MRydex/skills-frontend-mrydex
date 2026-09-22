@@ -126,6 +126,8 @@ Tu flujo para publicar cambios o mejoras es simplemente:
 1. Modifica o agrega lo que necesites en los archivos de `skills/desarrollo-buenas-practicas/`.
 2. *(Opcional)* Incrementa la versión en `package.json` para llevar control:
    ```bash
+   npm version major # 1.0.0 -> 2.0.0
+   npm version minor # 1.0.0 -> 1.1.0
    npm version patch   # 1.0.0 -> 1.0.1
    ```
 3. Guarda y sube a GitHub:
