@@ -53,5 +53,6 @@
 - **Simplicity First**: Make every change as simple as possible. Impact minimal code.
 - **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
 - **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+- **Modular by Design (Anti-Monolith)**: Never write or leave components, templates, or services of 400-600+ lines. Divide responsibilities sensibly: if a unit of UI or logic can be extracted into a smaller, focused, and testable subcomponent or service, decompose it immediately.
 
 ---

@@ -321,3 +321,33 @@ formulario con `nz-col` chicos.
   ancho que el control rompe la alineación visual.
 - Si el problema es el **control** (no el panel), ahí sí es CSS: `width: 100%` sobre el
   `nz-select` (clase BEM `&__control`), no sobre clases de `.ant-*`.
+
+---
+
+### 3.10 Componentización de Templates HTML (Evitar HTMLs kilométricos)
+
+> **Regla de oro de templates:** Ningún archivo `.html` debe superar las ~150–200 líneas. Si un
+> template crece hacia las 300–600 líneas, es obligatorio **partirlo en subcomponentes**.
+
+#### 🚩 Señales de alerta en un template que exigen partirlo:
+1. **Página con formulario + tabla + modal en el mismo HTML**:
+   - ❌ Un único `.html` de 500 líneas con filtros, tabla NG-ZORRO y dos `<nz-modal>` incrustados al final.
+   - ✅ El template principal solo compone piezas: `<app-user-filters>`, `<app-user-table>` y `<app-user-modal>`.
+1. **Página o detalle con secciones complejas en el mismo HTML**:
+   - ❌ Un único `.html` de 500 líneas con cabecera, filtros, tabla y formularios de subdetalle incrustados.
+   - ✅ El template principal compone subcomponentes anidados directamente: `<app-subdetalle>` dentro de `detalle/subdetalle/` (NUNCA agrupados en una carpeta `components/`).
+2. **Ramas `@if` / `@switch` extensas**:
+   - Si una rama del `@if` tiene más de 40 líneas de estructura, esa vista alternativa es un subcomponente (`<app-user-empty-state>`, `<app-user-detail-view>`).
+3. **Uso de `@defer` para subcomponentes que no se ven de inmediato**:
+   - Diálogos, drawers de detalle, paneles de auditoría o modales deben estar en subcomponentes y diferirse con `@defer (on interaction)` o `@defer (when isOpen())`:
+   ```html
+   <!-- ✅ Carga diferida del subcomponente pesado -->
+   @if (showDetails()) {
+     @defer (prefetch on idle) {
+       <app-user-audit-drawer [userId]="selectedUserId()" (closed)="showDetails.set(false)" />
+     } @placeholder {
+       <div class="user-page__loading-placeholder">Cargando detalles…</div>
+     }
+   }
+   ```
+4. **Legibilidad BEM**: Si las clases BEM empiezan a anidar 4 niveles de particiones (`bloque__elemento-sub-sub-item`), ese bloque interno pide a gritos ser su propio componente con su propio bloque BEM raíz.

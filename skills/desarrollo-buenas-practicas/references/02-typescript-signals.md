@@ -57,9 +57,31 @@ export class Users {
   readonly searchTerm = model<string>('');         // two-way binding moderno
   readonly userSelected = output<User>();          // output como función
 
-  protected readonly titulo = computed(() => `Usuario ${this.userId()}`); // solo template
 }
 ```
+
+### 2.2.1 Componentización estricta y extracción de lógica (Regla Anti-Monolitos)
+
+> **Prohibido componentes de 400–600+ líneas**: Un componente `.ts` debe centrarse exclusivamente en
+> enlazar el estado con la vista. Si un componente sobrepasa las ~150–200 líneas, **debe dividirse
+> inmediatamente**:
+
+1. **Extraer Subcomponentes Dumb (Presentacionales)**:
+   - Si el template tiene tablas, barras de filtros, cards de resumen o listados, cada bloque se extrae a un subcomponente hijo en `components/`.
+1. **Extraer Subcomponentes Dumb (Presentacionales) Anidados Directamente**:
+   - Si el template tiene bloques secundarios (filtros, tabla, modales, pestañas), cada bloque se extrae a un subcomponente hijo anidado **directamente** dentro de la carpeta del componente que lo contiene (ej: `detalle/subdetalle/subdetalle-cabecera/`). **NUNCA dentro de una carpeta `components/`**.
+   - El subcomponente hijo recibe datos con `input()` / `input.required()`, no inyecta servicios de negocio, y notifica eventos con `output()`.
+2. **Extraer Formularios de Modales**:
+   - Si la pantalla abre un modal para crear/editar registros, **no meter el formulario dentro del componente principal**.
+   - Crear un componente modal dedicado (`user-form-modal.ts`), con su propio Signal Form. El padre solo controla su visibilidad (`isOpen()`) y recibe el evento `onSave`.
+   - Crear un subcomponente dedicado anidado (`detalle/form-modal/`), con su propio Signal Form. El padre solo controla su visibilidad (`isOpen()`) y recibe el evento `onSave`.
+3. **Extraer Transformaciones y Cálculos a Funciones Puras**:
+   - Mapeos de arrays, filtros complejos, cálculos contables o formateos de strings **nunca van en métodos del componente**.
+   - Se extraen a un archivo de utilidades/mappers de la feature (`[feature]-mappers.ts`) como funciones puras sin estado.
+4. **Extraer Orquestación a un Servicio de Feature**:
+   - Si el componente empieza a acumular 4 o más signals de estado, múltiples resources y coordinación de APIs, mover esa lógica a un servicio local (`[feature].ts`). El componente solo consume los signals expuestos por el servicio.
+
+---
 
 ### 2.3 Visibilidad y naming
 

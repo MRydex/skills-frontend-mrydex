@@ -21,7 +21,10 @@
 - [ ] ¿Servicios y modelos ubicados según su **alcance** (§1.1)? ¿Modelos fuera del componente?
 - [ ] ¿DTOs **uno por operación** en `models/dtos/`?
 - [ ] ¿Decimales que pueden venir `null` controlados antes de cualquier cálculo?
-- [ ] ¿Servicios divididos correctamente (HTTP puro vs lógica)?
+- [ ] ¿Servicios divididos correctamente (HTTP puro vs lógica vs mappers)?
+- [ ] **¿Tamaño conciso (< 150–200 líneas en TS, < 200–250 en Service)?** ¿CERO archivos de 400–600+ líneas?
+- [ ] ¿Componentes particionados con sentido en **Smart** (página/orquestador) vs **Dumb** (hijos presentacionales)?
+- [ ] ¿Subcomponentes anidados **directamente** en la jerarquía del componente (ej: `detalle/subdetalle/subdetalle-cabecera/`)? ¿**CERO carpetas `components/`** para subcomponentes?
 
 ### Resource / HTTP
 - [ ] ¿GET reactivos por URL con `httpResource()`? ¿Observable existente con `rxResource()` (`params` + `stream`)?
@@ -60,6 +63,8 @@
 - [ ] ¿Two-way binding con `model()`?
 - [ ] ¿Estilos de bloque dentro de un `<div>` en los `<td>`, nunca en el `<td>`?
 - [ ] ¿Sin mediciones de layout (`scrollHeight`, `clientHeight`, `offsetWidth`…) en el template? (usar `appOverflowDetector`, §3.8)
+- [ ] **¿Template conciso (< 150–200 líneas)?** ¿Sub-secciones complejas (tablas, barras de búsqueda, modales) extraídas a subcomponentes?
+- [ ] ¿Componentes pesados o diferidos (modales, drawers, auditorías) envueltos en `@defer`?
 
 ### SCSS
 - [ ] ¿Estilos anidados bajo el bloque raíz BEM?

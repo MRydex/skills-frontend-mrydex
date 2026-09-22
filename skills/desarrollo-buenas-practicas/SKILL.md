@@ -13,13 +13,15 @@ Este skill codifica las convenciones **obligatorias** del equipo para proyectos 
 
 ---
 
-### Las 5 reglas que más se violan (leer siempre)
+### Las 6 reglas que más se violan (leer siempre)
 
 1. **Nunca `effect()`.** Derivar con `computed()` / `linkedSignal()`, cargar con la Resource API, y resolver los concerns transversales con interceptores. Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
 2. **Nunca `Observable` / `Subject` / `BehaviorSubject` como estado.** El estado es siempre signals. Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
 3. **Nunca Reactive Forms ni `ngModel`.** Solo **Signal Forms** (`@angular/forms/signals`). Ver [06-signal-forms.md](./references/06-signal-forms.md).
 4. **Nunca `changeDetection: ChangeDetectionStrategy.OnPush` explícito**: es el **default en v22**. Tampoco `standalone: true`. Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
 5. **Nunca `[ngClass]` / `[ngStyle]` / `*ngIf` / `*ngFor` / `*ngSwitch`.** Usar control flow nativo y class/style bindings estándar. Ver [03-html-templates.md](./references/03-html-templates.md).
+6. **Nunca componentes, templates o servicios monolíticos (400-600+ líneas).** Componentizar y dividir por responsabilidad única (SRP): componentes (.ts) < 150-200 líneas, templates (.html) < 150-200 líneas, servicios (.ts) < 200-250 líneas. Si algo crece, descomponerlo en subcomponentes presentacionales y sub-servicios de dominio. Ver [01-project-structure.md](./references/01-project-structure.md) y [02-typescript-signals.md](./references/02-typescript-signals.md).
+6. **Nunca componentes, templates o servicios monolíticos (400-600+ líneas).** Componentizar y dividir por responsabilidad única (SRP): componentes (.ts) < 150-200 líneas, templates (.html) < 150-200 líneas, servicios (.ts) < 200-250 líneas. **NUNCA crear carpetas `components/` para subcomponentes**: se anidan jerárquicamente de forma directa dentro de la carpeta del componente padre que los usa (ej: `detalle/subdetalle/subdetalle-cabecera/`). Ver [01-project-structure.md](./references/01-project-structure.md) y [02-typescript-signals.md](./references/02-typescript-signals.md).
 
 ---
 
