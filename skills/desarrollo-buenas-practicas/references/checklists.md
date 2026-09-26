@@ -12,7 +12,7 @@ Proceso del agente.
 ## Checklist Angular
 
 ### TypeScript / Componente ([02](./02-typescript-signals.md))
-- [ ] ¿Componente standalone, **sin** `standalone: true` y **sin** `changeDetection` declarado?
+- [ ] ¿`changeDetection` según versión? v22+: sin declarar. Menor a v22: `ChangeDetectionStrategy.OnPush` en todo componente. ¿`standalone: true` solo en v18 o menor? (§2.2)
 - [ ] ¿Archivo y clase **sin sufijos** legacy (`.component`, `.service`)? ¿kebab-case? ([01](./01-project-structure.md) §1.3)
 - [ ] ¿`input()` / `input.required()` / `model()` / `output()` (no decoradores), marcados `readonly`?
 - [ ] ¿Los miembros que solo usa el template están `protected`?
@@ -139,13 +139,13 @@ Proceso del agente.
 ---
 
 ## Checklist de proceso del agente ([11](./11-workflow-orchestration.md), [14](./14-agent-efficiency.md))
-- [ ] ¿Se leyó el código existente y sus usos antes de editar?
+- [ ] ¿Se leyó el código existente y sus usos antes de editar? (§11.1)
 - [ ] ¿Las dudas que cambian el resultado se preguntaron juntas, antes de empezar, con opción recomendada? (§11.6)
 - [ ] ¿Estado guardado en `tasks/todo.md` y contexto compactado al cerrar cada fase? (§14.4)
 - [ ] ¿Se consultó `graphify query` antes de buscar o leer archivos? ¿`graphify update .` al cerrar la tarea? (§14.5)
 - [ ] ¿Todo resultado de un ejecutor revisado por el modelo fuerte antes de entregarlo? (§14.3.5)
-- [ ] ¿Tarea de 3+ pasos con plan previo en `tasks/todo.md`?
-- [ ] ¿Tests, build y lint corridos antes de reportar "terminado"?
-- [ ] ¿El cambio se limita a lo pedido (sin refactors "de paso")?
-- [ ] ¿Trabajo mecánico delegado a subagentes de menor potencia cuando era posible?
-- [ ] ¿Respuestas al usuario en modo caveman (salvo excepciones de seguridad y artefactos persistidos)?
+- [ ] ¿Tarea de 3+ pasos con plan previo en `tasks/todo.md`? (§11.2)
+- [ ] ¿Tests, build y lint corridos antes de reportar "terminado"? (§11.3)
+- [ ] ¿El cambio se limita a lo pedido (sin refactors "de paso")? (§11.5)
+- [ ] ¿Trabajo mecánico delegado a subagentes de menor potencia cuando era posible? (§14.3.4)
+- [ ] ¿Respuestas al usuario en modo caveman (salvo excepciones de seguridad y artefactos persistidos)? (§14.1)

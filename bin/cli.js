@@ -50,10 +50,11 @@ ${colors.bold}OPCIONES:${colors.reset}
                           ${colors.bold}cursor${colors.reset}      (Cursor / Windsurf con .cursorrules)
                           ${colors.bold}universal${colors.reset}   (Codex / Copilot con AGENTS.md)
                           ${colors.bold}all${colors.reset}         (Instalar en todos los entornos)
-  ${colors.green}-g, --global${colors.reset}            Instalación global en el directorio home del usuario
-  ${colors.green}-w, --workspace${colors.reset}         Instalación local en el proyecto actual (CWD)
-  ${colors.green}-t, --target <ruta>${colors.reset}     Ruta personalizada donde copiar la carpeta del skill
-  ${colors.green}-b, --bridge${colors.reset}            Genera archivos puente (AGENTS.md, CLAUDE.md, .cursorrules)
+  ${colors.green}-g, --global${colors.reset}            Instalación global en el home (solo antigravity / claude)
+  ${colors.green}-w, --workspace${colors.reset}         Instalación en el proyecto actual (solo antigravity / claude)
+  ${colors.green}-t, --target <ruta>${colors.reset}     Ruta personalizada (tiene prioridad sobre --agent)
+  ${colors.green}-b, --bridge${colors.reset}            Genera archivos puente (AGENTS.md, CLAUDE.md, .cursorrules).
+                          cursor, universal y all los generan siempre.
   ${colors.green}--dry-run${colors.reset}               Muestra los archivos y destinos sin escribir cambios
   ${colors.green}-v, --version${colors.reset}           Muestra la versión del paquete
   ${colors.green}-h, --help${colors.reset}              Muestra esta ayuda
@@ -174,8 +175,12 @@ async function run() {
   const cwd = process.cwd();
 
   if (customTarget) {
-    installTarget(path.resolve(cwd, customTarget), 'Directorio personalizado');
-    if (includeBridge) copyBridgeFiles(cwd);
+    if (agentArg) {
+      console.log(`${colors.dim}Aviso: --target tiene prioridad; se ignora --agent ${agentArg}.${colors.reset}`);
+    }
+    const targetDir = path.resolve(cwd, customTarget);
+    installTarget(targetDir, 'Directorio personalizado');
+    if (includeBridge) copyBridgeFiles(targetDir);
     finish();
     return;
   }
@@ -218,7 +223,8 @@ async function run() {
       copyBridgeFiles(cwd);
     }
 
-    if (includeBridge && scope === 'workspace') {
+    // cursor/windsurf/universal ya copiaron los puentes: los necesitan para funcionar.
+    if (includeBridge && (agent === 'antigravity' || agent === 'claude')) {
       copyBridgeFiles(cwd);
     }
 

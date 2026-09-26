@@ -133,7 +133,17 @@ igual a `services/`, `models/`, `pipes/`, `validators/` y `guards/`:
   - `[feature].ts` → lógica de negocio, orquestación, signals derivados, validaciones.
   - `[feature]-concrete.ts` → proxy de implementación de un servicio abstracto de la librería,
     siempre y cuando tenga llamadas HTTP; si no, el servicio de lógica de negocio oficia de
-    implementación del contrato abstracto.
+    implementación del contrato abstracto. Ejemplo mínimo:
+    ```ts
+    // en la librería: clase abstracta que define el contrato
+    export abstract class ExportadorPdf { abstract exportar(datos: unknown): Promise<void>; }
+
+    // [feature]-concrete.ts: implementación concreta con la llamada HTTP real
+    @Service()
+    export class ExportadorPdfConcrete implements ExportadorPdf { /* ... */ }
+
+    // se registra en providers: { provide: ExportadorPdf, useClass: ExportadorPdfConcrete }
+    ```
   - `[feature]-http.ts` → solo llamadas HTTP / `httpResource`. Sin lógica de presentación.
 - **Concerns transversales** (spinner, manejo global de errores, headers de auth, retries, logging)
   van en **interceptores funcionales** dentro de `core/http/`, **no** dispersos en cada servicio o
@@ -144,7 +154,7 @@ igual a `services/`, `models/`, `pipes/`, `validators/` y `guards/`:
     presentacionales reutilizados por **varias** features (reciben `input()`, emiten `output()`).
   - Un componente presentacional usado por **una sola** feature **no** va a `shared/components/`: se
     anida directamente donde lo consume (ver regla de anidación más abajo y §1.1).
-- Si hay muchos archivos de un mismo tipo (directives, pipes, validators, interceptors),
+- A partir de **5 o más archivos** del mismo tipo (directives, pipes, validators, interceptors),
   agrupar por subcarpeta temática.
 - **No usar barrel files (`index.ts`)** salvo en librerías publicadas: generan ciclos de imports y
   degradan el tree-shaking.
@@ -170,7 +180,7 @@ igual a `services/`, `models/`, `pipes/`, `validators/` y `guards/`:
 > El equipo **no** usa los sufijos legacy `.component`, `.service`, `.directive`, `.pipe` en
 > archivos ni clases. Es la convención oficial vigente desde el style guide de Angular 20.
 
-| Tipo            | Archivo                  | Clase                   |
+| Tipo            | Archivo                  | Clase / función         |
 |-----------------|--------------------------|-------------------------|
 | Component       | `user-list.ts`           | `UserList`              |
 | Service         | `auth.ts`                | `Auth`                  |

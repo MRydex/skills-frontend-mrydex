@@ -105,14 +105,14 @@ skills/desarrollo-buenas-practicas/
     ├── 04-resource-api.md            # httpResource, rxResource, recargas y mutaciones
     ├── 05-http-interceptors.md       # Interceptores funcionales, spinner global, manejo de errores
     ├── 06-signal-forms.md            # Signal Forms (@angular/forms/signals), validación reactiva
-    ├── 07-styles-scss.md             # SCSS moderno, BEM, variables y encapsulación
+    ├── 07-styles-scss.md             # @use/@forward, tokens, BEM, NG-ZORRO sin ::ng-deep, container queries
     ├── 08-testing-vitest.md          # Vitest y pruebas unitarias con signals
-    ├── 09-performance-zoneless.md    # Zoneless change detection y OnPush
+    ├── 09-performance-zoneless.md    # Zoneless, @defer, hidratación, budgets, virtual scroll, profiling
     ├── 10-environment-tooling.md     # IIS web.config, backend .NET, schematics
     ├── 11-workflow-orchestration.md  # Explorar, planificar, verificar, commits y lecciones
     ├── 12-html5-semantics-seo.md     # Semántica HTML5, ARIA/WCAG, SEO y meta tags
-    ├── 13-css3-layouts-animations.md # Flexbox, CSS Grid, animaciones scroll-driven
-    ├── 14-agent-efficiency.md        # Modo caveman, consulta a otros agentes, subagentes baratos
+    ├── 13-css3-layouts-animations.md # @layer, :has(), @scope, Grid, anchor positioning, animaciones
+    ├── 14-agent-efficiency.md        # Caveman, advisor multi-agente, autocompact, graphify, adaptación
     └── checklists.md                 # Checklists de Angular, HTML5/CSS3 y proceso del agente
 ```
 

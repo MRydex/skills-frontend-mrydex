@@ -209,7 +209,9 @@ en un interceptor, no repetido con el operador `retry` de RxJS en cada servicio.
 ```ts
 // core/http/retry-interceptor.ts
 export const retryInterceptor: HttpInterceptorFn = (req, next) => {
-  // Solo reintentar operaciones idempotentes: GET (y opcionalmente PUT/DELETE si el backend lo garantiza).
+  // Reintentar solo métodos idempotentes seguros por defecto: GET (y HEAD, si aplica).
+  // PUT/DELETE son idempotentes en teoría, pero acá NO se reintentan: sumarlos a esta condición
+  // de forma explícita solo si el backend garantiza esa idempotencia real.
   if (req.method !== 'GET') return next(req);
 
   return next(req).pipe(

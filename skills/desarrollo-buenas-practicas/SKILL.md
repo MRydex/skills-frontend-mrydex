@@ -2,12 +2,12 @@
 name: desarrollo-buenas-practicas
 version: 1.2.0
 description: >
-  Convenciones oficiales del equipo para proyectos Angular 22+ (2026) y Frontend Moderno: standalone components, signals como único modelo de reactividad, zoneless, OnPush por defecto, control flow nativo (@if/@for/@switch/@let), Signal Forms, Resource API (httpResource/rxResource/resource), interceptores funcionales (spinner/errores), TypeScript 6 estricto, HTML5 semántico y accesible (WCAG AA / @angular/aria), BEM, SCSS anidado, layouts fluidos (Flexbox/Grid), animaciones modernas, testing con Vitest, performance y despliegue en IIS/.NET. Usar siempre que se pida crear, modificar, revisar, testear, depurar o refactorizar código Angular, TypeScript, HTML o SCSS/CSS, aunque el usuario no mencione Angular explícitamente. Define además cómo trabaja el agente: respuestas en modo caveman, consulta de librerías a otros agentes abiertos y delegación a subagentes de menor potencia.
+  Convenciones oficiales del equipo para proyectos Angular 22+ (2026) y Frontend Moderno: standalone components, signals como único modelo de reactividad, zoneless, OnPush por defecto, control flow nativo (@if/@for/@switch/@let), Signal Forms, Resource API (httpResource/rxResource/resource), interceptores funcionales (spinner/errores), TypeScript 6 estricto, HTML5 semántico y accesible (WCAG AA / @angular/aria), BEM, SCSS anidado, layouts fluidos (Flexbox/Grid), animaciones modernas, testing con Vitest, performance y despliegue en IIS/.NET. Usar siempre que se pida crear, modificar, revisar, testear, depurar o refactorizar código Angular, TypeScript de proyectos Angular, HTML o SCSS/CSS, aunque el usuario no mencione Angular explícitamente. Define además cómo trabaja el agente en cualquier herramienta (Claude Code, Codex, Antigravity, Cursor, Copilot): modo caveman, modelo fuerte que orquesta y revisa con subagentes baratos, graphify, autocompactación y preguntas previas.
 ---
 
 # Desarrollo Frontend — Buenas Prácticas del Equipo (Angular 22+)
 
-Este skill codifica las convenciones **obligatorias** del equipo para proyectos **Angular 22+** y desarrollo Frontend de alta calidad: standalone components, **signals como único modelo de reactividad**, **zoneless**, **OnPush por defecto**, control flow nativo, **Signal Forms** (estables en v22), la **Resource API** (`httpResource` / `rxResource` / `resource`), **interceptores funcionales** para concerns transversales (spinner, errores) y las convenciones de naming oficiales (sin sufijos `.component`, `.service`).
+Convenciones **obligatorias** del equipo para Angular 22+ y frontend moderno, más las reglas de cómo trabaja el agente. Leer primero las 8 reglas y el modo de operación; el detalle vive en `references/`.
 
 > **Regla maestra**: si una API legacy tiene un equivalente moderno (signals, control flow nativo, `inject()`, `input()`, `httpResource`, Signal Forms, `host: {}`, interceptores funcionales), **siempre usar el moderno**. Cualquier uso de la API legacy debe estar justificado por interoperabilidad con código existente y documentado en el PR.
 
@@ -18,7 +18,7 @@ Este skill codifica las convenciones **obligatorias** del equipo para proyectos 
 1. **Nunca `effect()` para sincronizar estado.** Derivar con `computed()` / `linkedSignal()`, cargar datos con la Resource API y resolver concerns transversales con interceptores. Por qué: `effect()` crea cascadas de escrituras difíciles de razonar y de testear. Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
 2. **Nunca `Observable` / `Subject` / `BehaviorSubject` como estado.** El estado es siempre signals. RxJS solo dentro de servicios, para flujos (`rxResource`, eventos). Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
 3. **Nunca Reactive Forms ni `ngModel`.** Solo **Signal Forms** (`@angular/forms/signals`). Ver [06-signal-forms.md](./references/06-signal-forms.md).
-4. **Nunca declarar `changeDetection` ni `standalone: true`.** OnPush y standalone son el default en v22. Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
+4. **`changeDetection` según la versión de `@angular/core` en `package.json`.** v22 o mayor: **no declararlo** (OnPush es el default). Menor a v22: **siempre** `changeDetection: ChangeDetectionStrategy.OnPush`. `standalone: true` solo en v18 o menor (default desde v19). Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
 5. **Nunca `*ngIf` / `*ngFor` / `*ngSwitch` / `[ngClass]` / `[ngStyle]`.** Usar control flow nativo y bindings `[class.x]` / `[style.x]`. Ver [03-html-templates.md](./references/03-html-templates.md).
 6. **Nunca archivos monolíticos.** Máximo: componente `.ts` 200 líneas, template `.html` 200, servicio 250, `.scss` 150. Si se pasa, dividir por responsabilidad: subcomponentes presentacionales (`input()` / `output()`) y sub-servicios (lógica / HTTP). Ver [01-project-structure.md](./references/01-project-structure.md).
 7. **Nunca carpeta `components/` para subcomponentes.** Cada hijo se anida dentro de la carpeta del padre que lo usa: `detalle/subdetalle/subdetalle-cabecera/`. El árbol de carpetas refleja el árbol de componentes. Única excepción: `shared/components/`, para componentes reutilizados por varias features. Ver [01-project-structure.md](./references/01-project-structure.md).
@@ -26,17 +26,19 @@ Este skill codifica las convenciones **obligatorias** del equipo para proyectos 
 
 ---
 
-### Modo de operación del agente (siempre activo)
+### Modo de operación del agente
+
+Rige durante toda la sesión desde que la skill se carga. Para que rija también en sesiones que no tocan Angular, instalar los archivos puente en el repo (`--bridge`: `CLAUDE.md`, `AGENTS.md`, `.cursorrules`), que el agente lee siempre.
 
 0. **Adaptarse al agente y a los modelos en uso.** Al empezar, detectar en qué agente corre la skill (Claude Code, Codex, Antigravity, Cursor, Copilot, Gemini CLI, otro) y qué modelos tiene disponibles. Todo nombre concreto de esta skill (Opus, Sonnet, Haiku, `/compact`, `AskUserQuestion`, `SendMessage`, `Agent`) es un **ejemplo**: traducirlo al equivalente del agente en uso. Si no hay equivalente, aplicar el fallback documentado. Las reglas no cambian; cambia solo la sintaxis. Ver [14-agent-efficiency.md](./references/14-agent-efficiency.md) §14.7.
-1. **Responder en modo caveman.** Frases cortas, sin relleno ni cortesías, sin narrar tool calls. Términos técnicos, código y errores exactos. Nunca omitir negaciones. Prosa normal solo en advertencias de seguridad, acciones irreversibles, código, commits, PRs y docs.
-2. **Librerías: preguntar antes de investigar.** Si hay otra sesión/agente abierto que conozca la librería (Claude Code: `ListAgents` + `SendMessage`), consultarle primero. Luego MCP de docs, luego `node_modules`, último la web.
-3. **El modelo fuerte orquesta y revisa; modelos baratos ejecutan (estrategia advisor emulada).** Vale para cualquier agente y proveedor. El modelo fuerte (ej. Opus / GPT effort alto / Gemini Pro) planifica, decide, reparte y revisa **siempre** el resultado. Búsquedas, lecturas grandes, ediciones y boilerplate van a subagentes de menor nivel (ej. Sonnet, Haiku / mini / Flash), en paralelo cuando sean independientes. Si el agente no lanza subagentes con otro modelo, cambiar de modelo por fase. Contexto compartido en `tasks/brief-<tarea>.md`. El ejecutor no adivina: si se traba devuelve `NECESITA_ADVISOR: <duda>`. El modelo fuerte interviene después de la orientación, cuando el ejecutor se traba y antes de dar por terminado.
-4. **Preguntar todo antes de empezar.** En tareas no triviales, juntar todas las dudas que cambian el resultado y preguntarlas de una sola vez, con opciones y una recomendada (Claude Code: `AskUserQuestion`). No preguntar lo que se resuelve leyendo el repo.
-5. **Autocompactar el contexto.** Al cerrar cada fase o antes de una tarea nueva: guardar el estado en `tasks/todo.md` y compactar con foco (`/compact Conservar: decisiones, archivos tocados, pendientes`). Nunca con un cambio a medio aplicar ni con una pregunta pendiente.
-6. **Graphify primero.** Si falta, instalarlo sin preguntar (`pip install graphifyy && graphify install`) e integrarlo en el repo (`graphify hook install` + `graphify <agente> install` según el agente que corre). Ante cualquier pregunta sobre el código, consultar `graphify query` antes de `grep` o leer archivos. Tras una tarea que tocó 3+ archivos o antes de compactar: `graphify update .` (sin LLM).
+1. **Responder en modo caveman.** Frases cortas, sin relleno ni cortesías, sin narrar tool calls. Términos técnicos, código y errores exactos. Nunca omitir negaciones. Prosa normal solo en advertencias de seguridad, acciones irreversibles, código, commits, PRs y docs. Ver §14.1.
+2. **Librerías: preguntar antes de investigar.** Si hay otra sesión/agente abierto que conozca la librería (Claude Code: `ListAgents` + `SendMessage`), consultarle primero. Luego MCP de docs, luego `node_modules`, último la web. Ver §14.2.
+3. **El modelo fuerte orquesta y revisa; modelos baratos ejecutan (estrategia advisor emulada).** Vale para cualquier agente y proveedor. El modelo fuerte (ej. Opus / GPT effort alto / Gemini Pro) planifica, decide, reparte y revisa **siempre** el resultado. Búsquedas, lecturas grandes, ediciones y boilerplate van a subagentes de menor nivel (ej. Sonnet, Haiku / mini / Flash), en paralelo cuando sean independientes. Si el agente no lanza subagentes con otro modelo, cambiar de modelo por fase. Contexto compartido en `tasks/brief-<tarea>.md`. El ejecutor no adivina: si se traba devuelve `NECESITA_ADVISOR: <duda>`. El modelo fuerte interviene después de la orientación, cuando el ejecutor se traba y antes de dar por terminado. Ver §14.3.
+4. **Preguntar todo antes de empezar.** En tareas no triviales, juntar todas las dudas que cambian el resultado y preguntarlas de una sola vez, con opciones y una recomendada (Claude Code: `AskUserQuestion`). No preguntar lo que se resuelve leyendo el repo. Ver [11-workflow-orchestration.md](./references/11-workflow-orchestration.md) §11.6.
+5. **Autocompactar el contexto.** Al cerrar cada fase o antes de una tarea nueva: guardar el estado en `tasks/todo.md` y compactar con foco (`/compact Conservar: decisiones, archivos tocados, pendientes`). Nunca con un cambio a medio aplicar ni con una pregunta pendiente. Ver §14.4.
+6. **Graphify primero.** Si falta, instalarlo sin preguntar (`pip install graphifyy && graphify install`, con `--platform <agente>` fuera de Claude Code) e integrarlo en el repo (`graphify hook install` + `graphify <agente> install` según el agente que corre). Ante cualquier pregunta sobre el código, consultar `graphify query` antes de `grep` o leer archivos. Tras una tarea que tocó 3+ archivos o antes de compactar: `graphify update .` (sin LLM). Ver §14.5.
 
-Detalle, excepciones y ejemplos en [14-agent-efficiency.md](./references/14-agent-efficiency.md) y [11-workflow-orchestration.md](./references/11-workflow-orchestration.md) §11.6.
+Las `§14.x` están en [14-agent-efficiency.md](./references/14-agent-efficiency.md): leer solo la sección que hace falta.
 
 ---
 
@@ -45,7 +47,7 @@ Detalle, excepciones y ejemplos en [14-agent-efficiency.md](./references/14-agen
 - **Angular 22+** (v22.x). Todo lo marcado como "v21" sigue siendo válido salvo que se indique.
 - **Zoneless**: `provideZonelessChangeDetection()` / default en v21+.
   - **Nunca** importar `zone.js` ni usar `provideZoneChangeDetection()`.
-- **`OnPush` es la estrategia de detección de cambios por defecto desde v22.** La antigua `Default` se renombró a **`Eager`** y está deprecada. **No declarar `changeDetection` en componentes nuevos.**
+- **`OnPush` es la estrategia de detección de cambios por defecto desde v22.** La antigua `Default` se renombró a **`Eager`** y está deprecada. En v22+ **no declarar `changeDetection`**; en proyectos con versión menor, forzar `OnPush` (regla 4).
 - **Standalone first**: sin `NgModule` salvo dependencias legacy de terceros.
 - **TypeScript 6** (v22 lo exige; TS 5.9 ya no está soportado). Node 26 soportado, Node 20 no.
 - **`HttpClient` usa `FetchBackend` por defecto** en v22 → `withFetch()` es innecesario y está deprecado. Si se necesita progreso de **subida**, hace falta `provideHttpClient(withXhr())` + `reportUploadProgress`; para progreso de bajada alcanza `reportDownloadProgress`.
@@ -82,47 +84,41 @@ Leer solo la referencia que corresponde a la tarea. Cada archivo de más de 100 
 
 ---
 
-## Verificación Rápida (Do & Don't)
+## Verificación rápida (Do & Don't)
 
 ```typescript
-// ❌ INCORRECTO (Legacy / Prohibido)
-@Component({
-  selector: 'app-user-profile',
-  standalone: true, // Innecesario en v22
-  changeDetection: ChangeDetectionStrategy.OnPush, // Innecesario: OnPush es default
-  template: `
-    <div *ngIf="user$ | async as user" [ngClass]="{'active': isActive}">
-      <span *ngFor="let item of items">{{ item }}</span>
-    </div>
-  `
-})
+// ❌ Legacy en v22+: standalone/changeDetection declarados, decoradores, constructor injection, Observable como estado
+@Component({ standalone: true, changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<div *ngIf="user$ | async as user" [ngClass]="{active: isActive}">{{ user.name }}</div>` })
 export class UserProfileComponent {
   @Input() userId!: string;
-  @Output() updated = new EventEmitter<void>();
   user$ = this.http.get<User>(`/api/users/${this.userId}`);
   constructor(private http: HttpClient) {}
 }
 
-// ✅ CORRECTO (Angular 22+)
+// ✅ Angular 22+ (en v19-21 sumar changeDetection: ChangeDetectionStrategy.OnPush)
 @Component({
   selector: 'app-user-profile',
   template: `
-    @if (userResource.value(); as user) {
-      <div class="user-profile" [class.user-profile--active]="isActive()">
-        @for (item of items(); track item.id) {
-          <span class="user-profile__item">{{ item.name }}</span>
-        }
-      </div>
+    @if (userResource.hasValue()) {
+      @let user = userResource.value();
+      <article class="user-profile" [class.user-profile--active]="isActive()">
+        <h2 class="user-profile__name">{{ user.name }}</h2>
+        <button type="button" (click)="onSelect()">Seleccionar</button>
+      </article>
+    } @else if (userResource.isLoading()) {
+      <p>Cargando…</p>
     }
-  `
+  `,
 })
 export class UserProfile {
   readonly userId = input.required<string>();
-  readonly updated = output<void>();
-  readonly isActive = signal(false);
-  readonly items = signal<Item[]>([]);
+  readonly selected = output<string>();
+  protected readonly userResource = httpResource<User>(() => `/api/users/${this.userId()}`);
+  protected readonly isActive = computed(() => this.userResource.value()?.active ?? false);
 
-  readonly userResource = httpResource<User>(() => `/api/users/${this.userId()}`);
+  protected onSelect(): void {
+    this.selected.emit(this.userId());
+  }
 }
 ```
-

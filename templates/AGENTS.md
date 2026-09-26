@@ -4,11 +4,13 @@ This project strictly follows the **Angular 22+ & Modern Frontend Best Practices
 
 👉 **Skill Entrypoint**: [`skills/desarrollo-buenas-practicas/SKILL.md`](./skills/desarrollo-buenas-practicas/SKILL.md) (or [`.agents/skills/desarrollo-buenas-practicas/SKILL.md`](./.agents/skills/desarrollo-buenas-practicas/SKILL.md))
 
+**How to load it (any agent):** at the start of every coding session, read `SKILL.md` fully. Then read only the `references/*.md` file (and section) that matches the current task, as listed in its reference index. Do not load all references at once.
+
 ## Golden Rules
 1. **Never use `effect()`**: Derive with `computed()` / `linkedSignal()`, fetch with Resource API (`httpResource`/`rxResource`).
 2. **Never use `Observable`/`Subject` as state**: All state must be Angular Signals.
 3. **Never use Reactive Forms or `ngModel`**: Always use **Signal Forms** (`@angular/forms/signals`).
-4. **Never declare `standalone: true` or `changeDetection: OnPush`**: They are the default in Angular 22.
+4. **`changeDetection` by Angular version** (read `@angular/core` in `package.json`): v22+ never declare it (OnPush is the default); below v22 always set `ChangeDetectionStrategy.OnPush`. `standalone: true` only in v18 or lower.
 5. **Never use `*ngIf`, `*ngFor`, `*ngSwitch`, `[ngClass]`, `[ngStyle]`**: Use native control flow (`@if`, `@for`, `@switch`, `@let`) and standard class/style bindings.
 6. **No suffixes in filenames/classes**: `user-profile.ts` exporting `UserProfile` (not `UserProfileComponent`).
 7. **Semantic HTML & WCAG AA**: Clean AXE audits, BEM naming, nested SCSS.

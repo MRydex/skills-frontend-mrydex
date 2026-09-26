@@ -358,12 +358,14 @@ export class OverflowDetectorDirective {
   host: {
     '[class.is-active]': 'active()',
     '[attr.aria-expanded]': 'active()',
-    '(click)': 'toggle()',
+    '(click)': 'onToggle()',
   },
 })
 export class AlgoDirective {
-  readonly active = signal(false);
-  toggle(): void { this.active.update((v) => !v); }
+  private readonly _active = signal(false);
+  readonly active = this._active.asReadonly();
+
+  protected onToggle(): void { this._active.update((v) => !v); }
 }
 ```
 
@@ -430,8 +432,9 @@ formulario con `nz-col` chicos.
 
 ### 3.10 Componentización de Templates HTML (Evitar HTMLs kilométricos)
 
-> **Regla de oro de templates:** Ningún archivo `.html` debe superar las ~150–200 líneas. Si un
-> template crece hacia las 300–600 líneas, es obligatorio **partirlo en subcomponentes**.
+> **Regla de oro de templates:** Ningún archivo `.html` debe superar las 200 líneas (límite fijo, ver
+> [01-project-structure.md](./01-project-structure.md) §1.4). Si un template crece hacia las 300–600
+> líneas, es obligatorio **partirlo en subcomponentes**.
 
 #### Señales de alerta en un template que exigen partirlo:
 

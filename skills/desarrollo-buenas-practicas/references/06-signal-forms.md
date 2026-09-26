@@ -133,8 +133,8 @@ inválido o pendiente.
   ```
   Los campos `hidden` / `disabled` / `readonly` **no participan de la validación** ni afectan el
   estado del padre.
-  > **Campo `hidden` ⇒ sacarlo del DOM con `@if`.** Angular avisa en dev mode (`NG01916`) si un campo
-  > marcado `hidden` sigue renderizado. `hidden()` es un signal de estado, no aplica ningún CSS por sí
+  > **Campo `hidden` ⇒ sacarlo del DOM con `@if`.** Angular avisa en dev mode si un campo marcado
+  > `hidden` sigue renderizado. `hidden()` es un signal de estado, no aplica ningún CSS por sí
   > solo — hay que envolver el control en `@if (!registroForm.direccionEnvio().hidden()) { ... }`.
 - **Arrays y objetos anidados**: ver §6.4.
 - **Validación con esquemas externos** (Zod / Valibot) vía `validateStandardSchema`, incluso dinámica
@@ -323,29 +323,24 @@ validateHttp(path.email, {
 ### 6.9 Controles propios e integración con NG-ZORRO
 
 - **Controles propios**: implementar `FormValueControl<T>` (expone `value = model<T>()`) o
-  `FormCheckboxControl` (expone `checked`) para que `[formField]` pueda bindearlos. Para Signal Forms
-  **no se usa `ControlValueAccessor`**: es el mecanismo de Reactive/Template-driven Forms, no el de
-  Signal Forms. Si el control contiene varios inputs nativos, implementar además `focus()` para que
-  funcione `focusBoundControl()`; si el control es una directiva que envuelve un elemento host,
-  `registerAsBinding()` permite registrarlo sin implementar `FormValueControl` completo.
-- **Envolver un control de NG-ZORRO** (ej. `nz-input-number`, que no es un `<input>` nativo) en un
-  `FormValueControl` propio para poder usar `[formField]` directamente:
-  ```ts
-  @Component({
-    selector: 'app-cantidad-input',
-    imports: [NzInputNumberModule],
-    template: `<nz-input-number [ngModel]="value()" (ngModelChange)="value.set($event)" [nzMin]="min()" [nzMax]="max()" />`,
-  })
-  export class CantidadInput implements FormValueControl<number> {
-    readonly value = model.required<number>();
-    // FieldState expone min()/max() ya resueltos por los validadores min()/max() del schema:
-    readonly min = input<number>();
-    readonly max = input<number>();
-  }
-  ```
+  `FormCheckboxControl` (expone `checked`) para que `[formField]` pueda bindearlos — es el mecanismo
+  **preferido** para controles nuevos. `[formField]` también puede bindear directo a un componente que
+  provee `ControlValueAccessor` (interop de compatibilidad con Reactive/Template-driven Forms,
+  documentado en la propia API de `FormField`), pero es soporte de compatibilidad, no la vía nativa de
+  Signal Forms: usarlo solo cuando el control de terceros ya trae CVA y no expone otra API (ver
+  ejemplo con `nz-input-number` más abajo). Si el control contiene varios inputs nativos, implementar
+  además `focus()` para que funcione `focusBoundControl()`; si el control es una directiva que envuelve
+  un elemento host, `registerAsBinding()` permite registrarlo sin implementar `FormValueControl`
+  completo.
+- **`nz-input-number`** (y cualquier otro control NG-ZORRO que ya provea `ControlValueAccessor`): **no
+  hace falta armar un wrapper**. `nz-input-number` registra su propio `NG_VALUE_ACCESSOR`
+  (`useExisting: NzInputNumberComponent`), así que `[formField]` lo bindea directo, vía el caso de
+  interop CVA de arriba:
   ```html
-  <app-cantidad-input [formField]="pedidoForm.items[0].cantidad" [min]="0" [max]="99" />
+  <nz-input-number [formField]="pedidoForm.items[0].cantidad" [nzMin]="0" [nzMax]="99" />
   ```
+  Nada de `[ngModel]` / `(ngModelChange)` (prohibido por el equipo, ver la intro de este archivo) ni de `FormsModule`: el `ControlValueAccessor` que ya trae el
+  componente es lo que `[formField]` usa por debajo para leer y escribir el valor.
 - **`transformedValue`**: cuando el control muestra un valor "crudo" distinto al del modelo (ej. un
   input de texto que el usuario escribe como `"20m"` y el modelo guarda `20` en minutos), se usa
   `transformedValue(this.value, { parse, format })` dentro del control propio para separar el valor

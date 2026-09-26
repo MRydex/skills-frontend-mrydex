@@ -33,10 +33,33 @@ let data: unknown;                    // tipo incierto
 
 ### 2.2 Componentes — reglas generales
 
-- **Standalone siempre**. **No usar NgModules**. **No declarar `standalone: true`** (default v19+).
-- **No declarar `changeDetection: ChangeDetectionStrategy.OnPush`**: es el **default desde v22**.
-  Solo se declara `ChangeDetectionStrategy.Eager` en componentes legacy que todavía dependen del
-  chequeo completo del árbol, y con un comentario que lo justifique.
+- **Standalone siempre**. **No usar NgModules**.
+- **`standalone` y `changeDetection` dependen de la versión de Angular del proyecto.** Antes de crear
+  o revisar un componente, leer la versión de `@angular/core` en `package.json` (major = primer
+  número de la versión, sin `^` / `~`):
+
+  | Versión de `@angular/core` | `standalone` | `changeDetection` |
+  | :--- | :--- | :--- |
+  | **22 o mayor** | No declarar (default desde v19) | **No declarar**: `OnPush` es el default |
+  | **19 a 21** | No declarar (default desde v19) | **Siempre** `ChangeDetectionStrategy.OnPush` |
+  | **18 o menor** | **Siempre** `standalone: true` | **Siempre** `ChangeDetectionStrategy.OnPush` |
+
+  Por qué: la skill exige OnPush en todo componente. En v22 ya lo es por defecto; antes de v22 el
+  default era chequear todo el árbol en cada ciclo, así que hay que forzarlo.
+
+  ```typescript
+  // Angular 19-21: forzar OnPush
+  @Component({
+    selector: 'app-user-card',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    templateUrl: './user-card.html',
+  })
+  export class UserCard {}
+  ```
+- En v22+, solo se declara `ChangeDetectionStrategy.Eager` en componentes legacy que todavía dependen
+  del chequeo completo del árbol, y con un comentario que lo justifique.
+- Al actualizar un proyecto a v22, quitar los `changeDetection: ChangeDetectionStrategy.OnPush`
+  que ya sobran.
 - `input()` / `input.required()` / `model()` / `output()` en lugar de `@Input` / `@Output`.
 - **Marcar `readonly`** todas las propiedades que inicializa Angular: `input()`, `model()`,
   `output()`, `viewChild()`, `contentChild()`.
@@ -57,7 +80,7 @@ let data: unknown;                    // tipo incierto
   selector: 'app-users',
   templateUrl: './users.html',
   styleUrl: './users.scss',
-  // sin changeDetection: OnPush ya es el default
+  // sin changeDetection: OnPush ya es el default en v22+ (en v19-21, declararlo)
   host: {
     '[class.users--loading]': 'isLoading()',
     '(document:keydown.escape)': 'onEscape()',
@@ -241,12 +264,13 @@ onClickAbrirModal(): void {
   espera. Nada de `debounceTime` a mano. Ejemplo combinado con `httpResource` en §2.9.
 
 ```ts
-// ✅ BIEN
-count = signal<number>(0);
-double = computed(() => this.count() * 2);
+// ✅ BIEN — encapsulación de estado escribible (§2.3): privado escribible + readonly derivado
+private readonly _count = signal<number>(0);
+readonly count = this._count.asReadonly();
+readonly double = computed(() => this._count() * 2);
 
 increment(): void {
-  this.count.update(v => v + 1);
+  this._count.update(v => v + 1);
 }
 
 // ❌ MAL — mutación in-place
@@ -255,10 +279,11 @@ addItem(item: Item): void {
   this.items.mutate(arr => arr.push(item));  // ❌ mutate() ya no existe
 }
 
-// ✅ BIEN — nueva referencia
-items = signal<readonly Item[]>([]);
+// ✅ BIEN — nueva referencia, y misma encapsulación que arriba
+private readonly _items = signal<readonly Item[]>([]);
+readonly items = this._items.asReadonly();
 addItem(item: Item): void {
-  this.items.update(arr => [...arr, item]);
+  this._items.update(arr => [...arr, item]);
 }
 
 // ✅ BIEN — linkedSignal: valor por defecto reactivo pero editable por el usuario
@@ -277,7 +302,7 @@ protected readonly filtroDebounced = debounced(this.filtro, 300);
 1.  inject() de servicios
 2.  input() / model() / output() / viewChild() / contentChild()
 3.  Variables y constantes (incluye readonly de URLs, enums, columnas)
-4.  Signals: signal() / computed() / linkedSignal() / httpResource() / rxResource()
+4.  Signals: signal() / computed() / linkedSignal() / httpResource() / rxResource() / form()
 5.  constructor()
 6.  ngOnInit() (solo si es estrictamente necesario; preferir constructor)
 7.  Otros lifecycle hooks (afterNextRender / afterRenderEffect / ngOnDestroy si hacen falta)
@@ -425,19 +450,10 @@ this._buscar$.pipe(switchMap(t => this._http.buscar(t))).subscribe(r => this.res
 private _perfil = signal<Perfil | null>(null);
 readonly perfil = this._perfil.asReadonly();
 
-// ✅ BIEN — búsqueda reactiva con cancelación automática
-protected readonly termino = signal<string>('');
-protected readonly terminoDebounced = debounced(this.termino, 300);
-
-protected readonly resultados = httpResource<Resultado[]>(() => {
-  const t = this.terminoDebounced.value();
-  return t ? `${environment.API_URL}buscar?q=${encodeURIComponent(t)}` : undefined;
-});
 ```
 
-> El `undefined ⇒ idle` de arriba es el patrón de fetch condicional que detalla
-> [04-resource-api.md](./04-resource-api.md) §4.5; el resto de los estados y reglas del resource
-> (`isLoading()`, `hasValue()`, `reload()`, etc.) están en ese mismo archivo.
+> **Búsqueda reactiva con cancelación automática** (`debounced()` + `httpResource` + fetch condicional
+> `undefined ⇒ idle`): ver el ejemplo completo en [04-resource-api.md](./04-resource-api.md) §4.13.
 
 **Mutaciones (POST/PUT/DELETE)**: son la única llamada donde se consume el Observable directamente.
 Se hace una sola vez, sin guardar `Subscription` (el observable de `HttpClient` completa solo), y el

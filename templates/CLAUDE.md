@@ -6,7 +6,7 @@ This project enforces the official **Angular 22+ (2026)** standards documented i
 - **Reactivity**: Strictly **Signals**. Never use `effect()` for state synchronization (use `computed()` or `linkedSignal()`).
 - **Data Fetching**: Resource API only (`httpResource`, `rxResource`, `resource`).
 - **Forms**: Signal Forms (`@angular/forms/signals`). Never Reactive Forms or `ngModel`.
-- **Change Detection**: Zoneless (`provideZonelessChangeDetection()`). `OnPush` is default in v22; do not specify `changeDetection` or `standalone: true`.
+- **Change Detection**: Zoneless (`provideZonelessChangeDetection()`). Check `@angular/core` in `package.json`: v22+ do not specify `changeDetection` (OnPush is default); below v22 always set `ChangeDetectionStrategy.OnPush`. `standalone: true` only in v18 or lower.
 - **Templates**: Native control flow (`@if`, `@for`, `@switch`, `@let`), `@defer`, and `NgOptimizedImage`.
 - **Styling**: SCSS with BEM methodology. Avoid `::ng-deep`.
 - **Architecture**: Vertical slices / feature-based folder structure. No filename/class suffixes (`user-list.ts` exports `UserList`).
