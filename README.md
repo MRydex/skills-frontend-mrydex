@@ -93,7 +93,7 @@ Opciones:
 
 ## 📂 Estructura Modular del Skill
 
-- **Diseño Modular con Progressive Disclosure**: El skill se compone de un archivo maestro [`SKILL.md`](./skills/desarrollo-buenas-practicas/SKILL.md) y 13 manuales especializados en `references/`. La IA solo lee en su contexto lo que necesita para la tarea activa, ahorrando miles de tokens:
+- **Diseño Modular con Progressive Disclosure**: El skill se compone de un archivo maestro [`SKILL.md`](./skills/desarrollo-buenas-practicas/SKILL.md) y 14 manuales especializados en `references/`. La IA solo lee en su contexto lo que necesita para la tarea activa, ahorrando miles de tokens:
 
 ```text
 skills/desarrollo-buenas-practicas/
@@ -112,6 +112,7 @@ skills/desarrollo-buenas-practicas/
     ├── 11-workflow-orchestration.md  # Plan mode, subagentes, principios senior
     ├── 12-html5-semantics-seo.md     # Semántica HTML5, ARIA/WCAG, SEO y meta tags
     ├── 13-css3-layouts-animations.md # Flexbox, CSS Grid, animaciones scroll-driven
+    ├── 14-agent-efficiency.md        # Modo caveman, consulta a otros agentes, subagentes baratos
     └── checklists.md                 # Checklists de revisión para Angular y HTML5/CSS3
 ```
 

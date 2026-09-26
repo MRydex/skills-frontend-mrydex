@@ -20,8 +20,17 @@ Este skill codifica las convenciones **obligatorias** del equipo para proyectos 
 3. **Nunca Reactive Forms ni `ngModel`.** Solo **Signal Forms** (`@angular/forms/signals`). Ver [06-signal-forms.md](./references/06-signal-forms.md).
 4. **Nunca `changeDetection: ChangeDetectionStrategy.OnPush` explícito**: es el **default en v22**. Tampoco `standalone: true`. Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
 5. **Nunca `[ngClass]` / `[ngStyle]` / `*ngIf` / `*ngFor` / `*ngSwitch`.** Usar control flow nativo y class/style bindings estándar. Ver [03-html-templates.md](./references/03-html-templates.md).
-6. **Nunca componentes, templates o servicios monolíticos (400-600+ líneas).** Componentizar y dividir por responsabilidad única (SRP): componentes (.ts) < 150-200 líneas, templates (.html) < 150-200 líneas, servicios (.ts) < 200-250 líneas. Si algo crece, descomponerlo en subcomponentes presentacionales y sub-servicios de dominio. Ver [01-project-structure.md](./references/01-project-structure.md) y [02-typescript-signals.md](./references/02-typescript-signals.md).
 6. **Nunca componentes, templates o servicios monolíticos (400-600+ líneas).** Componentizar y dividir por responsabilidad única (SRP): componentes (.ts) < 150-200 líneas, templates (.html) < 150-200 líneas, servicios (.ts) < 200-250 líneas. **NUNCA crear carpetas `components/` para subcomponentes**: se anidan jerárquicamente de forma directa dentro de la carpeta del componente padre que los usa (ej: `detalle/subdetalle/subdetalle-cabecera/`). Ver [01-project-structure.md](./references/01-project-structure.md) y [02-typescript-signals.md](./references/02-typescript-signals.md).
+
+---
+
+### Modo de operación del agente (siempre activo)
+
+1. **Responder en modo caveman.** Frases cortas, sin relleno ni cortesías, sin narrar tool calls. Términos técnicos, código y errores exactos. Nunca omitir negaciones. Prosa normal solo en advertencias de seguridad, acciones irreversibles, código, commits, PRs y docs.
+2. **Librerías: preguntar antes de investigar.** Si hay otra sesión/agente abierto que conozca la librería (Claude Code: `ListAgents` + `SendMessage`), consultarle primero. Luego MCP de docs, luego `node_modules`, último la web.
+3. **Orquestar, no ejecutar.** El modelo principal planifica, decide y verifica. Búsquedas, lecturas grandes, ediciones mecánicas y boilerplate van a subagentes de menor potencia (`model: haiku` / `sonnet`), en paralelo cuando sean independientes, con prompt autocontenido y salida comprimida.
+
+Detalle, excepciones y ejemplos en [14-agent-efficiency.md](./references/14-agent-efficiency.md).
 
 ---
 
@@ -60,6 +69,7 @@ Consulta el archivo de referencia correspondiente según la tarea que estés rea
 | **[09-performance-zoneless.md](./references/09-performance-zoneless.md)** | Detección de cambios zoneless, OnPush por defecto, optimización de renderizado, evitar triggers innecesarios de CD. | Al diagnosticar problemas de rendimiento o ciclos de refresco. |
 | **[10-environment-tooling.md](./references/10-environment-tooling.md)** | Schematics del equipo, configuración de IIS (`web.config` con rewrite rules), backend .NET (CORS, URLs relativas/absolutas), variables de entorno. | Al desplegar en producción, configurar IIS o integrar con backend .NET. |
 | **[11-workflow-orchestration.md](./references/11-workflow-orchestration.md)** | Modo plan obligatorio para cambios no triviales, orquestación de subagentes, loop de auto-mejora, principios senior (Simplicity First, No Laziness). | Para guiar el comportamiento y razonamiento del agente al ejecutar tareas complejas. |
+| **[14-agent-efficiency.md](./references/14-agent-efficiency.md)** | Modo caveman para ahorrar tokens, consulta de librerías a otros agentes abiertos, orquestador + subagentes de menor potencia (`haiku`/`sonnet`). | Siempre: define cómo responde el agente y cómo reparte el trabajo. |
 | **[12-html5-semantics-seo.md](./references/12-html5-semantics-seo.md)** | Fundamentos de HTML5: etiquetas semánticas (`<main>`, `<header>`, etc.), accesibilidad ARIA, SEO y meta tags, formularios nativos. | Al trabajar en estructura base HTML, auditorías de accesibilidad o SEO. |
 | **[13-css3-layouts-animations.md](./references/13-css3-layouts-animations.md)** | Fundamentos CSS3: modelo de caja, especificidad, Flexbox, CSS Grid, animaciones scroll-driven, `@starting-style`, `interpolate-size`, `<dialog>`. | Al diseñar layouts complejos, maquetación responsiva o microinteracciones. |
 | **[checklists.md](./references/checklists.md)** | Checklist completo de Angular y Checklist de HTML5/CSS3 para verificación y code reviews. | Antes de entregar cualquier código o al revisar un Pull Request. |

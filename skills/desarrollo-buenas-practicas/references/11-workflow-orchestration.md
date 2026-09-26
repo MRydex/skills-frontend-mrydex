@@ -10,6 +10,7 @@
 - Offload research, exploration, and parallel analysis to subagents
 - For complex problems, throw more compute at it via subagents
 - One task per subagent for focused execution
+- Main model orchestrates; delegate mechanical work to cheaper subagents (`haiku`/`sonnet`). See [14-agent-efficiency.md](./14-agent-efficiency.md)
 
 ### 11.3 Self-Improvement Loop
 - After ANY correction from the user: update `tasks/lessons.md` with the pattern

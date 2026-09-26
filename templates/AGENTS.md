@@ -13,3 +13,9 @@ This project strictly follows the **Angular 22+ & Modern Frontend Best Practices
 6. **No suffixes in filenames/classes**: `user-profile.ts` exporting `UserProfile` (not `UserProfileComponent`).
 7. **Semantic HTML & WCAG AA**: Clean AXE audits, BEM naming, nested SCSS.
 
+## Agent Efficiency (always on)
+Details in `references/14-agent-efficiency.md`.
+1. **Caveman mode**: Terse replies, no filler. Technical terms, code and errors exact. Normal prose for security warnings, irreversible actions, code, commits, PRs and docs.
+2. **Ask before researching libraries**: If another agent session is open and knows the library, ask it first. Then docs MCP, then `node_modules`, then web.
+3. **Orchestrate with cheap subagents**: Main model plans and verifies; smaller/cheaper subagents run search, reads, mechanical edits and boilerplate.
+
