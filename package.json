@@ -1,6 +1,6 @@
 {
   "name": "skills-frontend-mrydex",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Angular 22+ & Modern Frontend Best Practices Skill for AI Coding Assistants (Antigravity, Claude Code, Cursor, Windsurf, Copilot, Codex)",
   "main": "bin/cli.js",
   "bin": {
