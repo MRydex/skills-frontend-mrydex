@@ -9,7 +9,9 @@ This project enforces the official **Angular 22+ (2026)** standards documented i
 - **Change Detection**: Zoneless (`provideZonelessChangeDetection()`). `OnPush` is default in v22; do not specify `changeDetection` or `standalone: true`.
 - **Templates**: Native control flow (`@if`, `@for`, `@switch`, `@let`), `@defer`, and `NgOptimizedImage`.
 - **Styling**: SCSS with BEM methodology. Avoid `::ng-deep`.
-- **Architecture**: Vertical slices / feature-based folder structure.
+- **Architecture**: Vertical slices / feature-based folder structure. No filename/class suffixes (`user-list.ts` exports `UserList`).
+- **Size**: Max 200 lines per component `.ts` or template `.html`, 250 per service, 150 per `.scss`. Split by responsibility.
+- **Subcomponents**: Never a `components/` folder inside a feature. Nest each child inside its parent's folder. Only `shared/components/` is allowed, for components reused across features.
 - **Reference Manuals**: For details on each area, inspect `references/*.md` inside the skill directory.
 
 ## Agent Efficiency (always on)

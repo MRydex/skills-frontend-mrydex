@@ -1,5 +1,11 @@
 ## 5. Interceptores HTTP — spinner, errores y concerns transversales
 
+Índice: [5.1](#51-por-qué-no-el-patrón-effect-por-recurso-resourceerrorhandler) Por qué no `effect` por recurso ·
+[5.2](#52-spinner--interceptor--servicio-con-contador-de-peticiones) Spinner · [5.3](#53-errores--interceptor--fachada-de-modal-lib-agnóstica) Errores ·
+[5.4](#54-opt-out-por-request-con-httpcontext-tokens) `HttpContext` opt-out · [5.5](#55-registro-en-appconfigts-el-orden-importa) Registro y orden ·
+[5.6](#56-cómo-se-combina-con-la-resource-api) Combinación con Resource API · [5.7](#57-retries) Retries ·
+[5.8](#58-funcionales-vs-basados-en-clase-di) Funcionales vs. basados en clase (DI) · [5.9](#59-withxhr-vs-fetch-y-progreso-de-subida) `withXhr` vs. fetch
+
 > **Regla del equipo:** spinner global, manejo global de errores, headers de auth, retries y logging
 > son **concerns transversales** y van en **interceptores funcionales** (`HttpInterceptorFn`),
 > registrados una sola vez. **No** se resuelven con `effect()` por recurso ni con lógica repetida en
@@ -44,7 +50,8 @@ Qué está **mal**:
    manejo de error.
 
 Un **interceptor** resuelve los 5 puntos de una sola vez: aplica a **todas** las peticiones HTTP
-(incluidas las que hacen `httpResource`/`rxResource` por debajo), con contador y con mapeo de status.
+(incluidas las que hacen `httpResource`/`rxResource` por debajo, ver [04-resource-api.md](./04-resource-api.md)),
+con contador y con mapeo de status.
 
 ### 5.2 Spinner — interceptor + servicio con contador de peticiones
 
@@ -129,6 +136,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
 ### 5.4 Opt-out por request con `HttpContext` tokens
 
+`HttpContextToken<T>` es la forma tipada de pasar metadata por-request a través de la cadena de
+interceptores, sin ensuciar headers ni la URL. Se declara con un valor por defecto (`() => T`):
+
 ```ts
 // core/http/http-context.ts
 export const SKIP_SPINNER = new HttpContextToken<boolean>(() => false);
@@ -148,21 +158,34 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(
-      // withFetch() ya NO hace falta: Fetch es el default en v22
+      // withFetch() ya NO hace falta: fetch es el backend por defecto de HttpClient (§5.9)
       withInterceptors([
         authInterceptor,      // 1) agrega token a la request saliente
-        spinnerInterceptor,   // 2) prende/apaga el overlay
-        errorInterceptor,     // 3) captura el error en la respuesta entrante
+        spinnerInterceptor,   // 2) prende/apaga el overlay durante TODO el ciclo, reintentos incluidos
+        errorInterceptor,     // 3) captura el fallo final (después de agotar reintentos)
+        retryInterceptor,     // 4) el más cercano al backend: reintenta antes de que nadie más se entere
       ]),
     ),
   ],
 };
 ```
 
-> Los interceptores se ejecutan en orden para la **request** y en orden **inverso** para la
-> **response**. Por eso `errorInterceptor` va al final: ve el error después de los demás.
-> Si el proyecto necesita progreso de **subida** de archivos, agregar `withXhr()` (Fetch no lo
-> soporta) y usar `reportUploadProgress`.
+> **Cómo se ejecuta la cadena.** Para la **request saliente**, los interceptores corren en el orden
+> configurado (`authInterceptor` primero). Para la **respuesta entrante** ocurre lo inverso: el
+> **último** interceptor de la lista es el más cercano al backend, así que es el **primero** en ver la
+> respuesta/error crudos, y cada interceptor anterior los ve después (porque su `next(req)` es,
+> literalmente, la llamada al siguiente interceptor envuelta en su propio `.pipe(...)`).
+>
+> Por eso el orden de arriba no es arbitrario:
+> - `retryInterceptor` va **al final** (el más cercano al backend): reintenta la petición fallida
+>   antes de que `errorInterceptor` se entere, así el usuario no ve un modal de error por cada intento.
+> - `errorInterceptor` va **antes** que `retry`: solo actúa sobre el fallo **final**, una vez agotados
+>   los reintentos.
+> - `spinnerInterceptor` va **antes** que ambos (más lejos del backend, más "afuera"): su
+>   `finalize()` envuelve toda la secuencia de reintentos, así el spinner no parpadea entre intento e
+>   intento.
+> - `authInterceptor` va primero porque solo necesita tocar la request saliente (agregar el header)
+>   antes de que se dispare cualquier otra cosa.
 
 ### 5.6 Cómo se combina con la Resource API
 
@@ -171,11 +194,61 @@ de error **sin** cablear nada. El `error()` del resource sigue disponible para *
 inline** (mostrar el error dentro de una sección concreta, con botón de reintento).
 
 | Concern                                            | Dónde se resuelve                                                    |
-|----------------------------------------------------|----------------------------------------------------------------------|
+|----------------------------------------------------|------------------------------------------------------------------------|
 | Spinner overlay global                             | `spinnerInterceptor` + `SpinnerService`                              |
 | Modal/toast genérico de error inesperado           | `errorInterceptor` + `ErrorNotifier`                                 |
-| Error **inline** ("esta lista falló, reintentar")  | `resource.error()` / `resource.status()` en el template              |
+| Error **inline** ("esta lista falló, reintentar")  | `resource.error()` / `resource.status()` en el template (ver [04-resource-api.md](./04-resource-api.md) §4.7) |
 | Solo inline, sin modal global                      | `SKIP_ERROR_HANDLER` + `resource.error()`                            |
 | Mutaciones (POST/PUT/DELETE)                       | `HttpClient` directo → spinner/errores vía interceptor, automáticos  |
+
+### 5.7 Retries
+
+Reintentar peticiones fallidas (timeouts, `502`/`503` puntuales) también es un concern transversal: va
+en un interceptor, no repetido con el operador `retry` de RxJS en cada servicio.
+
+```ts
+// core/http/retry-interceptor.ts
+export const retryInterceptor: HttpInterceptorFn = (req, next) => {
+  // Solo reintentar operaciones idempotentes: GET (y opcionalmente PUT/DELETE si el backend lo garantiza).
+  if (req.method !== 'GET') return next(req);
+
+  return next(req).pipe(
+    retry({
+      count: 2,
+      delay: (_error, attempt) => timer(attempt * 500), // backoff simple: 500ms, 1000ms
+    }),
+  );
+};
+```
+
+> **Nunca** reintentar POST/PUT/PATCH/DELETE a ciegas: si la primera petición sí llegó a impactar en
+> el servidor pero la respuesta se perdió, un retry automático puede duplicar la operación (alta doble,
+> pago doble). Si hace falta reintentar una mutación, eso va explícito en el servicio, con una
+> idempotency key o confirmación del backend, no en el interceptor global.
+
+### 5.8 Funcionales vs. basados en clase (DI)
+
+`HttpClient` admite dos formas de interceptor: **funcionales** (`HttpInterceptorFn`, con
+`withInterceptors([...])`) y **basados en clase** (`HttpInterceptor`, con
+`HTTP_INTERCEPTORS`/`withInterceptorsFromDi()`). El equipo usa **siempre funcionales**: tienen un
+orden de ejecución predecible (el orden del array), mientras que el orden de los basados en clase
+depende del árbol de DI y es difícil de predecir en apps con inyección jerárquica. Los
+`HttpInterceptor` de clase solo aparecen si hay que integrar una librería de terceros que ya viene
+así.
+
+### 5.9 `withXhr` vs. fetch, y progreso de subida
+
+`HttpClient` usa **`fetch`** como backend por defecto (no hace falta `withFetch()`). Si el proyecto
+necesita **progreso de subida** de archivos (`reportUploadProgress`), hay que agregar `withXhr()`,
+porque `fetch` no soporta eventos de progreso de subida:
+
+```ts
+export const appConfig: ApplicationConfig = {
+  providers: [provideHttpClient(withXhr(), withInterceptors([...]))],
+};
+```
+
+Si el proyecto no sube archivos con barra de progreso, dejar el default (`fetch`): es la API más
+moderna y la que usan `httpResource`/`rxResource` internamente.
 
 ---

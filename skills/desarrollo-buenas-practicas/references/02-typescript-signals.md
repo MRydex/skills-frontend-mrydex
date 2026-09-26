@@ -1,5 +1,18 @@
 ## 2. TypeScript — Convenciones
 
+**Índice**: [2.1](#21-strict-typing) Strict typing · [2.2](#22-componentes--reglas-generales)
+Componentes ([2.2.1](#221-componentización-estricta-y-extracción-de-lógica-regla-anti-monolitos)
+Anti-monolitos) · [2.3](#23-visibilidad-y-naming) Visibilidad y naming ·
+[2.4](#24-inyección-de-dependencias) Inyección de dependencias ·
+[2.5](#25-estado--signals-como-única-fuente-de-verdad) Signals como estado ·
+[2.6](#26-orden-de-declaraciones-y-de-imports) Orden de declaraciones e imports ·
+[2.7](#27-effects--prohibidos) Effects prohibidos · [2.8](#28-constructor-vs-ngoninit-vs-afternextrender)
+Constructor vs `ngOnInit` vs `afterNextRender` · [2.9](#29-rxjs--fuera-del-código-de-aplicación) RxJS
+fuera de la app · [2.10](#210-servicios) Servicios · [2.11](#211-null-safety-y-contratos-con-el-backend-dtos-por-operación)
+Null safety y DTOs · [2.12](#212-comunicación-entre-componentes-hermanos--servicio-con-signals)
+Comunicación entre hermanos · [2.13](#213-apis-del-navegador-en-servicios-ejemplo-notifications)
+APIs del navegador en servicios.
+
 ### 2.1 Strict typing
 
 - `strict: true`, `noImplicitAny: true`, `strictTemplates: true` siempre activos.
@@ -60,21 +73,18 @@ export class Users {
 }
 ```
 
-### 2.2.1 Componentización estricta y extracción de lógica (Regla Anti-Monolitos)
+#### 2.2.1 Componentización estricta y extracción de lógica (Regla Anti-Monolitos)
 
-> **Prohibido componentes de 400–600+ líneas**: Un componente `.ts` debe centrarse exclusivamente en
-> enlazar el estado con la vista. Si un componente sobrepasa las ~150–200 líneas, **debe dividirse
-> inmediatamente**:
+> Un componente `.ts` debe centrarse exclusivamente en enlazar el estado con la vista. Si sobrepasa
+> el límite de 200 líneas (ver [01-project-structure.md](./01-project-structure.md) §1.4), **debe
+> dividirse inmediatamente**:
 
-1. **Extraer Subcomponentes Dumb (Presentacionales)**:
-   - Si el template tiene tablas, barras de filtros, cards de resumen o listados, cada bloque se extrae a un subcomponente hijo en `components/`.
 1. **Extraer Subcomponentes Dumb (Presentacionales) Anidados Directamente**:
-   - Si el template tiene bloques secundarios (filtros, tabla, modales, pestañas), cada bloque se extrae a un subcomponente hijo anidado **directamente** dentro de la carpeta del componente que lo contiene (ej: `detalle/subdetalle/subdetalle-cabecera/`). **NUNCA dentro de una carpeta `components/`**.
+   - Si el template tiene bloques secundarios (filtros, tabla, modales, pestañas), cada bloque se extrae a un subcomponente hijo anidado **directamente** dentro de la carpeta del componente que lo contiene (ej: `detalle/subdetalle/subdetalle-cabecera/`). **NUNCA dentro de una carpeta `components/`** (esa carpeta solo existe en `shared/components/`, ver [01-project-structure.md](./01-project-structure.md) §1.2).
    - El subcomponente hijo recibe datos con `input()` / `input.required()`, no inyecta servicios de negocio, y notifica eventos con `output()`.
 2. **Extraer Formularios de Modales**:
    - Si la pantalla abre un modal para crear/editar registros, **no meter el formulario dentro del componente principal**.
-   - Crear un componente modal dedicado (`user-form-modal.ts`), con su propio Signal Form. El padre solo controla su visibilidad (`isOpen()`) y recibe el evento `onSave`.
-   - Crear un subcomponente dedicado anidado (`detalle/form-modal/`), con su propio Signal Form. El padre solo controla su visibilidad (`isOpen()`) y recibe el evento `onSave`.
+   - Crear un subcomponente dedicado anidado (ej. `detalle/form-modal/`), con su propio Signal Form (ver [06-signal-forms.md](./06-signal-forms.md)). El padre solo controla su visibilidad (`isOpen()`) y recibe el evento `onSave`.
 3. **Extraer Transformaciones y Cálculos a Funciones Puras**:
    - Mapeos de arrays, filtros complejos, cálculos contables o formateos de strings **nunca van en métodos del componente**.
    - Se extraen a un archivo de utilidades/mappers de la feature (`[feature]-mappers.ts`) como funciones puras sin estado.
@@ -226,8 +236,9 @@ onClickAbrirModal(): void {
 - **Nunca** mutar el contenido de un signal (comparan por **referencia**). Para arrays y objetos,
   **siempre devolver una nueva referencia**.
 - Estado derivado de async: `resource()` / `httpResource()` / `rxResource()` (ver §4).
-- Debouncing sobre signals: `debounced(signal, ms)` (v22) — devuelve un `Resource`; su `status`
-  indica si el valor todavía está dentro de la ventana de espera. Nada de `debounceTime` a mano.
+- Debouncing sobre signals: `debounced(signal, ms)` (`@angular/core`, **experimental** desde v22) —
+  devuelve un `Resource`; su `status()` indica si el valor todavía está dentro de la ventana de
+  espera. Nada de `debounceTime` a mano. Ejemplo combinado con `httpResource` en §2.9.
 
 ```ts
 // ✅ BIEN
@@ -424,9 +435,14 @@ protected readonly resultados = httpResource<Resultado[]>(() => {
 });
 ```
 
+> El `undefined ⇒ idle` de arriba es el patrón de fetch condicional que detalla
+> [04-resource-api.md](./04-resource-api.md) §4.5; el resto de los estados y reglas del resource
+> (`isLoading()`, `hasValue()`, `reload()`, etc.) están en ese mismo archivo.
+
 **Mutaciones (POST/PUT/DELETE)**: son la única llamada donde se consume el Observable directamente.
 Se hace una sola vez, sin guardar `Subscription` (el observable de `HttpClient` completa solo), y el
-resultado se vuelca a signals o se refresca el resource.
+resultado se vuelca a signals o se refresca el resource (nunca un resource para la mutación en sí,
+ver [04-resource-api.md](./04-resource-api.md) §4.9).
 
 ```ts
 // ✅ BIEN — mutación puntual

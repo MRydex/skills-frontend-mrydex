@@ -1,5 +1,11 @@
 ## 1. Estructura de Carpetas
 
+**Índice**: [1.1](#11-regla-de-ubicación-por-alcance-servicios-y-modelos) Regla de ubicación por
+alcance · [1.2](#12-reglas-clave-de-estructura) Reglas clave de estructura ·
+[1.3](#13-naming-oficial-angular-2022) Naming oficial · [1.4](#14-componentización-modularidad-y-regla-anti-monolitos-dividir-con-sentido)
+Componentización, modularidad y regla anti-monolitos ([1.4.1](#141-cómo-descomponer-un-componente-y-template-monolítico-smart-vs-dumb)
+Componente/template, [1.4.2](#142-cómo-descomponer-un-servicio-monolítico) Servicio).
+
 Estructura **híbrida**: un **core** (infraestructura/auth), un **shared** (UI y utilidades
 reutilizables) y **features** (vertical slices de negocio). Las features no dependen entre sí; usan
 core/shared. **Las dependencias siempre van de features → shared/core, nunca al revés.**
@@ -57,21 +63,19 @@ src/
 │       └── [feature]/                 # Ejemplo: users/
 │           ├── [feature].routes.ts
 │           ├── pages/                 # Componentes de ruta (smart)
-│           │   └── [feature]-list/
-│           │       ├── [feature]-list.ts
-│           │       ├── [feature]-list.html
-│           │       ├── [feature]-list.scss
-│           ├── pages/                 # Componentes de ruta principales
+│           │   ├── [feature]-list/
+│           │   │   ├── [feature]-list.ts
+│           │   │   ├── [feature]-list.html
+│           │   │   └── [feature]-list.scss
+│           │   │
 │           │   └── [feature]-detalle/
 │           │       ├── [feature]-detalle.ts
 │           │       ├── [feature]-detalle.html
 │           │       ├── [feature]-detalle.scss
 │           │       ├── services/      # SOLO si los usa este componente (ver §1.1)
-│           │       └── models/        # SOLO si los usa este componente (ver §1.1)
-│           ├── components/            # Componentes presentacionales (dumb)
 │           │       ├── models/        # SOLO si los usa este componente (ver §1.1)
 │           │       │
-│           │       └── subdetalle/    # Subcomponente anidado directamente (NUNCA en carpeta components/)
+│           │       └── subdetalle/    # Subcomponente anidado directamente (NUNCA carpeta components/)
 │           │           ├── subdetalle.ts
 │           │           ├── subdetalle.html
 │           │           ├── subdetalle.scss
@@ -134,9 +138,12 @@ igual a `services/`, `models/`, `pipes/`, `validators/` y `guards/`:
 - **Concerns transversales** (spinner, manejo global de errores, headers de auth, retries, logging)
   van en **interceptores funcionales** dentro de `core/http/`, **no** dispersos en cada servicio o
   componente (ver §5).
-- **Pages vs components**:
-  - `pages/` → componentes asociados a rutas (smart, inyectan servicios).
-  - `components/` → presentacionales reutilizables (reciben `input()`, emiten `output()`).
+- **Pages vs shared components**:
+  - `pages/` (dentro de cada feature) → componentes asociados a rutas (smart, inyectan servicios).
+  - `shared/components/` → la **única** carpeta `components/` de todo el proyecto: componentes
+    presentacionales reutilizados por **varias** features (reciben `input()`, emiten `output()`).
+  - Un componente presentacional usado por **una sola** feature **no** va a `shared/components/`: se
+    anida directamente donde lo consume (ver regla de anidación más abajo y §1.1).
 - Si hay muchos archivos de un mismo tipo (directives, pipes, validators, interceptors),
   agrupar por subcarpeta temática.
 - **No usar barrel files (`index.ts`)** salvo en librerías publicadas: generan ciclos de imports y
@@ -151,10 +158,12 @@ igual a `services/`, `models/`, `pipes/`, `validators/` y `guards/`:
   - **Prohibido crear carpetas genéricas llamadas `components/`** dentro de una feature o página para
     meter subcomponentes: la relación de pertenencia debe ser clara en el árbol de carpetas.
 
-> **Divergencia consciente con el style guide oficial**: angular.dev recomienda no crear
-> subcarpetas por tipo de archivo (`components/`, `services/`). El equipo **sí** las usa dentro de
-> cada feature/componente porque facilita la navegación en proyectos grandes. La regla de alcance de
-> §1.1 es la que evita que degenere en un "type-first" global.
+> **Divergencia consciente con el style guide oficial**: angular.dev recomienda no agrupar por tipo
+> de archivo. El equipo **sí** agrupa así `services/`, `models/`, `pipes/`, `validators/` y `guards/`
+> dentro de cada feature o componente, porque facilita la navegación en proyectos grandes; la regla
+> de alcance de §1.1 evita que degenere en un "type-first" global. La excepción es `components/`: ahí
+> el equipo va **más allá** de lo que pide el style guide oficial y la elimina directamente de
+> cualquier feature o componente — solo sobrevive en `shared/components/` (ver más arriba y §1.4).
 
 ### 1.3 Naming oficial (Angular 20+/22)
 
@@ -175,24 +184,26 @@ igual a `services/`, `models/`, `pipes/`, `validators/` y `guards/`:
 - Archivos en **kebab-case**, separados por `-`.
 - El nombre del archivo **coincide** con el identificador principal que contiene. Evitar nombres
   genéricos (`utils.ts`, `helpers.ts`, `common.ts`).
+
 ### 1.4 Componentización, Modularidad y Regla Anti-Monolitos (Dividir con sentido)
 
-> **Regla de oro de modularidad:** No dejar jamás un componente de TS, un template HTML o un servicio
-> con 400–600+ líneas. Si algo se puede dividir y componentizar en partes más específicas, **se debe
-> dividir**.
+> **Regla de oro de modularidad:** ningún componente de TS, template HTML o servicio supera los
+> límites de la tabla siguiente. Si algo se puede dividir y componentizar en partes más específicas,
+> **se debe dividir**.
 
-#### Límites máximos recomendados por archivo
-- **Componente (`.ts`)**: 150 – 200 líneas máximo.
-- **Template (`.html`)**: 150 – 200 líneas máximo.
-- **Servicio (`.ts`)**: 200 – 250 líneas máximo.
-- **Estilos (`.scss`)**: 100 – 150 líneas máximo.
+#### Límites máximos por archivo
+- **Componente (`.ts`)**: 200 líneas.
+- **Template (`.html`)**: 200 líneas.
+- **Servicio (`.ts`)**: 250 líneas.
+- **Estilos (`.scss`)**: 150 líneas.
 
-Si un archivo supera estos umbrales, es síntoma inequívoco de **múltiples responsabilidades mezcladas** y debe refactorizarse inmediatamente.
+Superar el límite es síntoma inequívoco de **múltiples responsabilidades mezcladas** y debe
+refactorizarse de inmediato dividiendo el archivo, no relajando el número.
 
 #### 1.4.1 Cómo descomponer un Componente y Template Monolítico (Smart vs Dumb)
 
 - **El contenedor / página (`pages/`) debe ser delgado**: solo orquesta estado de alto nivel, rutas y llamadas a servicios.
-- **Extraer bloques visuales a subcomponentes (`components/`)**:
+- **Extraer bloques visuales a subcomponentes anidados directamente** (nunca a una carpeta `components/`, ver más abajo):
   - Filtros y barras de búsqueda $\rightarrow$ subcomponente presentacional.
   - Tablas o listados $\rightarrow$ subcomponente con `input()` para los datos y `output()` para acciones (click, ordenar, paginar).
   - Modales de creación/edición $\rightarrow$ subcomponente independiente con su propio Signal Form.
@@ -203,56 +214,71 @@ Si un archivo supera estos umbrales, es síntoma inequívoco de **múltiples res
       - $\rightarrow$ `subdetalle-cabecera/` (subcomponente nieto, anidado directamente dentro de `subdetalle/`)
   - No crear jamás contenedores artificiales como `pages/users/components/`: la jerarquía de carpetas debe ser idéntica a la jerarquía de composición de los componentes.
 
-##### ❌ Ejemplo Monolítico (Evitar: 600+ líneas en un solo archivo)
-##### ❌ Ejemplo Monolítico o mal agrupado (Evitar: archivos gigantes o meter subcomponentes en carpetas "components/")
+##### ❌ Ejemplo monolítico o mal agrupado (archivos gigantes, muy por encima de los límites de §1.4)
 ```text
 pages/
 └── users/
     ├── users.ts      # 650 líneas: lógica de tabla, filtros, 3 modales, cálculos, validaciones
     ├── users.html    # 580 líneas: tabla + toolbar + modal alta + modal baja + drawer permisos
     └── users.scss    # 400 líneas
+
+pages/
 └── users-detalle/
     ├── users-detalle.ts      # 650 líneas: todo mezclado en un archivo gigante
     ├── users-detalle.html    # 580 líneas kilométricas
     └── users-detalle.scss    # 400 líneas
 ```
 
-##### ✅ Ejemplo Componentizado (Buenas Prácticas: modular y mantenible)
-##### ✅ Ejemplo Componentizado (Anidación directa: detalle / subdetalle / subdetalle-cabecera)
+##### ✅ Ejemplo componentizado (anidación directa, sin carpeta `components/`)
 ```text
 pages/
 └── users/
-    ├── users.ts                      # ~80 líneas: orquesta signals principales y eventos
-    ├── users.html                    # ~35 líneas: composición limpia de subcomponentes
-    ├── users.scss                    # ~30 líneas: layout base
-└── users-detalle/                             # Componente principal (~80 líneas)
+    ├── users.ts                       # ~80 líneas: orquesta signals principales y eventos
+    ├── users.html                     # ~35 líneas: composición limpia de subcomponentes
+    ├── users.scss                     # ~30 líneas: layout base
+    ├── services/
+    │   ├── users.ts                   # Fachada / Estado local con signals
+    │   └── users-http.ts              # Llamadas HTTP / resources aislados
+    ├── models/
+    │   └── user.ts
+    ├── user-filters/                  # ~60 líneas: barra de búsqueda y dropdowns
+    │   ├── user-filters.ts
+    │   ├── user-filters.html
+    │   └── user-filters.scss
+    ├── user-table/                    # ~120 líneas: tabla pura con inputs/outputs
+    │   ├── user-table.ts
+    │   ├── user-table.html
+    │   └── user-table.scss
+    ├── user-form-modal/               # ~140 líneas: modal con Signal Form aislado
+    │   ├── user-form-modal.ts
+    │   ├── user-form-modal.html
+    │   └── user-form-modal.scss
+    └── user-permissions-drawer/       # ~90 líneas: panel cargado con @defer
+        ├── user-permissions-drawer.ts
+        ├── user-permissions-drawer.html
+        └── user-permissions-drawer.scss
+
+pages/
+└── users-detalle/                     # Componente principal (~80 líneas)
     ├── users-detalle.ts
     ├── users-detalle.html
     ├── users-detalle.scss
-    ├── services/                              # Servicios locales solo de este detalle
-    │   └── users-detalle.ts
-    │
-    ├── components/                   # Subcomponentes exclusivos de esta feature
-    │   ├── user-filters/             # ~60 líneas: barra de búsqueda y dropdowns
-    │   ├── user-table/               # ~120 líneas: tabla pura con inputs/outputs
-    │   ├── user-form-modal/          # ~140 líneas: modal con Signal Form aislado
-    │   └── user-permissions-drawer/  # ~90 líneas: panel cargado con @defer
-    │
-    ├── services/                     # Servicios locales de la feature
-    │   ├── users.ts                  # Fachada / Estado local con signals
-    │   └── users-http.ts             # Llamadas HTTP / resources aislados
-    └── models/
-        └── user.ts
-    └── subdetalle/                            # Hijo directo (NUNCA en carpeta "components/")
-        ├── subdetalle.ts                      # ~70 líneas
-        ├── subdetalle.html                    # ~50 líneas
+    ├── services/                      # Servicios locales, solo de este detalle
+    │   └── users-detalle-http.ts
+    └── subdetalle/                    # Hijo directo (NUNCA carpeta "components/")
+        ├── subdetalle.ts              # ~70 líneas
+        ├── subdetalle.html            # ~50 líneas
         ├── subdetalle.scss
         │
-        └── subdetalle-cabecera/                # Nieto anidado dentro de subdetalle
-            ├── subdetalle-cabecera.ts         # ~40 líneas (presentacional puro)
-            ├── subdetalle-cabecera.html       # ~30 líneas
+        └── subdetalle-cabecera/       # Nieto anidado dentro de subdetalle
+            ├── subdetalle-cabecera.ts     # ~40 líneas (presentacional puro)
+            ├── subdetalle-cabecera.html   # ~30 líneas
             └── subdetalle-cabecera.scss
 ```
+
+> Los subcomponentes de `users/` (`user-filters/`, `user-table/`, …) están al mismo nivel que
+> `users.ts` porque son exclusivos de esa página; si mañana los necesitara otra feature, suben a
+> `shared/components/` (regla de alcance de §1.1).
 
 #### 1.4.2 Cómo descomponer un Servicio Monolítico
 

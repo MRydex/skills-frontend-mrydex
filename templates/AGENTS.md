@@ -12,6 +12,8 @@ This project strictly follows the **Angular 22+ & Modern Frontend Best Practices
 5. **Never use `*ngIf`, `*ngFor`, `*ngSwitch`, `[ngClass]`, `[ngStyle]`**: Use native control flow (`@if`, `@for`, `@switch`, `@let`) and standard class/style bindings.
 6. **No suffixes in filenames/classes**: `user-profile.ts` exporting `UserProfile` (not `UserProfileComponent`).
 7. **Semantic HTML & WCAG AA**: Clean AXE audits, BEM naming, nested SCSS.
+8. **No monolithic files**: Max 200 lines per component `.ts` or template `.html`, 250 per service, 150 per `.scss`. Split by responsibility.
+9. **No `components/` folder for subcomponents**: Nest each child inside its parent's folder (`detail/sub-detail/sub-detail-header/`). Only exception: `shared/components/` for components reused across features.
 
 ## Agent Efficiency (always on)
 Details in `references/14-agent-efficiency.md`.

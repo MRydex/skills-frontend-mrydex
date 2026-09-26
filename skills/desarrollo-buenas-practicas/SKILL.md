@@ -2,7 +2,7 @@
 name: desarrollo-buenas-practicas
 version: 1.0.0
 description: >
-  Convenciones oficiales del equipo para proyectos Angular 22+ (2026) y Frontend Moderno: standalone components, signals como único modelo de reactividad, zoneless, OnPush por defecto, control flow nativo (@if/@for/@switch/@let), Signal Forms, Resource API (httpResource/rxResource/resource), interceptores funcionales (spinner/errores), TypeScript 6 estricto, HTML5 semántico y accesible (WCAG AA / @angular/aria), BEM, SCSS anidado, layouts fluidos (Flexbox/Grid) y animaciones modernas. Usar siempre que se pida crear, modificar, revisar, depurar o refactorizar código Angular, TypeScript, HTML o SCSS/CSS.
+  Convenciones oficiales del equipo para proyectos Angular 22+ (2026) y Frontend Moderno: standalone components, signals como único modelo de reactividad, zoneless, OnPush por defecto, control flow nativo (@if/@for/@switch/@let), Signal Forms, Resource API (httpResource/rxResource/resource), interceptores funcionales (spinner/errores), TypeScript 6 estricto, HTML5 semántico y accesible (WCAG AA / @angular/aria), BEM, SCSS anidado, layouts fluidos (Flexbox/Grid), animaciones modernas, testing con Vitest, performance y despliegue en IIS/.NET. Usar siempre que se pida crear, modificar, revisar, testear, depurar o refactorizar código Angular, TypeScript, HTML o SCSS/CSS, aunque el usuario no mencione Angular explícitamente. Define además cómo trabaja el agente: respuestas en modo caveman, consulta de librerías a otros agentes abiertos y delegación a subagentes de menor potencia.
 ---
 
 # Desarrollo Frontend — Buenas Prácticas del Equipo (Angular 22+)
@@ -13,14 +13,16 @@ Este skill codifica las convenciones **obligatorias** del equipo para proyectos 
 
 ---
 
-### Las 6 reglas que más se violan (leer siempre)
+### Las 8 reglas que más se violan (leer siempre)
 
-1. **Nunca `effect()`.** Derivar con `computed()` / `linkedSignal()`, cargar con la Resource API, y resolver los concerns transversales con interceptores. Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
-2. **Nunca `Observable` / `Subject` / `BehaviorSubject` como estado.** El estado es siempre signals. Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
+1. **Nunca `effect()` para sincronizar estado.** Derivar con `computed()` / `linkedSignal()`, cargar datos con la Resource API y resolver concerns transversales con interceptores. Por qué: `effect()` crea cascadas de escrituras difíciles de razonar y de testear. Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
+2. **Nunca `Observable` / `Subject` / `BehaviorSubject` como estado.** El estado es siempre signals. RxJS solo dentro de servicios, para flujos (`rxResource`, eventos). Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
 3. **Nunca Reactive Forms ni `ngModel`.** Solo **Signal Forms** (`@angular/forms/signals`). Ver [06-signal-forms.md](./references/06-signal-forms.md).
-4. **Nunca `changeDetection: ChangeDetectionStrategy.OnPush` explícito**: es el **default en v22**. Tampoco `standalone: true`. Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
-5. **Nunca `[ngClass]` / `[ngStyle]` / `*ngIf` / `*ngFor` / `*ngSwitch`.** Usar control flow nativo y class/style bindings estándar. Ver [03-html-templates.md](./references/03-html-templates.md).
-6. **Nunca componentes, templates o servicios monolíticos (400-600+ líneas).** Componentizar y dividir por responsabilidad única (SRP): componentes (.ts) < 150-200 líneas, templates (.html) < 150-200 líneas, servicios (.ts) < 200-250 líneas. **NUNCA crear carpetas `components/` para subcomponentes**: se anidan jerárquicamente de forma directa dentro de la carpeta del componente padre que los usa (ej: `detalle/subdetalle/subdetalle-cabecera/`). Ver [01-project-structure.md](./references/01-project-structure.md) y [02-typescript-signals.md](./references/02-typescript-signals.md).
+4. **Nunca declarar `changeDetection` ni `standalone: true`.** OnPush y standalone son el default en v22. Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
+5. **Nunca `*ngIf` / `*ngFor` / `*ngSwitch` / `[ngClass]` / `[ngStyle]`.** Usar control flow nativo y bindings `[class.x]` / `[style.x]`. Ver [03-html-templates.md](./references/03-html-templates.md).
+6. **Nunca archivos monolíticos.** Máximo: componente `.ts` 200 líneas, template `.html` 200, servicio 250, `.scss` 150. Si se pasa, dividir por responsabilidad: subcomponentes presentacionales (`input()` / `output()`) y sub-servicios (lógica / HTTP). Ver [01-project-structure.md](./references/01-project-structure.md).
+7. **Nunca carpeta `components/` para subcomponentes.** Cada hijo se anida dentro de la carpeta del padre que lo usa: `detalle/subdetalle/subdetalle-cabecera/`. El árbol de carpetas refleja el árbol de componentes. Única excepción: `shared/components/`, para componentes reutilizados por varias features. Ver [01-project-structure.md](./references/01-project-structure.md).
+8. **Nunca sufijos `.component` / `.service` / `Component` / `Service`.** Archivo `user-list.ts` exporta `UserList`. Ver [01-project-structure.md](./references/01-project-structure.md).
 
 ---
 
@@ -52,27 +54,27 @@ Detalle, excepciones y ejemplos en [14-agent-efficiency.md](./references/14-agen
 
 ---
 
-## Índice Modular de Referencias (Progressive Disclosure)
+## Índice de referencias (progressive disclosure)
 
-Consulta el archivo de referencia correspondiente según la tarea que estés realizando:
+Leer solo la referencia que corresponde a la tarea. Cada archivo de más de 100 líneas empieza con su propio índice: saltar a la sección necesaria.
 
-| Módulo / Archivo de Referencia | Temas Cubiertos | Cuándo Consultar |
+| Archivo | Temas | Cuándo leerlo |
 | :--- | :--- | :--- |
-| **[01-project-structure.md](./references/01-project-structure.md)** | Estructura de carpetas híbrida (core, shared, features), vertical slices, convenciones de nombres sin sufijos (`app.ts`, `auth.ts`), barrel files `index.ts`. | Al crear carpetas, componentes, servicios o definir la arquitectura de una feature. |
-| **[02-typescript-signals.md](./references/02-typescript-signals.md)** | TypeScript 6, signals (`signal`, `computed`, `linkedSignal`), `input()`, `output()`, `model()`, `inject()`, `host: {}`, `injectAsync`, tipado estricto, anti-patrones. | Al escribir o refactorizar lógica de componentes, servicios, estados o tipos TS. |
-| **[03-html-templates.md](./references/03-html-templates.md)** | Control flow nativo (`@if`, `@for`, `@switch`, `@let`), `@defer`, imágenes con `NgOptimizedImage`, accesibilidad ARIA, bindings de clases y estilos. | Al diseñar o modificar plantillas HTML de componentes. |
-| **[04-resource-api.md](./references/04-resource-api.md)** | `httpResource`, `rxResource`, `resource`, manejo de parámetros reactivos, recargas (`reload()`), mutaciones optimistas, cancelación. | Al realizar llamadas HTTP de lectura o integrar datos asíncronos en componentes. |
-| **[05-http-interceptors.md](./references/05-http-interceptors.md)** | Interceptores funcionales (`HttpInterceptorFn`), spinner global, manejo transversal de errores, `HttpContextToken` (`SKIP_SPINNER`, etc.), retries. | Al configurar infraestructura HTTP, headers de autenticación, spinners o manejo de errores. |
-| **[06-signal-forms.md](./references/06-signal-forms.md)** | Signal Forms (`@angular/forms/signals`), `formGroup`, validaciones síncronas/asíncronas, estado reactivo (`valid`, `dirty`, `touched`), submits. | Al crear o modificar formularios de captura o edición de datos. |
-| **[07-styles-scss.md](./references/07-styles-scss.md)** | SCSS moderno, anidación segura, metodología BEM, variables CSS y diseño atómico, evitar `::ng-deep` mediante ViewEncapsulation o clases globales. | Al escribir estilos CSS/SCSS o maquetar componentes visuales. |
-| **[08-testing-vitest.md](./references/08-testing-vitest.md)** | Configuración de Vitest, pruebas unitarias con Signals, mocks de `httpResource` y servicios con `inject()`, validación de templates. | Al escribir pruebas unitarias o de integración en Angular. |
-| **[09-performance-zoneless.md](./references/09-performance-zoneless.md)** | Detección de cambios zoneless, OnPush por defecto, optimización de renderizado, evitar triggers innecesarios de CD. | Al diagnosticar problemas de rendimiento o ciclos de refresco. |
-| **[10-environment-tooling.md](./references/10-environment-tooling.md)** | Schematics del equipo, configuración de IIS (`web.config` con rewrite rules), backend .NET (CORS, URLs relativas/absolutas), variables de entorno. | Al desplegar en producción, configurar IIS o integrar con backend .NET. |
-| **[11-workflow-orchestration.md](./references/11-workflow-orchestration.md)** | Modo plan obligatorio para cambios no triviales, orquestación de subagentes, loop de auto-mejora, principios senior (Simplicity First, No Laziness). | Para guiar el comportamiento y razonamiento del agente al ejecutar tareas complejas. |
-| **[14-agent-efficiency.md](./references/14-agent-efficiency.md)** | Modo caveman para ahorrar tokens, consulta de librerías a otros agentes abiertos, orquestador + subagentes de menor potencia (`haiku`/`sonnet`). | Siempre: define cómo responde el agente y cómo reparte el trabajo. |
-| **[12-html5-semantics-seo.md](./references/12-html5-semantics-seo.md)** | Fundamentos de HTML5: etiquetas semánticas (`<main>`, `<header>`, etc.), accesibilidad ARIA, SEO y meta tags, formularios nativos. | Al trabajar en estructura base HTML, auditorías de accesibilidad o SEO. |
-| **[13-css3-layouts-animations.md](./references/13-css3-layouts-animations.md)** | Fundamentos CSS3: modelo de caja, especificidad, Flexbox, CSS Grid, animaciones scroll-driven, `@starting-style`, `interpolate-size`, `<dialog>`. | Al diseñar layouts complejos, maquetación responsiva o microinteracciones. |
-| **[checklists.md](./references/checklists.md)** | Checklist completo de Angular y Checklist de HTML5/CSS3 para verificación y code reviews. | Antes de entregar cualquier código o al revisar un Pull Request. |
+| [01-project-structure.md](./references/01-project-structure.md) | Carpetas `core` / `shared` / `features`, regla de ubicación por alcance, naming sin sufijos, anidación de subcomponentes, límites de tamaño, cómo partir componentes y servicios monolíticos. | Al crear archivos o carpetas, o cuando algo supera el límite de líneas. |
+| [02-typescript-signals.md](./references/02-typescript-signals.md) | TS 6 estricto, `input()` / `output()` / `model()`, `host: {}`, `inject()`, `@Service()`, `injectAsync()`, signals, `linkedSignal`, `debounced()`, por qué no `effect()`, RxJS acotado, servicios, DTOs, comunicación entre hermanos. | Al escribir lógica de componentes, servicios o estado. |
+| [03-html-templates.md](./references/03-html-templates.md) | Control flow nativo, `@let`, `@switch` exhaustivo, `@defer` e hidratación incremental, bindings de clase/estilo, `@angular/aria`, tablas NG-ZORRO, directivas del equipo. | Al escribir o modificar templates. |
+| [04-resource-api.md](./references/04-resource-api.md) | `httpResource` (y `.text` / `.blob`), `rxResource`, `resource` con `AbortSignal`, estados, `hasValue()`, fetch condicional, mutaciones con `HttpClient` + `reload()`, debounce de params, snapshots. | Al leer datos asíncronos o hacer POST/PUT/DELETE. |
+| [05-http-interceptors.md](./references/05-http-interceptors.md) | Interceptores funcionales para spinner, errores y retries, `HttpContextToken` para opt-out, orden de registro, fetch vs `withXhr`. | Al configurar infraestructura HTTP. |
+| [06-signal-forms.md](./references/06-signal-forms.md) | `form()`, schema, validadores sync/async/HTTP, `validateTree` para validación cruzada, arrays con `applyEach`, errores accesibles, `reset()`, controles propios y NG-ZORRO. | Al crear o modificar formularios. |
+| [07-styles-scss.md](./references/07-styles-scss.md) | `@use` / `@forward`, tokens SCSS vs custom properties, BEM anidado (máx 3 niveles), encapsulación y `:host`, theming de NG-ZORRO sin `::ng-deep`, container queries, reduced motion. | Al escribir estilos de componentes. |
+| [08-testing-vitest.md](./references/08-testing-vitest.md) | Vitest (`@angular/build:unit-test`), TestBed zoneless con `whenStable()`, inputs/outputs, servicios, `HttpTestingController`, interceptores, Signal Forms, mocks y timers, queries por rol. | Al escribir o corregir tests. |
+| [09-performance-zoneless.md](./references/09-performance-zoneless.md) | Qué dispara change detection en zoneless, errores de migración, `@defer`, `track`, `NgOptimizedImage`, lazy routes, hidratación, budgets, virtual scroll, memory leaks, profiling. | Al diagnosticar performance o cuando la vista no se actualiza. |
+| [10-environment-tooling.md](./references/10-environment-tooling.md) | Schematics del equipo, `web.config` para IIS (rewrite + cache), contrato con .NET (CORS, `ProblemDetails`, fechas ISO), config en runtime con `provideAppInitializer`, VS Code, Graphify, MCP de Angular CLI. | Al crear proyectos, desplegar o integrar con el backend. |
+| [11-workflow-orchestration.md](./references/11-workflow-orchestration.md) | Explorar antes de editar, plan en `tasks/todo.md`, verificación antes de "terminado", commits chicos, no ampliar alcance, cuándo preguntar, lecciones en `tasks/lessons.md`. | En toda tarea no trivial. |
+| [12-html5-semantics-seo.md](./references/12-html5-semantics-seo.md) | HTML5 semántico, landmarks y headings, las 5 reglas de ARIA, formularios nativos, SEO con `Title` / `Meta` / `TitleStrategy`, gestión de foco. | Al maquetar HTML o auditar accesibilidad/SEO. |
+| [13-css3-layouts-animations.md](./references/13-css3-layouts-animations.md) | Cascada, `@layer`, `:has()`, `@scope`, box model, Flexbox, Grid, `@container`, anchor positioning, transiciones, `@starting-style`, scroll-driven, `base-select`, `field-sizing`, soporte Baseline. | Al diseñar layouts o animaciones. |
+| [14-agent-efficiency.md](./references/14-agent-efficiency.md) | Modo caveman, consultar librerías a otros agentes abiertos, orquestador + subagentes de menor potencia. | Siempre: define cómo responde el agente y cómo reparte el trabajo. |
+| [checklists.md](./references/checklists.md) | Checklists de Angular, HTML5/CSS3 y proceso del agente, con enlace a cada referencia. | Antes de entregar código o al revisar un PR. |
 
 ---
 

@@ -97,7 +97,7 @@ Opciones:
 
 ```text
 skills/desarrollo-buenas-practicas/
-├── SKILL.md                          # Entrada principal, 5 reglas de oro y stack v22
+├── SKILL.md                          # Entrada principal, 8 reglas de oro, modo de operación y stack v22
 └── references/
     ├── 01-project-structure.md       # Arquitectura vertical slices, core/shared, naming sin sufijos
     ├── 02-typescript-signals.md      # TS 6, Signals reactivos, inject(), componentes, inputs/outputs
@@ -109,11 +109,11 @@ skills/desarrollo-buenas-practicas/
     ├── 08-testing-vitest.md          # Vitest y pruebas unitarias con signals
     ├── 09-performance-zoneless.md    # Zoneless change detection y OnPush
     ├── 10-environment-tooling.md     # IIS web.config, backend .NET, schematics
-    ├── 11-workflow-orchestration.md  # Plan mode, subagentes, principios senior
+    ├── 11-workflow-orchestration.md  # Explorar, planificar, verificar, commits y lecciones
     ├── 12-html5-semantics-seo.md     # Semántica HTML5, ARIA/WCAG, SEO y meta tags
     ├── 13-css3-layouts-animations.md # Flexbox, CSS Grid, animaciones scroll-driven
     ├── 14-agent-efficiency.md        # Modo caveman, consulta a otros agentes, subagentes baratos
-    └── checklists.md                 # Checklists de revisión para Angular y HTML5/CSS3
+    └── checklists.md                 # Checklists de Angular, HTML5/CSS3 y proceso del agente
 ```
 
 ---

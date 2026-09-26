@@ -8,5 +8,6 @@ Whenever generating or refactoring Angular, TypeScript, HTML, or SCSS code, you 
 5. Templates: Only native control flow (`@if`, `@for`, `@switch`, `@let`), never `*ngIf`, `*ngFor`, `*ngSwitch`.
 6. Files & Classes: No `.component` or `.service` suffixes in file names or class names.
 7. HTML/CSS: Strict semantic HTML5, WCAG AA compliance, BEM naming, nested SCSS.
-8. Agent efficiency (see `references/14-agent-efficiency.md`): reply in terse caveman style (code, errors and technical terms exact; normal prose for security warnings, irreversible actions, commits and docs). Ask other open agents about a library before researching it. Main model orchestrates; delegate mechanical work to cheaper subagents when available.
+8. Size and folders: max 200 lines per component `.ts` or `.html`, 250 per service, 150 per `.scss`. Never create a `components/` folder for subcomponents: nest each child inside its parent's folder. Only `shared/components/` is allowed, for components reused across features.
+9. Agent efficiency (see `references/14-agent-efficiency.md`): reply in terse caveman style (code, errors and technical terms exact; normal prose for security warnings, irreversible actions, commits and docs). Ask other open agents about a library before researching it. Main model orchestrates; delegate mechanical work to cheaper subagents when available.
 
