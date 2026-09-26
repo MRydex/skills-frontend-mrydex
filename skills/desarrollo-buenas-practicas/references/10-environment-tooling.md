@@ -239,24 +239,24 @@ En **Opciones → Editor de texto**:
 
 ### 10.7 Graphify (mapa del repo para asistentes AI)
 
-Instalación (una vez por máquina):
+Graphify convierte el repo en un grafo de conocimiento (`graphify-out/graph.json` +
+`graphify-out/GRAPH_REPORT.md`) que el agente consulta en vez de leer archivos enteros. El agente lo
+instala, lo integra, lo consulta y lo actualiza **por su cuenta**: el procedimiento completo está en
+[14-agent-efficiency.md](./14-agent-efficiency.md) §14.5.
+
+Resumen de comandos (fuente: [github.com/safishamsi/graphify](https://github.com/safishamsi/graphify) y `graphify --help`):
 
 ```bash
-pip install graphifyy          # requiere Python instalado
+pip install graphifyy && graphify install   # una vez por máquina (el paquete PyPI lleva doble "y")
+graphify hook install                       # una vez por repo: reconstruye el grafo en cada commit, sin LLM
+graphify claude install                     # una vez por repo, según el agente (cursor / codex / gemini / vscode / ...)
+/graphify .                                 # primer build completo (slash command dentro del asistente)
+graphify query "¿quién usa AuthService?"    # consultar
+graphify update .                           # actualizar código tras una tarea grande, sin LLM
 ```
 
-Dentro del repo:
-
-```bash
-graphify claude install        # una vez: agrega la sección "## graphify" al CLAUDE.md del proyecto
-/graphify .                    # generar el grafo del directorio actual
-/graphify . --update           # actualizar el grafo tras cambios de código
-```
-
-`graphify claude install` es un comando de **terminal** (no un slash command): deja el asistente
-configurado para consultar el grafo antes de responder preguntas sobre el código y reconstruirlo después
-de cambios, sin correr `/graphify` a mano en cada sesión. `/graphify` (con barra) es el slash command que
-corre el pipeline dentro del asistente (Claude Code u otro que tenga instalado el skill).
+`graphify <agente> install` es un comando de **terminal**. `/graphify` (con barra) es el slash command
+que corre el pipeline dentro del asistente.
 
 ### 10.8 AI / MCP Server de Angular CLI
 

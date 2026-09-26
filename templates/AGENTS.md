@@ -17,7 +17,10 @@ This project strictly follows the **Angular 22+ & Modern Frontend Best Practices
 
 ## Agent Efficiency (always on)
 Details in `references/14-agent-efficiency.md`.
+0. **Adapt to the agent and models in use**: This file applies to any agent (Codex, Antigravity, Copilot, Cursor, Gemini CLI, Claude Code...). Model and tool names in the skill are examples: detect which agent and models you have and use the equivalent. Rules never change, only syntax (§14.7).
 1. **Caveman mode**: Terse replies, no filler. Technical terms, code and errors exact. Normal prose for security warnings, irreversible actions, code, commits, PRs and docs.
 2. **Ask before researching libraries**: If another agent session is open and knows the library, ask it first. Then docs MCP, then `node_modules`, then web.
-3. **Orchestrate with cheap subagents**: Main model plans and verifies; smaller/cheaper subagents run search, reads, mechanical edits and boilerplate.
-
+3. **Orchestrate with cheap subagents (advisor strategy)**: The strongest available model (e.g. Opus, GPT with high reasoning effort, Gemini Pro) plans, delegates and always reviews. Cheaper models (e.g. Sonnet/Haiku, mini, Flash) execute as subagents, in parallel when independent. If the agent cannot spawn subagents with another model, switch models per phase: strong plans, cheap executes, strong reviews. Executors never guess: when stuck they return `NECESITA_ADVISOR: <question>`.
+4. **Ask upfront**: Before non-trivial work, ask all questions that change the result in one turn, with a recommended option.
+5. **Auto-compact**: At the end of each phase, save state to `tasks/todo.md` and compact or summarize the context.
+6. **Graphify first**: If missing, install it (`pip install graphifyy && graphify install --platform <agent>`), then `graphify hook install` + `graphify <agent> install` in the repo. Query `graphify query "<question>"` before grep or reading files. After a task touching 3+ files: `graphify update .`.

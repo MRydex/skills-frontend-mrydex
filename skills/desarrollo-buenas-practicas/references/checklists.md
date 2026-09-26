@@ -140,6 +140,10 @@ Proceso del agente.
 
 ## Checklist de proceso del agente ([11](./11-workflow-orchestration.md), [14](./14-agent-efficiency.md))
 - [ ] ¿Se leyó el código existente y sus usos antes de editar?
+- [ ] ¿Las dudas que cambian el resultado se preguntaron juntas, antes de empezar, con opción recomendada? (§11.6)
+- [ ] ¿Estado guardado en `tasks/todo.md` y contexto compactado al cerrar cada fase? (§14.4)
+- [ ] ¿Se consultó `graphify query` antes de buscar o leer archivos? ¿`graphify update .` al cerrar la tarea? (§14.5)
+- [ ] ¿Todo resultado de un ejecutor revisado por el modelo fuerte antes de entregarlo? (§14.3.5)
 - [ ] ¿Tarea de 3+ pasos con plan previo en `tasks/todo.md`?
 - [ ] ¿Tests, build y lint corridos antes de reportar "terminado"?
 - [ ] ¿El cambio se limita a lo pedido (sin refactors "de paso")?

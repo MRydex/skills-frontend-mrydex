@@ -28,11 +28,15 @@ Este skill codifica las convenciones **obligatorias** del equipo para proyectos 
 
 ### Modo de operación del agente (siempre activo)
 
+0. **Adaptarse al agente y a los modelos en uso.** Al empezar, detectar en qué agente corre la skill (Claude Code, Codex, Antigravity, Cursor, Copilot, Gemini CLI, otro) y qué modelos tiene disponibles. Todo nombre concreto de esta skill (Opus, Sonnet, Haiku, `/compact`, `AskUserQuestion`, `SendMessage`, `Agent`) es un **ejemplo**: traducirlo al equivalente del agente en uso. Si no hay equivalente, aplicar el fallback documentado. Las reglas no cambian; cambia solo la sintaxis. Ver [14-agent-efficiency.md](./references/14-agent-efficiency.md) §14.7.
 1. **Responder en modo caveman.** Frases cortas, sin relleno ni cortesías, sin narrar tool calls. Términos técnicos, código y errores exactos. Nunca omitir negaciones. Prosa normal solo en advertencias de seguridad, acciones irreversibles, código, commits, PRs y docs.
 2. **Librerías: preguntar antes de investigar.** Si hay otra sesión/agente abierto que conozca la librería (Claude Code: `ListAgents` + `SendMessage`), consultarle primero. Luego MCP de docs, luego `node_modules`, último la web.
-3. **Orquestar, no ejecutar.** El modelo principal planifica, decide y verifica. Búsquedas, lecturas grandes, ediciones mecánicas y boilerplate van a subagentes de menor potencia (`model: haiku` / `sonnet`), en paralelo cuando sean independientes, con prompt autocontenido y salida comprimida.
+3. **El modelo fuerte orquesta y revisa; modelos baratos ejecutan (estrategia advisor emulada).** Vale para cualquier agente y proveedor. El modelo fuerte (ej. Opus / GPT effort alto / Gemini Pro) planifica, decide, reparte y revisa **siempre** el resultado. Búsquedas, lecturas grandes, ediciones y boilerplate van a subagentes de menor nivel (ej. Sonnet, Haiku / mini / Flash), en paralelo cuando sean independientes. Si el agente no lanza subagentes con otro modelo, cambiar de modelo por fase. Contexto compartido en `tasks/brief-<tarea>.md`. El ejecutor no adivina: si se traba devuelve `NECESITA_ADVISOR: <duda>`. El modelo fuerte interviene después de la orientación, cuando el ejecutor se traba y antes de dar por terminado.
+4. **Preguntar todo antes de empezar.** En tareas no triviales, juntar todas las dudas que cambian el resultado y preguntarlas de una sola vez, con opciones y una recomendada (Claude Code: `AskUserQuestion`). No preguntar lo que se resuelve leyendo el repo.
+5. **Autocompactar el contexto.** Al cerrar cada fase o antes de una tarea nueva: guardar el estado en `tasks/todo.md` y compactar con foco (`/compact Conservar: decisiones, archivos tocados, pendientes`). Nunca con un cambio a medio aplicar ni con una pregunta pendiente.
+6. **Graphify primero.** Si falta, instalarlo sin preguntar (`pip install graphifyy && graphify install`) e integrarlo en el repo (`graphify hook install` + `graphify <agente> install` según el agente que corre). Ante cualquier pregunta sobre el código, consultar `graphify query` antes de `grep` o leer archivos. Tras una tarea que tocó 3+ archivos o antes de compactar: `graphify update .` (sin LLM).
 
-Detalle, excepciones y ejemplos en [14-agent-efficiency.md](./references/14-agent-efficiency.md).
+Detalle, excepciones y ejemplos en [14-agent-efficiency.md](./references/14-agent-efficiency.md) y [11-workflow-orchestration.md](./references/11-workflow-orchestration.md) §11.6.
 
 ---
 
@@ -73,7 +77,7 @@ Leer solo la referencia que corresponde a la tarea. Cada archivo de más de 100 
 | [11-workflow-orchestration.md](./references/11-workflow-orchestration.md) | Explorar antes de editar, plan en `tasks/todo.md`, verificación antes de "terminado", commits chicos, no ampliar alcance, cuándo preguntar, lecciones en `tasks/lessons.md`. | En toda tarea no trivial. |
 | [12-html5-semantics-seo.md](./references/12-html5-semantics-seo.md) | HTML5 semántico, landmarks y headings, las 5 reglas de ARIA, formularios nativos, SEO con `Title` / `Meta` / `TitleStrategy`, gestión de foco. | Al maquetar HTML o auditar accesibilidad/SEO. |
 | [13-css3-layouts-animations.md](./references/13-css3-layouts-animations.md) | Cascada, `@layer`, `:has()`, `@scope`, box model, Flexbox, Grid, `@container`, anchor positioning, transiciones, `@starting-style`, scroll-driven, `base-select`, `field-sizing`, soporte Baseline. | Al diseñar layouts o animaciones. |
-| [14-agent-efficiency.md](./references/14-agent-efficiency.md) | Modo caveman, consultar librerías a otros agentes abiertos, orquestador + subagentes de menor potencia. | Siempre: define cómo responde el agente y cómo reparte el trabajo. |
+| [14-agent-efficiency.md](./references/14-agent-efficiency.md) | Modo caveman, consultar librerías a otros agentes abiertos, orquestador + subagentes de menor potencia, autocompactación del contexto, estrategia advisor emulada para cualquier agente, graphify (instalar, integrar, consultar, actualizar), adaptación al agente y modelos en uso. | Siempre: define cómo responde el agente y cómo reparte el trabajo. |
 | [checklists.md](./references/checklists.md) | Checklists de Angular, HTML5/CSS3 y proceso del agente, con enlace a cada referencia. | Antes de entregar código o al revisar un PR. |
 
 ---

@@ -17,7 +17,10 @@ This project enforces the official **Angular 22+ (2026)** standards documented i
 ## Agent Efficiency (always on)
 See `references/14-agent-efficiency.md`.
 
+- **Adapt to the agent and models in use**: Model and tool names in the skill (Opus, Haiku, `/compact`, `AskUserQuestion`) are examples. Detect which agent and models are available and use the equivalent. Rules never change, only syntax (§14.7).
 - **Caveman mode**: Terse replies, no filler, no tool-call narration. Technical terms, code and errors exact. Normal prose only for security warnings, irreversible actions, code, commits, PRs and docs.
 - **Library lookups**: Before researching a library, check for another open agent session (`ListAgents`) that knows it and ask it (`SendMessage`). Then docs MCP, then `node_modules`, then web.
-- **Orchestrate**: Main model plans, decides and verifies. Delegate search, large reads, mechanical edits and boilerplate to cheaper subagents (`Agent` with `model: "haiku"` or `"sonnet"`), in parallel when independent.
-
+- **Orchestrate (advisor strategy)**: The strongest available model (Opus by default) plans, delegates and always reviews. Cheaper subagents (`Agent` with `model: "haiku"` or `"sonnet"`) execute search, reads, edits and boilerplate, in parallel when independent. Shared context in `tasks/brief-<task>.md`. Executors never guess: when stuck they return `NECESITA_ADVISOR: <question>`.
+- **Ask upfront**: Before non-trivial work, ask all questions that change the result in one turn, with options and a recommended one (`AskUserQuestion`). Do not ask what the repo already answers.
+- **Auto-compact**: At the end of each phase or before an unrelated task, save state to `tasks/todo.md` and run `/compact` with focus (keep decisions, touched files, pending items). Never mid-change or with a pending question.
+- **Graphify first**: If missing, install it (`pip install graphifyy && graphify install`), then `graphify hook install` + `graphify claude install` in the repo. Query `graphify query "<question>"` before grep or reading files. After a task touching 3+ files or before compacting: `graphify update .`.

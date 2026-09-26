@@ -9,7 +9,7 @@ cómo verificar antes de decir "terminado" y cómo aprender de las correcciones.
 [11.3](#113-verificación-antes-de-dar-por-terminado) Verificación antes de "terminado" ·
 [11.4](#114-commits-pequeños-y-acotados) Commits pequeños ·
 [11.5](#115-no-ampliar-el-alcance) No ampliar el alcance ·
-[11.6](#116-preguntar-solo-cuando-la-decisión-es-del-usuario) Preguntar solo si la decisión es del usuario ·
+[11.6](#116-preguntar-todo-lo-necesario-una-sola-vez-antes-de-empezar) Preguntar todo antes de empezar ·
 [11.7](#117-causa-raíz-y-simplicidad) Causa raíz y simplicidad ·
 [11.8](#118-ciclo-de-auto-mejora-taskslessonsmd) Ciclo de auto-mejora.
 
@@ -66,8 +66,16 @@ cómo verificar antes de decir "terminado" y cómo aprender de las correcciones.
 - Excepción: un cambio mínimo indispensable para que la tarea pedida compile o funcione (ej. ajustar un
   tipo que rompe con el cambio) sí entra en el mismo commit, documentado en el mensaje.
 
-### 11.6 Preguntar solo cuando la decisión es del usuario
+### 11.6 Preguntar todo lo necesario, una sola vez, antes de empezar
 
+- Antes de una tarea no trivial (§11.2), identificar **todo** lo que falta saber para hacerla bien:
+  alcance, comportamiento esperado, casos borde, restricciones, preferencias entre caminos válidos.
+- Juntar esas dudas y preguntarlas **en un solo turno**, antes de escribir código. Preguntar de a una
+  a mitad de camino corta el trabajo varias veces y obliga a rehacer lo ya hecho.
+- Cada pregunta con opciones concretas y una **recomendada** con su razón corta. En Claude Code usar
+  `AskUserQuestion` (hasta 4 preguntas por llamada, con opciones).
+- Si durante la tarea aparece una duda nueva que cambia el resultado, parar y preguntar. Si no lo
+  cambia, elegir la opción razonable, seguir y mencionarla en el reporte final.
 - No preguntar por algo que el agente puede resolver solo con la información del repo: convención ya
   usada en un archivo similar, tipo ya definido, patrón ya aplicado en otro módulo.
 - Preguntar cuando: la decisión es de negocio o producto (qué debe mostrar la UI, qué regla aplica),
