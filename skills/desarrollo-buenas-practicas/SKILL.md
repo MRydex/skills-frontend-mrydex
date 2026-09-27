@@ -1,6 +1,6 @@
 ---
 name: desarrollo-buenas-practicas
-version: 1.3.0
+version: 1.4.0
 description: >
   Convenciones oficiales del equipo para proyectos Angular 22+ (2026) y Frontend Moderno: standalone components, signals como único modelo de reactividad, zoneless, OnPush por defecto, control flow nativo (@if/@for/@switch/@let), Signal Forms, Resource API (httpResource/rxResource/resource), interceptores funcionales (spinner/errores), TypeScript 6 estricto, HTML5 semántico y accesible (WCAG AA / @angular/aria), BEM, SCSS anidado, layouts fluidos (Flexbox/Grid), animaciones modernas, testing con Vitest, performance y despliegue en IIS/.NET. Usar siempre que se pida crear, modificar, revisar, testear, depurar o refactorizar código Angular, TypeScript de proyectos Angular, HTML o SCSS/CSS, aunque el usuario no mencione Angular explícitamente. Define además cómo trabaja el agente en cualquier herramienta (Claude Code, Codex, Antigravity, Cursor, Copilot): modo caveman, modelo fuerte que orquesta y revisa con subagentes baratos, graphify, autocompactación y preguntas previas.
 ---
