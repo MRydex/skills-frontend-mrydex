@@ -84,11 +84,12 @@ Proceso del agente.
 - [ ] ¿Componentes pesados o diferidos (modales, drawers, auditorías) envueltos en `@defer`?
 
 ### SCSS ([07](./07-styles-scss.md))
-- [ ] ¿`@use` / `@forward`, nunca `@import`? (§7.1)
+- [ ] ¿`@use` / `@forward`, nunca `@import`? ¿`@use` sin ruta relativa (`@use 'modulo/modulo-parte' as x`, vía `includePaths`)? ¿Partials en `assets/styles/<modulo>/`? (§7.1)
 - [ ] ¿Colores, breakpoints y tamaños desde tokens globales? ¿Tipografía fluida con `clamp()`? (§7.2)
 - [ ] ¿Estilos anidados bajo el bloque BEM, máximo 3 niveles? (§7.3)
 - [ ] ¿Sin `::ng-deep` ni `:host-context()`? ¿NG-ZORRO personalizado por theming o clases globales con prefijo? (§7.4, §7.5)
 - [ ] ¿`:focus-visible` para foco accesible? ¿`prefers-reduced-motion` contemplado? (§7.7)
+- [ ] ¿Sin SCSS duplicado? Lo repetido extraído a su capa ITCSS (token, `@mixin`, `.o-*`, `.u-*`); sin `@extend`; el componente solo hace `@use` de settings/tools. (§7.10)
 
 ### Testing ([08](./08-testing-vitest.md))
 - [ ] ¿Test `*.spec.ts` con Vitest, junto al archivo probado?
@@ -102,6 +103,7 @@ Proceso del agente.
 - [ ] ¿Sin Zone.js, sin `provideZoneChangeDetection`, sin `Eager`?
 - [ ] ¿Sin `setTimeout` / promesas sueltas que esperen refrescar la vista? (§9.1)
 - [ ] ¿Rutas pesadas con `loadComponent` / `loadChildren`? ¿Componentes pesados detrás de `@defer`?
+- [ ] ¿Links a la misma ruta recrean el componente (`shouldReuseRoute = () => false` + `onSameUrlNavigation: 'reload'`) en vez de limpiar estado a mano? ¿Estrategia restaurada en `onDestroy`? (§9.6.1)
 - [ ] ¿Servicios pesados con `injectAsync()` (+ `prefetch: onIdle` si corresponde)?
 - [ ] ¿Listas largas con virtual scroll (CDK o `nzVirtualScroll`)? (§9.9)
 - [ ] ¿Subscripciones inevitables cerradas con `takeUntilDestroyed()` / `DestroyRef`? (§9.11)

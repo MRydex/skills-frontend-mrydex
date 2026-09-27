@@ -7,6 +7,7 @@
 - [9.4 `track` en `@for`](#94-track-en-for)
 - [9.5 `NgOptimizedImage`](#95-ngoptimizedimage)
 - [9.6 Lazy loading de rutas: `loadComponent` / `loadChildren`](#96-lazy-loading-de-rutas-loadcomponent--loadchildren)
+  - [9.6.1 Recrear componente y servicios al navegar a la misma ruta](#961-recrear-componente-y-servicios-al-navegar-a-la-misma-ruta)
 - [9.7 Hydration incremental y `withEventReplay`](#97-hydration-incremental-y-witheventreplay)
 - [9.8 Presupuestos de bundle y análisis](#98-presupuestos-de-bundle-y-análisis)
 - [9.9 Virtual scroll para listas largas](#99-virtual-scroll-para-listas-largas)
@@ -181,6 +182,76 @@ export const routes: Routes = [
 - Cualquier ruta que no sea parte del flujo inicial (login → dashboard) es candidata a lazy loading.
 - `provideRouter(routes, withComponentInputBinding())` sigue funcionando igual con rutas lazy: los
   parámetros de ruta llegan como `input()` al componente cargado.
+
+#### 9.6.1 Recrear componente y servicios al navegar a la misma ruta
+
+Por defecto el router **reutiliza** la instancia del componente si la configuración de ruta no
+cambia (ej. `/juicios/1` → `/juicios/2`, o un link que apunta a la ruta actual). El estado anterior
+queda vivo: signals, formularios, servicios del componente. **No limpiar ese estado a mano**
+(resets, `linkedSignal` de reinicio, flags). Forzar a Angular a destruir y recrear todo:
+
+```ts
+import { Component, DestroyRef, inject } from '@angular/core';
+import { Router } from '@angular/router';
+
+@Component({
+  selector: 'app-detalle-juicio',
+  templateUrl: './detalle-juicio.html',
+  providers: [DetalleJuicioStore], // se recrea junto con el componente
+})
+export class DetalleJuicio {
+  private readonly _router = inject(Router);
+
+  constructor() {
+    const original = this._router.routeReuseStrategy.shouldReuseRoute;
+    this._router.routeReuseStrategy.shouldReuseRoute = () => false;
+
+    // La estrategia es global del Router: restaurarla al salir de esta ruta
+    inject(DestroyRef).onDestroy(() => {
+      this._router.routeReuseStrategy.shouldReuseRoute = original;
+    });
+  }
+}
+```
+
+Si el link apunta a la **misma URL exacta**, el router ignora la navegación
+(`onSameUrlNavigation: 'ignore'` por defecto) y el componente no se recrea. Habilitarlo en la
+configuración:
+
+```ts
+// app.config.ts
+provideRouter(routes, withComponentInputBinding(), withRouterConfig({ onSameUrlNavigation: 'reload' }));
+```
+
+Qué se recrea y qué no:
+
+| Se recrea | No se recrea |
+| :--- | :--- |
+| El componente de la ruta y sus hijos | Servicios `providedIn: 'root'` |
+| Servicios en `providers` del `@Component` | Servicios en `providers` de la `Route` (su injector se crea una sola vez) |
+
+- El estado que debe reiniciarse va en un servicio declarado en `providers` del componente, nunca en
+  `root` ni en `providers` de la ruta.
+- `shouldReuseRoute = () => false` aplica a **todo el árbol activo**, incluidos layouts padre: también
+  se recrean mientras la estrategia esté activa. Por eso se restaura en `DestroyRef.onDestroy`.
+- Si la app tiene un layout pesado (menú, header con estado) o varias rutas necesitan este
+  comportamiento, usar una estrategia global que solo recree las rutas marcadas:
+
+```ts
+// core/routing/recrear-ruta-strategy.ts
+export class RecrearRutaStrategy extends BaseRouteReuseStrategy {
+  override shouldReuseRoute(futuro: ActivatedRouteSnapshot, actual: ActivatedRouteSnapshot): boolean {
+    if (futuro.routeConfig?.data?.['recrear'] === true) return false;
+    return futuro.routeConfig === actual.routeConfig;
+  }
+}
+
+// app.config.ts
+{ provide: RouteReuseStrategy, useClass: RecrearRutaStrategy }
+
+// feature.routes.ts
+{ path: ':id', loadComponent: () => import('./detalle-juicio/detalle-juicio').then((m) => m.DetalleJuicio), data: { recrear: true } }
+```
 
 ### 9.7 Hydration incremental y `withEventReplay`
 

@@ -11,15 +11,58 @@
 - 7.7 `prefers-reduced-motion` en componentes
 - 7.8 Responsividad
 - 7.9 Tamaño máximo de archivo
+- 7.10 SCSS repetido: triángulo invertido (ITCSS)
 
 ### 7.1 Módulos Sass: `@use` y `@forward` (nunca `@import`)
 
 Los tokens globales (colores, breakpoints, tipografías) se cargan siempre con `@use`, con un
-namespace explícito:
+namespace explícito y **sin ruta relativa**:
 
 ```scss
+// ✅ BIEN — resuelto desde assets/styles/ (includePaths)
+@use 'variables' as var;
+@use 'notificaciones/notificaciones-header' as notif;
+
+// ❌ MAL — ruta relativa: se rompe al mover el componente y no se lee
 @use '../../../../../../assets/styles/variables.scss' as var;
 ```
+
+- **Nunca rutas relativas (`../`) ni extensión `.scss` en un `@use`.** La ruta se escribe desde
+  `assets/styles/`. El `_` inicial del partial es opcional: `@use 'collapse-line'` carga
+  `_collapse-line.scss`.
+- Requiere registrar `assets/styles` como raíz de Sass en `angular.json`, una sola vez por proyecto
+  (opciones del target `build`; `test` las hereda vía `buildTarget`):
+
+```json
+"options": {
+  "stylePreprocessorOptions": {
+    "includePaths": ["src/assets/styles"]
+  }
+}
+```
+
+- Los partials de un módulo o pieza viven en **su propia carpeta** dentro de `assets/styles/`,
+  con el nombre del módulo como prefijo del archivo:
+
+```text
+assets/styles/
+├── notificaciones/
+│   ├── _notificaciones-header.scss
+│   └── _notificaciones-item.scss
+└── detalle-header/
+    └── _detalle-header.scss
+```
+
+```scss
+// notificaciones-header.scss (componente)
+@use 'notificaciones/notificaciones-header' as notif;
+@use 'detalle-header/detalle-header' as detalle;
+```
+
+- Nunca partials sueltos en la raíz de `assets/styles/` salvo el punto de entrada (`_index.scss`,
+  `styles.scss`) y las capas ITCSS (§7.10).
+- Los partials de módulo contienen solo `$variables`, `@mixin` y `@function`: **no emiten CSS**, así
+  no se duplica en cada componente que los usa (§7.10).
 
 - **Nunca `@import`**. Dart Sass lo marcó deprecado (warnings desde la serie 1.80) y va a
   eliminarlo en una versión mayor futura; además, a diferencia de `@use`, `@import` vuelca todo el
@@ -39,7 +82,7 @@ namespace explícito:
 
 ```scss
 // componente.scss
-@use '../../../../assets/styles/index' as tokens;
+@use 'index' as tokens;
 
 .tarjeta { color: tokens.$color-primary; }
 ```
@@ -292,7 +335,7 @@ movimiento reducido del sistema operativo. Para no repetir la media query en cad
 centralizarla en un mixin del partial global:
 
 ```scss
-// assets/styles/_mixins.scss
+// assets/styles/tools/_mixins.scss
 @mixin motion-safe($transition) {
   transition: $transition;
 
@@ -303,7 +346,7 @@ centralizarla en un mixin del partial global:
 ```
 
 ```scss
-@use '../../../../assets/styles/mixins' as mixins;
+@use 'tools/mixins' as mixins;
 
 .tarjeta {
   @include mixins.motion-safe(transform 0.2s ease);
@@ -333,5 +376,95 @@ visual).
   tiene demasiada responsabilidad visual: extraer un subcomponente anidado en su propia carpeta
   (nunca en una carpeta `components/` dentro de la feature — el árbol de carpetas refleja el árbol
   de composición) suele resolverlo junto con el límite de profundidad de anidamiento (§7.3).
+
+### 7.10 SCSS repetido: triángulo invertido (ITCSS)
+
+**Regla**: cuando el mismo código SCSS aparece **por segunda vez** (en otro componente o en el mismo
+archivo), no copiarlo ni reescribirlo. Extraerlo a la capa correcta del triángulo invertido
+(ITCSS) en `assets/styles/` y consumirlo desde ahí.
+
+ITCSS ordena el CSS global en capas: de alcance amplio y especificidad baja (arriba) a alcance
+acotado y especificidad alta (abajo). Cada capa solo agrega; nunca pisa a una capa superior.
+
+```text
+assets/styles/
+├── settings/     # 1. Tokens: $variables, custom properties. Sin selectores propios.
+├── tools/        # 2. Mixins y funciones. NO emite CSS.
+├── generic/      # 3. Reset, box-sizing, reset de reduced motion.
+├── elements/     # 4. Tags HTML sin clase: body, h1…h6, a, button.
+├── objects/      # 5. Patrones de layout sin estética: .o-stack, .o-cluster, .o-grid.
+├── components/   # 6. Piezas visuales globales y overrides de NG-ZORRO (.mrx-*).
+├── utilities/    # 7. Helpers de una sola propiedad: .u-sr-only, .u-text-center.
+├── <modulo>/     # Partials propios de un módulo (§7.1): mixins y variables, sin CSS emitido.
+├── _index.scss   # @forward de settings + tools (lo único que usan los componentes)
+└── styles.scss   # Entrada global (angular.json → styles): carga las capas 1→7 en orden
+```
+
+```scss
+// assets/styles/_index.scss — API para los .scss de componentes
+@forward 'settings/colors';
+@forward 'settings/spacing';
+@forward 'settings/breakpoints';
+@forward 'tools/mixins';
+```
+
+```scss
+// assets/styles/styles.scss — orden del triángulo, reforzado con @layer
+@use 'sass:meta';
+
+@layer generic, elements, objects, components, utilities;
+
+@layer generic    { @include meta.load-css('generic/reset'); }
+@layer elements   { @include meta.load-css('elements/typography'); }
+@layer objects    { @include meta.load-css('objects/stack'); }
+@layer components { @include meta.load-css('components/nz-overrides'); }
+@layer utilities  { @include meta.load-css('utilities/helpers'); }
+```
+
+**Dónde va cada repetición:**
+
+| Qué se repite | Capa | Forma |
+| :--- | :--- | :--- |
+| Un valor (color, espaciado, radio, breakpoint) | `settings` | Token `$variable` o custom property (§7.2) |
+| Un bloque de declaraciones en varias features | `tools` | `@mixin` con parámetros |
+| Un bloque de declaraciones dentro de un solo módulo | `<modulo>/` | `@mixin` en `<modulo>/_<modulo>-<parte>.scss` |
+| Un cálculo | `tools` | `@function` |
+| Un patrón de layout en varios templates | `objects` | Clase global `.o-*` |
+| Una pieza visual completa (tarjeta, badge) | — | Componente Angular en `shared/components/`, no CSS global |
+| Un ajuste a NG-ZORRO | `components` | Clase global `.mrx-*` (§7.5) |
+| Un helper de una propiedad | `utilities` | Clase global `.u-*` |
+
+```scss
+// ❌ MAL — mismo bloque copiado en tarjeta.scss y en resumen.scss
+.tarjeta {
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+}
+
+// ✅ BIEN — assets/styles/tools/_mixins.scss
+@use 'settings/spacing' as spacing;
+
+@mixin superficie($padding: spacing.$space-md) {
+  padding: $padding;
+  border-radius: spacing.$radius-md;
+  box-shadow: var(--shadow-sm);
+}
+
+// tarjeta.scss y resumen.scss
+@use 'index' as tokens;
+
+.tarjeta { @include tokens.superficie; }
+.resumen { @include tokens.superficie(tokens.$space-lg); }
+```
+
+- Los `.scss` de componente hacen `@use` **solo** de `settings`, `tools` (vía `_index.scss`) y de la
+  carpeta de su módulo (`@use 'notificaciones/notificaciones-header'`). Esas
+  capas no emiten CSS. Hacer `@use` de un partial que emite CSS **duplica ese CSS en cada
+  componente** que lo usa, porque Angular compila cada hoja encapsulada por separado.
+- **Nunca `@extend`** para compartir estilos: no cruza los límites entre componentes (cada `.scss`
+  se compila aislado) y genera selectores inflados. Usar `@mixin`.
+- Las capas 3–7 viven solo en `styles.scss` (global). Nunca en la hoja de un componente.
+- Si una repetición no encaja en ninguna capa, probablemente es un subcomponente: extraerlo (§7.9).
 
 ---

@@ -8,7 +8,8 @@ This project enforces the official **Angular 22+ (2026)** standards documented i
 - **Forms**: Signal Forms (`@angular/forms/signals`). Never Reactive Forms or `ngModel`.
 - **Change Detection**: Zoneless (`provideZonelessChangeDetection()`). Check `@angular/core` in `package.json`: v22+ do not specify `changeDetection` (OnPush is default); below v22 always set `ChangeDetectionStrategy.OnPush`. `standalone: true` only in v18 or lower.
 - **Templates**: Native control flow (`@if`, `@for`, `@switch`, `@let`), `@defer`, and `NgOptimizedImage`.
-- **Styling**: SCSS with BEM methodology. Avoid `::ng-deep`.
+- **Styling**: SCSS with BEM methodology. Avoid `::ng-deep`. `@use` without relative paths (`@use 'notificaciones/notificaciones-header' as notif;`, via `includePaths: ["src/assets/styles"]`); module partials live in `assets/styles/<module>/_<module>-<part>.scss`. When SCSS repeats, extract it to its ITCSS (inverted triangle) layer: token, `@mixin`, `.o-*` object or `.u-*` utility. Never copy it or use `@extend`.
+- **Same-route navigation**: To reset state on a link to the current route, recreate the component with `router.routeReuseStrategy.shouldReuseRoute = () => false` (plus `onSameUrlNavigation: 'reload'`) and restore it in `DestroyRef.onDestroy`. Do not reset state by hand.
 - **Architecture**: Vertical slices / feature-based folder structure. No filename/class suffixes (`user-list.ts` exports `UserList`).
 - **Size**: Max 200 lines per component `.ts` or template `.html`, 250 per service, 150 per `.scss`. Split by responsibility.
 - **Subcomponents**: Never a `components/` folder inside a feature. Nest each child inside its parent's folder. Only `shared/components/` is allowed, for components reused across features.
