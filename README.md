@@ -113,6 +113,7 @@ skills/desarrollo-buenas-practicas/
     ├── 12-html5-semantics-seo.md     # Semántica HTML5, ARIA/WCAG, SEO y meta tags
     ├── 13-css3-layouts-animations.md # @layer, :has(), @scope, Grid, anchor positioning, animaciones
     ├── 14-agent-efficiency.md        # Caveman, advisor multi-agente, autocompact, graphify, adaptación
+    ├── 15-security.md                # Red Team / Blue Team, XSS, CSP, tokens, XSRF, cabeceras, supply chain, OWASP
     └── checklists.md                 # Checklists de Angular, HTML5/CSS3 y proceso del agente
 ```
 

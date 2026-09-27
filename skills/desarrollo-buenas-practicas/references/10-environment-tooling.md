@@ -108,6 +108,9 @@ página), comprimir la respuesta y cachear agresivamente solo los archivos con h
 </configuration>
 ```
 
+> **Seguridad**: sumar las cabeceras de [15-security.md](./15-security.md) §15.9 (HSTS, `nosniff`,
+> CSP de servidor, `Referrer-Policy`, `Permissions-Policy`, sin `X-Powered-By`).
+
 **Errores comunes:**
 - Agregar `<mimeMap fileExtension=".json" .../>` cuando IIS ya lo trae registrado → error de arranque
   del sitio ("Cannot add duplicate collection entry"). Verificar en `applicationHost.config` antes de

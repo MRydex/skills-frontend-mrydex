@@ -13,6 +13,7 @@ This project enforces the official **Angular 22+ (2026)** standards documented i
 - **Architecture**: Vertical slices / feature-based folder structure. No filename/class suffixes (`user-list.ts` exports `UserList`).
 - **Size**: Max 200 lines per component `.ts` or template `.html`, 250 per service, 150 per `.scss`. Split by responsibility.
 - **Subcomponents**: Never a `components/` folder inside a feature. Nest each child inside its parent's folder. Only `shared/components/` is allowed, for components reused across features.
+- **Security (always)**: Every change passes the Red Team review in `references/15-security.md` §15.2. Never disable protections (sanitizer, CSP, XSRF, backend validation), never use `bypassSecurityTrust*` with external data, never store tokens in `localStorage`, never put secrets in the front. Report every vulnerability found, even out of scope.
 - **Reference Manuals**: For details on each area, inspect `references/*.md` inside the skill directory.
 
 ## Agent Efficiency (always on)

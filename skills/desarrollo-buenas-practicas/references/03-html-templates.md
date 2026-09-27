@@ -257,6 +257,9 @@ Si hay que aplicar `flex` u otros estilos de bloque a celdas `<td>`, hacerlo en 
 </td>
 ```
 
+> `highlightSearch` devuelve HTML: tiene que escapar el texto y la búsqueda antes de marcar
+> coincidencias, y nunca usar `bypassSecurityTrustHtml`. Ver [15-security.md](./15-security.md) §15.3.
+
 ### 3.7 Two-way binding moderno
 
 Usar `model()` en los componentes hijos en lugar del par `input` + `output`.

@@ -140,6 +140,21 @@ Proceso del agente.
 
 ---
 
+## Checklist de seguridad ([15](./15-security.md))
+- [ ] ¿Revisión Red Team del cambio hecha (tabla de §15.2) y sin respuestas "sí"?
+- [ ] ¿Sin `bypassSecurityTrust*` con datos externos, sin `nativeElement.innerHTML`, `eval` ni `new Function`? ¿Pipes que devuelven HTML escapan la entrada? (§15.3)
+- [ ] ¿`autoCsp` activo en producción? ¿CSP nueva desplegada primero como Report-Only? (§15.4)
+- [ ] ¿Token en memoria o cookie `HttpOnly`, nunca en `localStorage`? ¿`authInterceptor` compara origen con `URL`? ¿Autorización validada en backend? (§15.5)
+- [ ] ¿XSRF configurado con sesión por cookie? ¿Sin mutaciones por `GET`? (§15.6)
+- [ ] ¿`returnUrl` validado como ruta interna? ¿`postMessage` valida `event.origin`? ¿Links externos con `rel="noopener noreferrer"`? (§15.7)
+- [ ] ¿Sin secretos en `environment.ts` / `config.json`? ¿Sin PII ni tokens en `console` o storage? ¿Errores genéricos al usuario? (§15.8)
+- [ ] ¿Cabeceras de seguridad en `web.config`? (§15.9)
+- [ ] ¿`npm ci` + `npm audit --omit=dev` sin `high`/`critical`? ¿Dependencia nueva evaluada? ¿SRI en scripts externos? (§15.10)
+- [ ] ¿Eventos de seguridad reportados sin datos sensibles? (§15.11)
+- [ ] ¿Test con payload XSS en componentes/pipes que renderizan datos externos? (§15.12)
+
+---
+
 ## Checklist de proceso del agente ([11](./11-workflow-orchestration.md), [14](./14-agent-efficiency.md))
 - [ ] ¿Se leyó el código existente y sus usos antes de editar? (§11.1)
 - [ ] ¿Las dudas que cambian el resultado se preguntaron juntas, antes de empezar, con opción recomendada? (§11.6)
