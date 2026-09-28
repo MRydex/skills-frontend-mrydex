@@ -7,9 +7,52 @@ description: >
 
 # Desarrollo Frontend — Buenas Prácticas del Equipo (Angular 22+)
 
-Convenciones **obligatorias** del equipo para Angular 22+ y frontend moderno, más las reglas de cómo trabaja el agente. Leer primero las 8 reglas y el modo de operación; el detalle vive en `references/`.
+Convenciones **obligatorias** del equipo para Angular 22+ y frontend moderno, más las reglas de cómo trabaja el agente. Ejecutar primero el Paso 0 (graphify); después leer las 8 reglas y el modo de operación; el detalle vive en `references/`.
 
 > **Regla maestra**: si una API legacy tiene un equivalente moderno (signals, control flow nativo, `inject()`, `input()`, `httpResource`, Signal Forms, `host: {}`, interceptores funcionales), **siempre usar el moderno**. Cualquier uso de la API legacy debe estar justificado por interoperabilidad con código existente y documentado en el PR.
+
+---
+
+### Paso 0 — Arranque de graphify (obligatorio, antes de cualquier otra acción)
+
+Primera acción de cada sesión, en cualquier repo, **antes** de buscar, leer o editar código. No es
+opcional ni se saltea "porque la tarea es chica". Sin preguntar:
+
+```bash
+graphify --help 2>&1 | head -3   # ¿existe? ¿warning de versión?
+graphify hook status             # ¿hooks git instalados?
+graphify update .                # grafo al día (solo código, sin LLM, sin costo)
+```
+
+| Resultado | Acción |
+| :--- | :--- |
+| `command not found` | `pip install graphifyy && graphify install` (`--platform <agente>` fuera de Claude Code) |
+| `warning: skill is from graphify X, package is Y` | `pip install --upgrade graphifyy && graphify install` |
+| `post-commit: not installed` | `graphify hook install` |
+| El agente no tiene la integración (Claude Code: sin `hook-guard` en `.claude/settings.json`) | `graphify <agente> install` (tabla en §14.5) |
+| `graphify update .` falla porque no hay grafo | `/graphify .` dentro del asistente (build completo) |
+| La salida de `graphify update .` dice `Rebuild failed`, `worker failed` o `Nothing to update or rebuild failed` | Falló aunque el exit code sea 0. Ver "Si algo falla" |
+
+Si el proyecto se configuró con el instalador (`npx skills-frontend-mrydex` en el proyecto), todo esto
+ya está hecho: el chequeo igual se corre y solo confirma. Después: agregar al `.gitignore` lo que haya
+creado graphify (§10.9) y avisar en una línea (`graphify OK: vX, N nodos`).
+
+**Si algo falla** (instalación, hooks, integración o armado del grafo): **siempre avisar al usuario**
+con el comando, el error exacto y la causa probable. Nunca seguir en silencio. Recién después seguir
+con búsqueda normal. Causas conocidas:
+
+- Sin Python/pip → instalar Python 3.10+ y repetir el Paso 0.
+- `[Errno 2] No such file or directory` en `graphify-out/cache` (Windows) → ruta del proyecto
+  demasiado larga (MAX_PATH). Proponer mover el repo a una ruta corta o habilitar rutas largas
+  (`LongPathsEnabled` en el registro, requiere admin). El usuario decide.
+- Sin repo git → no hay hooks: el grafo solo se actualiza con `graphify update .` manual.
+
+La misma regla vale al actualizar el grafo al final de la tarea (§14.5 paso 5). Detalle en
+[14-agent-efficiency.md](./references/14-agent-efficiency.md) §14.5.
+
+**Durante la tarea**: la primera búsqueda sobre el código es siempre `graphify query`. `grep`,
+`Glob` o leer archivos para explorar sin una consulta previa al grafo es una violación de la skill.
+Única excepción: el usuario nombró el archivo y la línea exactos.
 
 ---
 
@@ -31,12 +74,12 @@ Convenciones **obligatorias** del equipo para Angular 22+ y frontend moderno, m�
 Rige durante toda la sesión desde que la skill se carga. Para que rija también en sesiones que no tocan Angular, instalar los archivos puente en el repo (`--bridge`: `CLAUDE.md`, `AGENTS.md`, `.cursorrules`), que el agente lee siempre.
 
 0. **Adaptarse al agente y a los modelos en uso.** Al empezar, detectar en qué agente corre la skill (Claude Code, Codex, Antigravity, Cursor, Copilot, Gemini CLI, otro) y qué modelos tiene disponibles. Todo nombre concreto de esta skill (Opus, Sonnet, Haiku, `/compact`, `AskUserQuestion`, `SendMessage`, `Agent`) es un **ejemplo**: traducirlo al equivalente del agente en uso. Si no hay equivalente, aplicar el fallback documentado. Las reglas no cambian; cambia solo la sintaxis. Ver [14-agent-efficiency.md](./references/14-agent-efficiency.md) §14.7.
-1. **Responder en modo caveman.** Frases cortas, sin relleno ni cortesías, sin narrar tool calls. Términos técnicos, código y errores exactos. Nunca omitir negaciones. Prosa normal solo en advertencias de seguridad, acciones irreversibles, código, commits, PRs y docs. Ver §14.1.
+1. **Responder en modo caveman, siempre, conciso y corto.** Todo lo que emite la skill (respuestas, reportes, avisos, preguntas, reportes de subagentes). Frases cortas, sin relleno ni cortesías, sin narrar tool calls. Reporte final: máximo ~8 viñetas, sin resúmenes por sección; linkear archivos en vez de repetirlos. Términos técnicos, código y errores exactos. Nunca omitir negaciones. Prosa normal solo en advertencias de seguridad, acciones irreversibles, código, commits, PRs y docs. Ver §14.1.
 2. **Librerías: preguntar antes de investigar.** Si hay otra sesión/agente abierto que conozca la librería (Claude Code: `ListAgents` + `SendMessage`), consultarle primero. Luego MCP de docs, luego `node_modules`, último la web. Ver §14.2.
 3. **El modelo fuerte orquesta y revisa; modelos baratos ejecutan (estrategia advisor emulada).** Vale para cualquier agente y proveedor. El modelo fuerte (ej. Opus / GPT effort alto / Gemini Pro) planifica, decide, reparte y revisa **siempre** el resultado. Búsquedas, lecturas grandes, ediciones y boilerplate van a subagentes de menor nivel (ej. Sonnet, Haiku / mini / Flash), en paralelo cuando sean independientes. Si el agente no lanza subagentes con otro modelo, cambiar de modelo por fase. Contexto compartido en `tasks/brief-<tarea>.md`. El ejecutor no adivina: si se traba devuelve `NECESITA_ADVISOR: <duda>`. El modelo fuerte interviene después de la orientación, cuando el ejecutor se traba y antes de dar por terminado. Ver §14.3.
 4. **Preguntar todo antes de empezar.** En tareas no triviales, juntar todas las dudas que cambian el resultado y preguntarlas de una sola vez, con opciones y una recomendada (Claude Code: `AskUserQuestion`). No preguntar lo que se resuelve leyendo el repo. Ver [11-workflow-orchestration.md](./references/11-workflow-orchestration.md) §11.6.
 5. **Autocompactar el contexto.** Al cerrar cada fase o antes de una tarea nueva: guardar el estado en `tasks/todo.md` y compactar con foco (`/compact Conservar: decisiones, archivos tocados, pendientes`). Nunca con un cambio a medio aplicar ni con una pregunta pendiente. Ver §14.4.
-6. **Graphify primero.** Si falta, instalarlo sin preguntar (`pip install graphifyy && graphify install`, con `--platform <agente>` fuera de Claude Code) e integrarlo en el repo (`graphify hook install` + `graphify <agente> install` según el agente que corre). Ante cualquier pregunta sobre el código, consultar `graphify query` antes de `grep` o leer archivos. Tras una tarea que tocó 3+ archivos o antes de compactar: `graphify update .` (sin LLM). Ver §14.5.
+6. **Graphify primero.** Arranque obligatorio del **Paso 0** al empezar cada sesión: instalar, actualizar la versión, integrar y poner el grafo al día. Ante cualquier pregunta sobre el código, `graphify query` antes de `grep` o leer archivos. Tras una tarea que tocó 3+ archivos o antes de compactar: `graphify update .` (sin LLM). Ver §14.5.
 
 7. **Seguridad siempre (Red Team + Blue Team).** Todo cambio pasa la revisión ofensiva de §15.2 antes de entregarse. Nunca desactivar protecciones (sanitizador, CSP, XSRF, validación del backend). Nunca secretos en el front. Toda vulnerabilidad encontrada se reporta, aunque esté fuera del alcance. Ver [15-security.md](./references/15-security.md).
 8. **Archivos de IA en `.gitignore`.** Al empezar en un proyecto, verificar que `.gitignore` excluya todo lo de IA y agentes (`.claude/`, `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `graphify-out/`, `tasks/todo.md`, etc.). Agregar lo que falte. Preguntar antes de `git rm --cached`. Ver [10-environment-tooling.md](./references/10-environment-tooling.md) §10.9.

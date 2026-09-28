@@ -32,6 +32,14 @@ Todas las respuestas al usuario se escriben en **modo caveman**: frases cortas, 
 
 **No inventar abreviaturas** (`cfg`, `impl`, `fn`): no ahorran tokens y se leen peor.
 
+**Largo máximo (todo lo que emite la skill):**
+- **Reporte final**: máximo ~8 viñetas. Solo qué cambió (con link al archivo), qué falló y qué decide
+  el usuario. Nunca un resumen sección por sección ni tablas que ya están en los archivos.
+- **Avisos de estado**: una línea (`graphify OK: v0.9.71, 336 nodos`).
+- **Preguntas**: una línea por pregunta, con opciones cortas.
+- **Subagentes**: sus reportes también en caveman; el orquestador no los reenvía completos.
+- Si el detalle ya está escrito en un archivo, linkearlo en vez de repetirlo.
+
 **Patrón:** `[cosa] [acción] [razón]. [siguiente paso].`
 
 ```text
@@ -262,6 +270,21 @@ errores sin resolver. Descartar: salidas de tools ya procesadas, exploración de
 consulta al grafo devuelve en pocos cientos de tokens lo que costaría leer decenas de archivos. El
 agente lo instala, integra, consulta y actualiza **por su cuenta**.
 
+**0. Arranque obligatorio al inicio de cada sesión.** Es el Paso 0 de `SKILL.md`: la primera acción
+de la sesión, antes de buscar, leer o editar. Se corre **siempre**, aunque graphify ya esté
+instalado, porque cubre los tres fallos reales:
+
+- **Falta el CLI** → paso 1.
+- **Versión desfasada** entre el paquete y la skill (el CLI imprime
+  `warning: skill is from graphify X, package is Y`) → `pip install --upgrade graphifyy && graphify install`.
+  Con el paquete viejo faltan comandos y hooks, y el agente deja de usar el grafo.
+- **Grafo desactualizado** o repo sin integrar → `graphify update .` en cada arranque (solo código,
+  sin LLM) y pasos 2–3.
+
+El instalador de la skill (`npx skills-frontend-mrydex` en el proyecto) ya ejecuta los pasos 1–3 para
+todos los agentes, deja Claude Code en modo estricto (`graphify install --project --strict --platform
+claude`) y arma el grafo. Los pasos siguen documentados para repos configurados sin el instalador.
+
 **1. Instalar si falta (una vez por máquina, sin preguntar).** Chequear con `graphify --help`. Si el
 comando no existe:
 
@@ -274,8 +297,8 @@ pip install graphifyy && graphify install          # el paquete PyPI lleva doble
   `graphify install --platform <cursor|codex|gemini|antigravity|opencode|kiro|...>`.
 - Si el CLI avisa `skill is from graphify X, package is Y`, actualizar:
   `pip install --upgrade graphifyy && graphify install`.
-- Avisar al usuario en una línea. Si no hay Python/pip o la instalación falla, avisar y seguir sin
-  graphify (búsqueda normal). No bloquear la tarea.
+- Avisar al usuario en una línea. Si no hay Python/pip o la instalación falla, avisar con el error
+  exacto y recién ahí seguir con búsqueda normal. Nunca saltear la instalación por comodidad.
 
 **2. Integrar en el repo (una vez por proyecto).** Si el repo todavía no tiene la integración:
 
@@ -302,7 +325,10 @@ asistente (build completo: código con AST, docs e imágenes con LLM). Sin asist
 `graphify update .` arma el grafo solo de código, sin LLM.
 
 **4. Consultar siempre primero.** Ante cualquier pregunta sobre el código (dónde está X, quién usa Y,
-cómo fluye Z), antes de `grep` o de leer archivos:
+cómo fluye Z), antes de `grep` o de leer archivos. `grep`, `Glob` o `Read` de exploración sin una
+consulta previa al grafo es una **violación de la skill**. Única excepción: el usuario nombró el
+archivo y la línea exactos. En Claude Code, el hook `PreToolUse` que deja `graphify claude install`
+(`hook-guard`) lo recuerda en cada búsqueda:
 
 ```bash
 graphify query "¿qué componentes usan UserService?" --budget 1500   # contexto amplio (BFS)
@@ -327,6 +353,10 @@ graphify update .      # re-extrae solo el código cambiado, sin LLM: no gasta t
   commitear.
 - Si cambiaron muchos docs o imágenes (el hook y `update` los ignoran), correr `/graphify . --update`.
   Usa LLM, así que solo cuando valga la pena.
+- **Verificar la salida, no solo el exit code.** `graphify update .` puede terminar en 0 aunque haya
+  fallado. Éxito = la salida contiene `Rebuilt: N nodes`. Si dice `Rebuild failed`, `worker failed`
+  o `Nothing to update or rebuild failed`, avisar al usuario con el error exacto y la causa probable
+  (ver "Si algo falla" en el Paso 0 de `SKILL.md`). Nunca dar la tarea por cerrada callando el fallo.
 
 ---
 

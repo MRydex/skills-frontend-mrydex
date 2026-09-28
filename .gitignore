@@ -6,3 +6,9 @@ Thumbs.db
 .tmp/
 *.tgz
 .atl
+
+# IA / agentes
+/CLAUDE.md
+.claude/
+graphify-out/
+.gitattributes

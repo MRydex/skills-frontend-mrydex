@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const readline = require('readline');
+const { spawnSync } = require('child_process');
 
 // ANSI color helpers
 const colors = {
@@ -55,6 +56,8 @@ ${colors.bold}OPCIONES:${colors.reset}
   ${colors.green}-t, --target <ruta>${colors.reset}     Ruta personalizada (tiene prioridad sobre --agent)
   ${colors.green}-b, --bridge${colors.reset}            Genera archivos puente (AGENTS.md, CLAUDE.md, .cursorrules).
                           cursor, universal y all los generan siempre.
+  ${colors.green}--no-graphify${colors.reset}           No instala ni configura graphify (por defecto: instala/actualiza
+                          el CLI y, en el proyecto, integra todos los agentes y arma el grafo)
   ${colors.green}--dry-run${colors.reset}               Muestra los archivos y destinos sin escribir cambios
   ${colors.green}-v, --version${colors.reset}           Muestra la versión del paquete
   ${colors.green}-h, --help${colors.reset}              Muestra esta ayuda
@@ -88,6 +91,7 @@ const isDryRun = args.includes('--dry-run');
 const isGlobal = args.includes('-g') || args.includes('--global');
 const isWorkspace = args.includes('-w') || args.includes('--workspace');
 const includeBridge = args.includes('-b') || args.includes('--bridge');
+const skipGraphify = args.includes('--no-graphify');
 
 function getArgValue(flags) {
   for (const flag of flags) {
@@ -184,14 +188,14 @@ function trackProjectRoot(destDir) {
   if (path.resolve(destDir).startsWith(cwd + path.sep)) projectRoots.add(cwd);
 }
 
-function ensureAiGitignore(projectRoot) {
+function ensureAiGitignore(projectRoot, extraEntries = []) {
   const gitignorePath = path.join(projectRoot, '.gitignore');
   const hasGitignore = fs.existsSync(gitignorePath);
   if (!hasGitignore && !fs.existsSync(path.join(projectRoot, '.git'))) return;
 
   const current = hasGitignore ? fs.readFileSync(gitignorePath, 'utf8') : '';
   const existing = new Set(current.split(/\r?\n/).map((line) => line.trim()));
-  const missing = AI_GITIGNORE_ENTRIES.filter((entry) => !existing.has(entry));
+  const missing = [...AI_GITIGNORE_ENTRIES, ...extraEntries].filter((entry) => !existing.has(entry));
   if (missing.length === 0) return;
 
   if (isDryRun) {
@@ -200,11 +204,101 @@ function ensureAiGitignore(projectRoot) {
   }
 
   const lines = existing.has(AI_GITIGNORE_HEADER) ? missing : [AI_GITIGNORE_HEADER, ...missing];
+  // Bloque nuevo: separado por una línea en blanco. Bloque existente: se continúa debajo.
+  const gap = existing.has(AI_GITIGNORE_HEADER) ? '' : '\n';
   let prefix = '';
-  if (current !== '') prefix = current.endsWith('\n') ? '\n' : '\n\n';
+  if (current !== '') prefix = current.endsWith('\n') ? gap : `\n${gap}`;
   fs.appendFileSync(gitignorePath, `${prefix}${lines.join('\n')}\n`);
   console.log(`\n  ${colors.green}✔${colors.reset} .gitignore: ${missing.length} entradas de IA agregadas`);
   console.log(`  ${colors.dim}Si alguno ya estaba commiteado, sacarlo del índice con: git rm --cached <archivo>${colors.reset}`);
+}
+
+// Integraciones de graphify por agente (proyecto). Claude Code además en modo estricto:
+// bloquea la primera lectura de archivos hasta que se haga un `graphify query`.
+const GRAPHIFY_AGENTS = ['claude', 'cursor', 'codex', 'gemini', 'vscode', 'antigravity'];
+const PIP_CANDIDATES = [
+  ['pip', ['install', '--upgrade', 'graphifyy']],
+  ['python', ['-m', 'pip', 'install', '--upgrade', 'graphifyy']],
+  ['py', ['-m', 'pip', 'install', '--upgrade', 'graphifyy']],
+  ['python3', ['-m', 'pip', 'install', '--upgrade', 'graphifyy']],
+  ['uv', ['tool', 'install', '--upgrade', 'graphifyy']],
+];
+let graphifyReady = null;
+
+function runCommand(cmd, cmdArgs, cwd) {
+  const result = spawnSync(cmd, cmdArgs, {
+    cwd,
+    encoding: 'utf8',
+    shell: process.platform === 'win32',
+  });
+  return { ok: result.status === 0, output: `${result.stdout || ''}${result.stderr || ''}` };
+}
+
+// Instala o actualiza el CLI de graphify (paquete PyPI "graphifyy") y su skill global.
+function ensureGraphifyCli() {
+  if (graphifyReady !== null) return graphifyReady;
+
+  console.log(`\n${colors.bold}${colors.cyan}Graphify:${colors.reset} instalando/actualizando el CLI...`);
+  if (isDryRun) {
+    console.log(`${colors.dim}[dry-run] pip install --upgrade graphifyy && graphify install${colors.reset}`);
+    graphifyReady = true;
+    return graphifyReady;
+  }
+
+  const installed = PIP_CANDIDATES.some(([cmd, cmdArgs]) => runCommand(cmd, cmdArgs).ok);
+  const check = runCommand('graphify', ['--help']);
+  if (!check.ok) {
+    console.log(`  ${colors.yellow}⚠ No se pudo instalar graphify${installed ? '' : ' (sin pip/python/uv)'}.${colors.reset}`);
+    console.log(`  ${colors.dim}Instalar a mano: pip install graphifyy && graphify install${colors.reset}`);
+    graphifyReady = false;
+    return graphifyReady;
+  }
+
+  runCommand('graphify', ['install']);
+  console.log(`  ${colors.green}✔${colors.reset} graphify listo`);
+  graphifyReady = true;
+  return graphifyReady;
+}
+
+// Paso 0 de la skill hecho por el instalador: integra todos los agentes, hooks git y arma el grafo.
+function setupGraphifyProject(projectRoot) {
+  if (!ensureGraphifyCli()) return;
+
+  const isGitRepo = fs.existsSync(path.join(projectRoot, '.git'));
+  const hadGitattributes = fs.existsSync(path.join(projectRoot, '.gitattributes'));
+  const steps = [
+    ...GRAPHIFY_AGENTS.map((agent) => ({ label: `integración ${agent}`, args: [agent, 'install'] })),
+    { label: 'modo estricto Claude Code', args: ['install', '--project', '--strict', '--platform', 'claude'] },
+    ...(isGitRepo ? [{ label: 'hooks git', args: ['hook', 'install'] }] : []),
+  ];
+
+  console.log(`\n${colors.bold}${colors.cyan}Graphify en el proyecto:${colors.reset} ${colors.dim}${projectRoot}${colors.reset}`);
+  if (isDryRun) {
+    for (const step of steps) console.log(`${colors.dim}[dry-run] graphify ${step.args.join(' ')}${colors.reset}`);
+    console.log(`${colors.dim}[dry-run] graphify update .${colors.reset}`);
+    return;
+  }
+
+  for (const step of steps) {
+    const { ok } = runCommand('graphify', step.args, projectRoot);
+    const mark = ok ? colors.green + '✔' : colors.yellow + '⚠';
+    console.log(`  ${mark}${colors.reset} ${step.label}`);
+  }
+  if (!isGitRepo) {
+    console.log(`  ${colors.yellow}⚠${colors.reset} No es un repo git: sin hooks de actualización automática`);
+  }
+
+  // Ignorar lo generado antes de armar el grafo, así no indexa los archivos de los agentes
+  const createdGitattributes = !hadGitattributes && fs.existsSync(path.join(projectRoot, '.gitattributes'));
+  ensureAiGitignore(projectRoot, createdGitattributes ? ['.gitattributes'] : []);
+
+  const build = runCommand('graphify', ['update', '.'], projectRoot);
+  const nodes = /Rebuilt: (\d+) nodes/.exec(build.output);
+  if (build.ok && nodes) {
+    console.log(`  ${colors.green}✔${colors.reset} grafo armado: ${nodes[1]} nodos (sin LLM)`);
+  } else {
+    console.log(`  ${colors.yellow}⚠${colors.reset} No se pudo armar el grafo. Correr a mano: graphify update .`);
+  }
 }
 
 function installTarget(destDir, label) {
@@ -334,6 +428,10 @@ async function run() {
 
 function finish() {
   for (const root of projectRoots) ensureAiGitignore(root);
+  if (!skipGraphify) {
+    if (projectRoots.size === 0) ensureGraphifyCli();
+    for (const root of projectRoots) setupGraphifyProject(root);
+  }
 
   console.log(`
 ${colors.bold}${colors.green}✔ ¡Configuración completada!${colors.reset}

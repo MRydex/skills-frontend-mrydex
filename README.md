@@ -71,6 +71,23 @@ skills-frontend
 | **GitHub Copilot / Codex** | `skills/` + `AGENTS.md` en la raíz del proyecto | `npx github:MRydex/skills-frontend-mrydex -a universal -b` |
 | **Todos los agentes** | Configura entornos globales y puentes locales a la vez | `npx github:MRydex/skills-frontend-mrydex -a all -w -b` |
 
+### Graphify y `.gitignore` automáticos
+
+Al instalar en un proyecto, el instalador deja todo listo para cualquier agente, sin depender de que el
+agente siga las instrucciones:
+
+1. Instala o actualiza graphify (`pip install --upgrade graphifyy`, con fallback a `python -m pip`,
+   `py -m pip` y `uv`) y su skill global.
+2. Integra graphify en todos los agentes: Claude Code, Cursor, Codex, Gemini CLI, Copilot en VS Code y
+   Antigravity. Claude Code queda en **modo estricto**: bloquea la primera lectura de archivos hasta
+   que se consulte el grafo.
+3. Instala los hooks git `post-commit` y `post-checkout`, que actualizan el grafo en cada commit.
+4. Agrega todos los archivos de IA y agentes al `.gitignore`.
+5. Arma el grafo con `graphify update .` (solo código, sin LLM, sin costo de tokens).
+
+Con una instalación solo global, instala o actualiza el CLI de graphify. Para saltear todo esto:
+`--no-graphify`. Si no hay Python, avisa y sigue con el resto de la instalación.
+
 ---
 
 ## 🛠️ Opciones y Flags del CLI
@@ -84,6 +101,7 @@ Opciones:
   -w, --workspace         Instalación en la raíz del proyecto actual
   -t, --target <ruta>     Ruta personalizada donde copiar los archivos del skill
   -b, --bridge            Copia archivos puente (AGENTS.md, CLAUDE.md, .cursorrules)
+  --no-graphify           No instala ni configura graphify
   --dry-run               Muestra qué se instalaría sin escribir cambios en disco
   -v, --version           Muestra la versión instalada
   -h, --help              Muestra la ayuda

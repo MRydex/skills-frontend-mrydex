@@ -161,6 +161,7 @@ Proceso del agente.
 - [ ] ¿`.gitignore` del proyecto excluye todo lo de IA y agentes? (§10.9)
 - [ ] ¿Las dudas que cambian el resultado se preguntaron juntas, antes de empezar, con opción recomendada? (§11.6)
 - [ ] ¿Estado guardado en `tasks/todo.md` y contexto compactado al cerrar cada fase? (§14.4)
+- [ ] ¿Paso 0 de graphify corrido al inicio de la sesión (instalado, versión al día, hooks, `graphify update .`)?
 - [ ] ¿Se consultó `graphify query` antes de buscar o leer archivos? ¿`graphify update .` al cerrar la tarea? (§14.5)
 - [ ] ¿Todo resultado de un ejecutor revisado por el modelo fuerte antes de entregarlo? (§14.3.5)
 - [ ] ¿Tarea de 3+ pasos con plan previo en `tasks/todo.md`? (§11.2)
