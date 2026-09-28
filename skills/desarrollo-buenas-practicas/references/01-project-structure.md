@@ -158,7 +158,7 @@ igual a `services/`, `models/`, `pipes/`, `validators/` y `guards/`:
   agrupar por subcarpeta temática.
 - **No usar barrel files (`index.ts`)** salvo en librerías publicadas: generan ciclos de imports y
   degradan el tree-shaking.
-- El test vive **junto** al archivo que prueba (`user-list.spec.ts`), nunca en una carpeta `tests/`.
+- **Nunca archivos de test** (`*.spec.ts`, carpeta `tests/`). Ver [08-sin-tests.md](./08-sin-tests.md).
 - **Anidación jerárquica de subcomponentes (NUNCA carpeta `components/`)**:
   - Los componentes asociados a rutas viven en `pages/` (ej: `detalle/`).
   - Todo subcomponente hijo vive **directamente anidado** dentro de la carpeta del componente que lo
@@ -294,7 +294,7 @@ pages/
 
 Si un servicio acumula cientos de líneas porque gestiona endpoints HTTP, mapeos de datos complejos, validaciones y estado en memoria, **dividirlo en 3 capas**:
 1. **HTTP / Resource puro (`[feature]-http.ts`)**: únicamente definición de endpoints, queries y mutations. Sin lógica de UI.
-2. **Mappers y funciones puras (`[feature]-mappers.ts`)**: funciones utilitarias puras que transforman DTOs del backend al modelo del front. Fáciles de testear con Vitest sin instanciar Angular.
+2. **Mappers y funciones puras (`[feature]-mappers.ts`)**: funciones utilitarias puras que transforman DTOs del backend al modelo del front.
 3. **Estado y Lógica de Negocio (`[feature].ts`)**: fachada inyectable con `signal()`, `computed()` y `linkedSignal()` que consumen los componentes.
 
 ### 1.5 Reutilización: un solo componente para lo repetido
@@ -331,8 +331,7 @@ features/admin/permisos/permisos-usuario-picker/
 shared/components/selector-usuario/
 ├── selector-usuario.ts
 ├── selector-usuario.html
-├── selector-usuario.scss
-└── selector-usuario.spec.ts
+└── selector-usuario.scss
 ```
 
 **Diseño del componente reutilizable:**
@@ -392,9 +391,9 @@ export class TablaDatos<T extends { id: string | number }> {
 **Alcance** (§11.5):
 
 - Duplicados dentro de lo que toca la tarea: unificar en el mismo cambio, reemplazar todas las
-  copias y borrar los componentes viejos con sus specs.
+  copias y borrar los componentes viejos.
 - Duplicados fuera del alcance: reportarlos con la lista de archivos y proponer la unificación.
   Aplicarla si el usuario acepta.
-- El componente unificado tiene sus propios tests, que cubren todas las variantes que reemplaza.
+- Probar a mano en la app cada lugar donde se reemplazó (§11.3).
 
 ---

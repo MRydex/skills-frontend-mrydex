@@ -13,7 +13,7 @@
 - 15.9 Cabeceras de seguridad en IIS
 - 15.10 Supply chain: dependencias y build
 - 15.11 Blue Team: detección, logging y respuesta
-- 15.12 Tests de seguridad
+- 15.12 Verificación manual de seguridad
 - 15.13 Mapa OWASP Top 10 (2025)
 
 ### 15.1 Regla general y modo de trabajo
@@ -239,27 +239,15 @@ Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
 - Ante una vulnerabilidad confirmada: contener (feature flag o rollback), corregir, rotar lo
   expuesto (tokens, claves), revisar los logs y documentar la lección en `tasks/lessons.md` (§11.8).
 
-### 15.12 Tests de seguridad
+### 15.12 Verificación manual de seguridad
 
-Cada componente o pipe que renderiza datos externos tiene al menos un test con un payload de XSS
-que verifica que se muestra como texto:
+Sin archivos de test (§8). Antes de entregar, probar a mano en la app:
 
-```ts
-it('muestra el HTML malicioso como texto, sin ejecutarlo', async () => {
-  const payload = '<img src=x onerror="alert(1)">';
-  fixture.componentRef.setInput('descripcion', payload);
-  await fixture.whenStable();
-
-  const el: HTMLElement = fixture.nativeElement;
-  expect(el.querySelector('img')).toBeNull();
-  expect(el.textContent).toContain(payload);
-});
-```
-
-- Tests del `authInterceptor`: el token **no** se envía a un origen externo ni a
-  `https://api.x.com.evil.com`.
-- Tests del validador de `returnUrl`: rechaza `//evil.com`, `/\evil.com`, `https://evil.com` y
-  `javascript:alert(1)`.
+- Todo componente o pipe que renderiza datos externos: cargar `<img src=x onerror="alert(1)">` como
+  dato. Debe verse como texto, sin `<img>` en el DOM (DevTools → Elements) y sin alerta.
+- `authInterceptor`: en DevTools → Network, el header `Authorization` **no** viaja a orígenes externos.
+- Validador de `returnUrl`: `//evil.com`, `/\evil.com`, `https://evil.com` y `javascript:alert(1)`
+  terminan en la ruta por defecto.
 
 ### 15.13 Mapa OWASP Top 10 (2025)
 

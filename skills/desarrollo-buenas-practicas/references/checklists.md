@@ -4,7 +4,7 @@ Usar antes de entregar código o al revisar un PR. Cada ítem enlaza a la refere
 Un ítem en "no" bloquea la entrega salvo excepción justificada en el PR.
 
 Índice: Angular (TypeScript / Componente · Estructura y tamaño · Resource / HTTP · Interceptores ·
-Formularios · HTML / Template · SCSS · Testing · Performance / Zoneless) · HTML5 / CSS3 ·
+Formularios · HTML / Template · SCSS · Sin tests · Performance / Zoneless) · HTML5 / CSS3 ·
 Proceso del agente.
 
 ---
@@ -92,13 +92,9 @@ Proceso del agente.
 - [ ] ¿`:focus-visible` para foco accesible? ¿`prefers-reduced-motion` contemplado? (§7.7)
 - [ ] ¿Sin SCSS duplicado? Lo repetido extraído a su capa ITCSS (token, `@mixin`, `.o-*`, `.u-*`); sin `@extend`; el componente solo hace `@use` de settings/tools. (§7.10)
 
-### Testing ([08](./08-testing-vitest.md))
-- [ ] ¿Test `*.spec.ts` con Vitest, junto al archivo probado?
-- [ ] ¿Estructura AAA y nombre del `it` que describe comportamiento, no implementación?
-- [ ] ¿`await fixture.whenStable()` en vez de `detectChanges()` con zoneless? ¿Sin `fakeAsync`?
-- [ ] ¿Inputs seteados con `fixture.componentRef.setInput()`?
-- [ ] ¿HTTP mockeado con `provideHttpClientTesting()` + `HttpTestingController` y `verify()` al final?
-- [ ] ¿Queries por rol / `aria-*` en vez de clases CSS?
+### Sin tests ([08](./08-sin-tests.md))
+- [ ] ¿Ningún `*.spec.ts` / `*.test.ts` nuevo? ¿`angular.json` con `skipTests: true` en los schematics? (§8.1)
+- [ ] ¿Verificado con `ng build`, lint y prueba manual en la app? (§8.3)
 
 ### Performance / Zoneless ([09](./09-performance-zoneless.md))
 - [ ] ¿Sin Zone.js, sin `provideZoneChangeDetection`, sin `Eager`?
@@ -152,7 +148,7 @@ Proceso del agente.
 - [ ] ¿Cabeceras de seguridad en `web.config`? (§15.9)
 - [ ] ¿`npm ci` + `npm audit --omit=dev` sin `high`/`critical`? ¿Dependencia nueva evaluada? ¿SRI en scripts externos? (§15.10)
 - [ ] ¿Eventos de seguridad reportados sin datos sensibles? (§15.11)
-- [ ] ¿Test con payload XSS en componentes/pipes que renderizan datos externos? (§15.12)
+- [ ] ¿Payload XSS probado a mano en componentes/pipes que renderizan datos externos? (§15.12)
 
 ---
 
@@ -165,7 +161,7 @@ Proceso del agente.
 - [ ] ¿Se consultó `graphify query` antes de buscar o leer archivos? ¿`graphify update .` al cerrar la tarea? (§14.5)
 - [ ] ¿Todo resultado de un ejecutor revisado por el modelo fuerte antes de entregarlo? (§14.3.5)
 - [ ] ¿Tarea de 3+ pasos con plan previo en `tasks/todo.md`? (§11.2)
-- [ ] ¿Tests, build y lint corridos antes de reportar "terminado"? (§11.3)
+- [ ] ¿Build, lint y prueba manual antes de reportar "terminado"? (§11.3)
 - [ ] ¿El cambio se limita a lo pedido (sin refactors "de paso")? (§11.5)
 - [ ] ¿Trabajo mecánico delegado a subagentes de menor potencia cuando era posible? (§14.3.4)
 - [ ] ¿Respuestas al usuario en modo caveman (salvo excepciones de seguridad y artefactos persistidos)? (§14.1)

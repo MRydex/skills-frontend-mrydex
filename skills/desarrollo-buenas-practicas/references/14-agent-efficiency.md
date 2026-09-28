@@ -99,7 +99,7 @@ Elegir por **nivel**, no por versión: los nombres de versión cambian cada poco
 | Nivel | Rol | Anthropic | OpenAI | Google |
 | :--- | :--- | :--- | :--- | :--- |
 | **Fuerte** | Orquestar, decidir arquitectura, destrabar, revisar siempre | Opus (o Fable) | GPT de mayor nivel con `model_reasoning_effort` alto | Gemini Pro |
-| **Ejecutor** | Implementar con criterio acotado, migrar, escribir tests | Sonnet | GPT con effort medio, o variante `codex` | Gemini Pro con menos razonamiento, o Flash |
+| **Ejecutor** | Implementar con criterio acotado, migrar | Sonnet | GPT con effort medio, o variante `codex` | Gemini Pro con menos razonamiento, o Flash |
 | **Rápido** | Buscar, leer, resumir, ediciones mecánicas, revisar contra checklist | Haiku | Variante `mini`, o effort bajo | Gemini Flash |
 
 - Usar el modelo más barato que resuelva la subtarea sin perder calidad.
@@ -149,7 +149,7 @@ Cambiar de modelo **por fase** en la misma sesión:
 1. **Fuerte:** explorar lo mínimo, planificar y escribir el brief en `tasks/brief-<tarea>.md`.
 2. **Cambiar al modelo ejecutor o rápido** con el selector o comando del agente. Ejecutar el brief
    paso a paso. Marcar el avance en `tasks/todo.md`.
-3. **Volver al fuerte:** revisar el diff, los tests y el checklist. Corregir o devolver al paso 2.
+3. **Volver al fuerte:** revisar el diff, el build y el checklist. Corregir o devolver al paso 2.
 
 El brief y `tasks/todo.md` en disco son el contexto compartido: el cambio de modelo no pierde nada.
 Si el agente tampoco permite cambiar de modelo, un solo modelo hace todo, pero en pasos chicos y
@@ -159,9 +159,9 @@ verificables, con el plan y la revisión como fases separadas.
 
 **Delegar a un modelo barato cuando la tarea es:**
 - Búsqueda y localización de código ("¿dónde se define X?", "¿quién usa Y?").
-- Lectura/resumen de archivos grandes, logs, salida de tests o builds.
+- Lectura/resumen de archivos grandes, logs o salida de builds.
 - Edición mecánica y acotada: renombres, reemplazos repetitivos, aplicar un patrón ya definido a N archivos.
-- Generar boilerplate a partir de una especificación exacta (componente, servicio, test).
+- Generar boilerplate a partir de una especificación exacta (componente, servicio). Nunca tests (§8).
 - Revisar un diff contra el checklist ([checklists.md](./checklists.md)).
 
 **No delegar (lo hace el modelo fuerte):**
@@ -209,8 +209,8 @@ orquestador → ejecutores, con cualquier agente:
    - **Después de la orientación, antes del trabajo sustantivo.** El ejecutor explora y devuelve lo
      que encontró. El modelo fuerte fija el enfoque antes de que se escriba nada.
    - **Cuando el ejecutor se traba o quiere cambiar de enfoque** (punto 2).
-   - **Antes de dar por terminado.** El ejecutor deja el resultado en disco (archivos escritos, tests
-     corridos). Después el modelo fuerte revisa el diff y la salida de los tests.
+   - **Antes de dar por terminado.** El ejecutor deja el resultado en disco (archivos escritos, build
+     corrido). Después el modelo fuerte revisa el diff y la salida del build.
 4. **El modelo fuerte revisa siempre.** Ningún resultado de un ejecutor llega al usuario sin esa
    revisión: diff completo, consistencia con esta skill y con [checklists.md](./checklists.md). Si
    algo falla, vuelve al mismo ejecutor con la corrección concreta.

@@ -16,7 +16,7 @@ cómo verificar antes de decir "terminado" y cómo aprender de las correcciones.
 ### 11.1 Explorar antes de editar
 
 - Antes de tocar un archivo: leerlo completo (no solo el fragmento del pedido) y revisar quién lo usa
-  (callers, tests, tipos relacionados). Editar a ciegas sobre un fragmento genera regresiones que el
+  (callers, tipos relacionados). Editar a ciegas sobre un fragmento genera regresiones que el
   diff no deja ver.
 - Buscar la convención ya usada en el módulo/feature (naming, estructura, forma de resolver un caso
   parecido) antes de imponer un patrón propio nuevo.
@@ -40,10 +40,10 @@ cómo verificar antes de decir "terminado" y cómo aprender de las correcciones.
 
 ### 11.3 Verificación antes de dar por "terminado"
 
-- Nunca marcar una tarea como terminada sin probar que funciona: correr los tests, el build y el lint
-  del proyecto (ver [08-testing-vitest.md](./08-testing-vitest.md)) antes de reportarla como resuelta.
-- Si el bug o la feature tiene un caso reproducible (test que fallaba, error en consola, log de
-  producción), demostrar que ahora pasa o desaparece — no alcanza con "debería andar".
+- Nunca marcar una tarea como terminada sin probar que funciona: `ng build` y lint sin errores, y
+  prueba manual del flujo en la app (ver [08-sin-tests.md](./08-sin-tests.md) §8.3). Sin tests.
+- Si el bug o la feature tiene un caso reproducible (error en consola, log de producción, pasos en la
+  UI), demostrar que ahora desaparece — no alcanza con "debería andar".
 - Ante un arreglo que se siente parche: preguntarse si resuelve la causa raíz (§11.7) o solo tapa el
   síntoma.
 - Antes de reportar el cambio, releer el diff completo (no solo el archivo pedido): código muerto,

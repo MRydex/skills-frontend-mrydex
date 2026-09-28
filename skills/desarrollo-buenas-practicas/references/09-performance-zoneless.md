@@ -29,7 +29,7 @@ todo lo demás en este archivo.
 | Un **signal** leído en el template cambia         | `count.set(count() + 1)` con `{{ count() }}` en el HTML  |
 | Un **evento de template/host** se ejecuta         | `(click)="onAddElement()"`, `host: { '(click)': '...' }` |
 | `AsyncPipe` recibe un nuevo valor del Observable  | `{{ dato$ \| async }}`                                    |
-| `ComponentRef.setInput()` (usado por Angular y por los tests, §8.5) | `fixture.componentRef.setInput('user', u)` |
+| `ComponentRef.setInput()` (componentes creados desde TS) | `ref.setInput('user', u)` |
 | `ChangeDetectorRef.markForCheck()`                | Excepcional: solo al envolver una API de terceros no reactiva |
 
 **No dispara CD por sí solo** (y en zoneless ya no vale la pena intentarlo):

@@ -268,7 +268,7 @@ Angular CLI expone un **MCP Server** propio desde v21 (ampliado en v22) que da c
 workspace a asistentes AI: arranca con `ng mcp` (o `npx @angular/cli mcp` si el CLI no está instalado
 en el proyecto) y expone herramientas como `get_best_practices`, `search_documentation`,
 `find_examples`, `list_projects`, `onpush_zoneless_migration` y ejecución de targets (`run_target`) para
-build/test/lint desde el propio asistente.
+build/lint desde el propio asistente.
 
 Aparte del MCP Server, desde v22 Angular registra en **modo dev** una herramienta de debugging in-page
 para asistentes AI del navegador: `angular:di-graph`, que expone el grafo completo de inyección de
@@ -279,7 +279,7 @@ Reglas del equipo:
 - Está OK usarlo localmente para scaffolding, consulta de buenas prácticas y migraciones.
 - Cualquier código generado por AI **debe pasar este checklist** ([checklists.md](./checklists.md))
   igual que el código humano antes de mergear.
-- No commitear código generado sin revisar imports, tipos y tests.
+- No commitear código generado sin revisar imports y tipos. Nunca generar archivos de test (§8).
 
 ### 10.9 Archivos de IA en `.gitignore`
 

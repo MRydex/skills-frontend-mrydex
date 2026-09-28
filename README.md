@@ -126,7 +126,7 @@ skills/desarrollo-buenas-practicas/
     ├── 05-http-interceptors.md       # Interceptores funcionales, spinner global, manejo de errores
     ├── 06-signal-forms.md            # Signal Forms (@angular/forms/signals), validación reactiva
     ├── 07-styles-scss.md             # @use/@forward, tokens, BEM, NG-ZORRO sin ::ng-deep, container queries, ITCSS
-    ├── 08-testing-vitest.md          # Vitest y pruebas unitarias con signals
+    ├── 08-sin-tests.md               # Sin archivos de test: skipTests y verificación manual
     ├── 09-performance-zoneless.md    # Zoneless, @defer, rutas, hidratación, budgets, virtual scroll, profiling
     ├── 10-environment-tooling.md     # IIS web.config, backend .NET, schematics
     ├── 11-workflow-orchestration.md  # Explorar, planificar, verificar, commits y lecciones

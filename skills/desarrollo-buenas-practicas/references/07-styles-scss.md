@@ -31,7 +31,7 @@ namespace explícito y **sin ruta relativa**:
   `assets/styles/`. El `_` inicial del partial es opcional: `@use 'collapse-line'` carga
   `_collapse-line.scss`.
 - Requiere registrar `assets/styles` como raíz de Sass en `angular.json`, una sola vez por proyecto
-  (opciones del target `build`; `test` las hereda vía `buildTarget`):
+  (opciones del target `build`):
 
 ```json
 "options": {

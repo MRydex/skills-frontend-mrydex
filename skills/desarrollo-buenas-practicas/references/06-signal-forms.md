@@ -6,8 +6,7 @@
 [6.5](#65-validación-cruzada-entre-campos-validatetree) Validación cruzada (`validateTree`) ·
 [6.6](#66-validación-asíncrona-validateasync--validatehttp) Validación asíncrona ·
 [6.7](#67-errores-accesibles-en-el-template) Errores accesibles · [6.8](#68-reset-y-estado-imperativo) Reset y estado imperativo ·
-[6.9](#69-controles-propios-e-integración-con-ng-zorro) Controles propios / NG-ZORRO ·
-[6.10](#610-testing-básico-de-signal-forms) Testing básico
+[6.9](#69-controles-propios-e-integración-con-ng-zorro) Controles propios / NG-ZORRO
 
 > **Regla del equipo: todos los formularios se hacen con Signal Forms
 > (`@angular/forms/signals`).** Nada de Reactive Forms (`FormGroup` / `FormControl` /
@@ -314,7 +313,7 @@ validateHttp(path.email, {
   `touched`/`dirty` de todo el árbol.
 - **A nivel campo**: `campo().reset(valor?)` — mismo efecto, acotado a ese campo (y sus hijos si es un
   sub-árbol).
-- **Marcar estado sin tocar el valor** (útil en tests o flujos guiados): `campo().markAsDirty()`,
+- **Marcar estado sin tocar el valor** (útil en flujos guiados): `campo().markAsDirty()`,
   `campo().markAsTouched({ includeChildren?: boolean })`.
 - **Forzar re-validación** (ej. tras cambiar una regla de negocio en runtime): `campo().reloadValidation()`.
 - **Leer un error puntual** de forma reactiva: `campo().getError('required')` (o el `kind` que
@@ -348,50 +347,5 @@ validateHttp(path.email, {
 - **`SignalFormControl`** (`@angular/forms/signals/compat`) permite escribir las reglas con
   validadores de Signal Forms (`required`, `minLength`, etc.) y seguir usando el control dentro de un
   `FormGroup`/`FormArray` de Reactive Forms — puente para migración incremental, no para código nuevo.
-
-### 6.10 Testing básico de Signal Forms
-
-No hay `formGroup.setValue(...)` ni `valueChanges`: se testea escribiendo el **modelo** (el signal) o
-simulando el evento de input, y leyendo el `FieldState`.
-
-```ts
-describe('Registro', () => {
-  let fixture: ComponentFixture<Registro>;
-  let component: Registro;
-
-  beforeEach(() => {
-    fixture = TestBed.createComponent(Registro);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
-
-  it('marca el campo nombre como inválido si está vacío y tocado', () => {
-    component['registroForm'].nombre().markAsTouched();
-    fixture.detectChanges();
-
-    expect(component['registroForm'].nombre().invalid()).toBe(true);
-    expect(component['registroForm'].nombre().errors()[0].kind).toBe('required');
-  });
-
-  it('actualiza el modelo al tipear en el input (vista → modelo)', async () => {
-    const input: HTMLInputElement = fixture.nativeElement.querySelector('#nombre');
-    input.value = 'Ada';
-    input.dispatchEvent(new Event('input'));
-    await fixture.whenStable();
-
-    expect(component['modelo']().nombre).toBe('Ada');
-  });
-
-  it('habilita el submit solo cuando el form es válido', () => {
-    component['modelo'].set({ nombre: 'Ada', email: 'ada@test.com', edad: 30 });
-    fixture.detectChanges();
-
-    expect(component['registroForm']().valid()).toBe(true);
-  });
-});
-```
-
-No testear Signal Forms disparando `submit()` real contra un backend: mockear `_usuariosHttp` (o el
-servicio que use `submission.action`) como con cualquier otro servicio inyectado.
 
 ---
