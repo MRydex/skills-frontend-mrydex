@@ -317,17 +317,20 @@ function installTarget(destDir, label) {
 const SKILL_NAME = 'desarrollo-buenas-practicas';
 
 const logOk = (msg) => console.log(`  ${colors.green}✔${colors.reset} ${msg}`);
+// Subagentes y bloque global se escriben al final (finish): `graphify install` reescribe
+// ~/.claude/CLAUDE.md y borraría el bloque si corriera después.
+let pendingSubagents = null;
 
 function installClaudeGlobal(homeDir) {
   installTarget(path.join(homeDir, '.claude', 'skills', SKILL_NAME), 'Claude Code (Global)');
-  installSubagents({ homeDir, isDryRun, only: 'Claude Code', log: logOk });
+  pendingSubagents ??= { homeDir, only: 'Claude Code' };
 }
 
 // Skill global + subagentes y pedido de delegación en cada agente instalado en la máquina.
 function installGlobals(homeDir) {
   installTarget(path.join(homeDir, '.gemini', 'config', 'skills', SKILL_NAME), 'Antigravity (Global)');
   installTarget(path.join(homeDir, '.claude', 'skills', SKILL_NAME), 'Claude Code (Global)');
-  installSubagents({ homeDir, isDryRun, log: logOk });
+  pendingSubagents = { homeDir };
 }
 
 // Skill + puentes en la raíz del repo. Solo se llama con un repo git (el proyecto recibe graphify).
@@ -417,6 +420,7 @@ function finish() {
     if (projectRoots.size === 0) ensureGraphifyCli();
     for (const root of projectRoots) setupGraphifyProject(root);
   }
+  if (pendingSubagents) installSubagents({ ...pendingSubagents, isDryRun, log: logOk });
 
   console.log(`
 ${colors.bold}${colors.green}✔ ¡Configuración completada!${colors.reset}

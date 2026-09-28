@@ -142,8 +142,9 @@ ejecutores del equipo en la carpeta del agente (`.claude/agents/`, `.codex/agent
 
 La revisión final no se delega: la hace siempre el modelo fuerte (§14.3.5).
 
-**El instalador los crea en todos los agentes.** La opción global genera `investigador` (barato,
-solo lectura), `ejecutor` y `revisor-checklist` (barato, solo lectura) desde una sola definición
+**El instalador los crea en todos los agentes.** La opción global genera `investigador` (modelo
+intermedio, solo lectura: en una prueba real el modelo barato se perdía en búsquedas amplias),
+`ejecutor` y `revisor-checklist` (barato, solo lectura) desde una sola definición
 (`bin/subagents.js`), en el formato de cada agente instalado en la máquina:
 
 | Agente | Carpeta global | Modelo barato / ejecutor | ¿Delega solo? |
@@ -162,6 +163,8 @@ solo lectura), `ejecutor` y `revisor-checklist` (barato, solo lectura) desde una
   reemplaza solo ese bloque; el resto del archivo no se toca.
 - Los subagentes solo se crean para agentes cuya carpeta existe en el home (agente instalado).
 - Todos siguen la regla de §14.3.4: se usan solo si bajan el total de tokens.
+- En Claude Code también agrega `Bash(graphify:*)` y `PowerShell(graphify:*)` a `permissions.allow`
+  de `~/.claude/settings.json`, para que graphify no pida aprobación en cada sesión.
 
 #### 14.3.3 Fallback: el agente no puede lanzar subagentes con otro modelo
 
@@ -191,11 +194,23 @@ verificables, con el plan y la revisión como fases separadas.
 | Delegar | Lo hace el orquestador |
 | :--- | :--- |
 | Buscar o leer en 3+ archivos, archivos grandes, logs, salida de build, docs web | 1–2 archivos ya ubicados |
-| Ediciones mecánicas con patrón claro en 3+ archivos | Edición chica o de un solo archivo |
+| Ediciones mecánicas con patrón claro en 8+ archivos | Ediciones en menos de 8 archivos |
 | Piezas independientes que corren en paralelo | Pasos que dependen uno del otro y son cortos |
 | Sesión larga: todo lo que entra al contexto se paga de nuevo en cada turno | Explicar el brief cuesta tanto como hacer el trabajo |
 | | Hace falta contexto de la conversación que el subagente no tiene |
 | | Responder preguntas, decidir, revisión final |
+
+**Medición real** (Claude Code, Opus orquestador, tarea "unificar un helper repetido en 3 servicios"):
+
+| Estrategia | Costo | Tiempo | Resultado |
+| :--- | :--- | :--- | :--- |
+| Orquestador hace todo | $0.79 | 112 s | Correcto, 3 archivos |
+| Orquestador + `ejecutor` (Sonnet) | $1.09 | 202 s | Correcto, 3 archivos |
+| Sonnet principal + Opus advisor | $7.99 | 861 s | Amplió el alcance a 28 archivos |
+
+- En tareas chicas, delegar cuesta más: el brief y la revisión suman más de lo que ahorra el modelo barato.
+- No usar un modelo más barato como agente principal con el fuerte de advisor: amplía el alcance y
+  multiplica los turnos. El modelo seleccionado orquesta.
 
 Si el agente no puede lanzar subagentes con un modelo más barato, delegar solo lo que ahorra
 contexto (búsquedas y lecturas grandes). El resto lo hace el orquestador (§14.3.3).

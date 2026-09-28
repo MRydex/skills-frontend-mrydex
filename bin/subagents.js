@@ -13,7 +13,8 @@ const ROLES = [
   {
     name: 'investigador',
     readonly: true,
-    cheap: true,
+    // Modelo intermedio: en la prueba real Haiku no encontró el mecanismo principal de una búsqueda amplia
+    cheap: false,
     description:
       'Use when searching or reading would pull a lot into the main context (3+ files, big files, logs, build output, web docs). Read-only. Returns a short file:line list in caveman style. Skip for 1-2 known files.',
     instructions: `Localizá código y devolvé solo \`archivo:línea — qué hay ahí\`, en modo caveman (frases cortas, sin relleno).
@@ -148,14 +149,18 @@ const BLOCK_END = '<!-- skills-frontend-mrydex:end -->';
 const DELEGATION_BLOCK = `${BLOCK_START}
 ## Frontend skill (always)
 
-For any frontend work (Angular, TypeScript, HTML, SCSS/CSS), load the \`desarrollo-buenas-practicas\` skill first and follow it, even if the request is vague or does not mention Angular. If it is not available as a skill, read its \`SKILL.md\`.
+In any repo with \`angular.json\` or frontend code (TypeScript, HTML, SCSS/CSS), load the \`desarrollo-buenas-practicas\` skill **before your first tool call**, for **every** request: questions, explanations, reviews, debugging and code changes. Even if the request is vague or does not mention Angular. If it is not available as a skill, read its \`SKILL.md\`.
+
+## Graphify first (always, any repo)
+
+Before the first search or file read in a git repo: run \`graphify update .\` (no LLM, no cost), then \`graphify query "<question>"\`. Grep/Glob/Read to explore without a prior query is not allowed. If graphify is missing: \`pip install --upgrade graphifyy\`. If it creates \`.gitattributes\` or \`graphify-out/\`, add them to \`.gitignore\`. **After editing any file, run \`graphify update .\` before your final answer.** If something fails, tell me the exact error.
 
 ## Delegation to subagents (explicit, standing user request)
 
 You orchestrate. I explicitly authorize and ask you to delegate to subagents, without waiting for me to ask, **only when it lowers total token usage**:
 
-- Searches or reads over 3+ files, big files, logs, build output or web docs: \`investigador\` (cheap).
-- Mechanical edits following a clear pattern across 3+ files: \`ejecutor\`. Write the brief first.
+- Finding where something is when the location is unknown, or reads over 3+ files, big files, logs, build output or web docs: \`investigador\`. Questions like "how does X work in this app" start here.
+- Mechanical edits across 8+ files once the approach is decided: \`ejecutor\`. Orient with \`graphify query\`, write a short brief (files, pattern, one example), hand it off, then review the diff. For fewer files, edit yourself: in a measured test (3 files), delegating cost 38% more.
 - Checking a large diff against the checklists: \`revisor-checklist\` (\`revisor_checklist\` in Codex, cheap).
 - Launch independent pieces in parallel.
 - Rule of thumb: delegate if what you would read is 3x or more what you need to know.
@@ -183,6 +188,30 @@ function upsertBlock(filePath, block) {
   fs.writeFileSync(filePath, `${current}${separator}${block}\n`);
 }
 
+// Claude Code pide aprobación en cada `graphify`; se permite solo ese comando.
+const GRAPHIFY_PERMISSIONS = ['Bash(graphify:*)', 'PowerShell(graphify:*)'];
+
+function allowGraphifyInClaude(homeDir, log) {
+  const settingsPath = path.join(homeDir, '.claude', 'settings.json');
+  let settings = {};
+  if (fs.existsSync(settingsPath)) {
+    try {
+      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    } catch {
+      log('~/.claude/settings.json no es JSON válido: no se agregaron permisos de graphify');
+      return;
+    }
+  }
+  settings.permissions ??= {};
+  settings.permissions.allow ??= [];
+  const missing = GRAPHIFY_PERMISSIONS.filter((rule) => !settings.permissions.allow.includes(rule));
+  if (missing.length === 0) return;
+  settings.permissions.allow.push(...missing);
+  fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}
+`);
+  log(`Claude Code: graphify permitido sin aprobación (${missing.join(', ')})`);
+}
+
 /**
  * Instala los subagentes y el pedido de delegación en cada agente presente en el home.
  * @param {{ homeDir: string, isDryRun: boolean, only?: string, log: (msg: string) => void }} options
@@ -206,6 +235,9 @@ function installSubagents({ homeDir, isDryRun, only, log }) {
     if (!fs.existsSync(path.join(homeDir, entry.requires))) continue;
     if (!isDryRun) upsertBlock(path.join(homeDir, ...entry.file), DELEGATION_BLOCK);
   }
+
+  const claudeSelected = !only || only === 'Claude Code';
+  if (claudeSelected && fs.existsSync(path.join(homeDir, '.claude')) && !isDryRun) allowGraphifyInClaude(homeDir, log);
 
   if (installed.length > 0) {
     log(`Subagentes investigador / ejecutor / revisor-checklist: ${installed.join(', ')}`);
