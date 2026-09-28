@@ -229,11 +229,9 @@ const PIP_CANDIDATES = [
 let graphifyReady = null;
 
 function runCommand(cmd, cmdArgs, cwd) {
-  const result = spawnSync(cmd, cmdArgs, {
-    cwd,
-    encoding: 'utf8',
-    shell: process.platform === 'win32',
-  });
+  // Sin shell: pip, python, py, uv y graphify son ejecutables (.exe en Windows), no hace falta
+  // y evita DEP0190 (args concatenados sin escapar).
+  const result = spawnSync(cmd, cmdArgs, { cwd, encoding: 'utf8' });
   return { ok: result.status === 0, output: `${result.stdout || ''}${result.stderr || ''}` };
 }
 
