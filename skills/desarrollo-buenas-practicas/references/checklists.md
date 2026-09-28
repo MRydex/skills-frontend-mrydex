@@ -40,6 +40,7 @@ Proceso del agente.
 - [ ] ¿Subcomponentes anidados **directamente** en la carpeta del padre (`detalle/subdetalle/subdetalle-cabecera/`)?
 - [ ] **¿CERO carpetas `components/`** fuera de `shared/components/`?
 - [ ] ¿Sin barrel files (`index.ts`)? ¿Sin imports cruzados entre features?
+- [ ] ¿Se buscó un componente existente antes de crear uno nuevo? ¿UI repetida unificada en un solo componente reutilizable (o reportada si está fuera del alcance)? (§1.5)
 
 ### Resource / HTTP ([04](./04-resource-api.md))
 - [ ] ¿GET reactivos por URL con `httpResource()`? ¿Observable existente con `rxResource()` (`params` + `stream`)?
@@ -157,6 +158,7 @@ Proceso del agente.
 
 ## Checklist de proceso del agente ([11](./11-workflow-orchestration.md), [14](./14-agent-efficiency.md))
 - [ ] ¿Se leyó el código existente y sus usos antes de editar? (§11.1)
+- [ ] ¿`.gitignore` del proyecto excluye todo lo de IA y agentes? (§10.9)
 - [ ] ¿Las dudas que cambian el resultado se preguntaron juntas, antes de empezar, con opción recomendada? (§11.6)
 - [ ] ¿Estado guardado en `tasks/todo.md` y contexto compactado al cerrar cada fase? (§14.4)
 - [ ] ¿Se consultó `graphify query` antes de buscar o leer archivos? ¿`graphify update .` al cerrar la tarea? (§14.5)

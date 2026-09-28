@@ -297,4 +297,104 @@ Si un servicio acumula cientos de líneas porque gestiona endpoints HTTP, mapeos
 2. **Mappers y funciones puras (`[feature]-mappers.ts`)**: funciones utilitarias puras que transforman DTOs del backend al modelo del front. Fáciles de testear con Vitest sin instanciar Angular.
 3. **Estado y Lógica de Negocio (`[feature].ts`)**: fachada inyectable con `signal()`, `computed()` y `linkedSignal()` que consumen los componentes.
 
+### 1.5 Reutilización: un solo componente para lo repetido
+
+**Regla**: si la misma UI o el mismo comportamiento aparece **por segunda vez** (selector de usuario,
+tabla de un tipo de dato, buscador, paginador, modal de confirmación, badge de estado), se crea
+**un solo componente** y se reutiliza en todos los lugares. Nunca copiar y adaptar.
+
+**Antes de crear un componente**, buscar si ya existe uno que resuelve lo mismo:
+
+1. `graphify query "componente que selecciona usuario"` (§14.5).
+2. `shared/components/` y las carpetas de la feature.
+3. Búsqueda por nombre o selector (`selector-usuario`, `usuario-select`, `user-picker`).
+
+Si existe, reutilizarlo. Si le falta una variante, agregarla con un `input()` en vez de crear otro.
+
+**Ubicación** (misma regla que §1.1): el componente vive en el nivel más bajo que contiene a todos
+sus consumidores.
+
+| ¿Quién lo usa? | Dónde va |
+| :--- | :--- |
+| Varios hijos del mismo padre | Carpeta del padre común |
+| Varias pantallas de la misma feature | Carpeta raíz de la feature |
+| Varias features | `shared/components/<nombre>/` |
+
+```text
+❌ MAL — 4 componentes que hacen lo mismo
+features/juicios/alta/alta-selector-usuario/
+features/juicios/editar/editar-selector-usuario/
+features/agenda/evento/evento-usuario-select/
+features/admin/permisos/permisos-usuario-picker/
+
+✅ BIEN — uno solo, reutilizado en los 4 lugares
+shared/components/selector-usuario/
+├── selector-usuario.ts
+├── selector-usuario.html
+├── selector-usuario.scss
+└── selector-usuario.spec.ts
+```
+
+**Diseño del componente reutilizable:**
+
+- **Presentacional**: recibe datos por `input()`, emite por `output()` / `model()`. No inyecta
+  servicios de una feature concreta.
+- Las variantes se resuelven con `input()` con default, **content projection** (`<ng-content>`) o
+  `TemplateRef` para partes personalizables (ej. celdas de una tabla). No con un flag booleano por
+  cada pantalla que lo usa.
+- **Genérico con tipos** cuando el dato cambia (`TablaDatos<T>`).
+- Si para cubrir todos los casos hacen falta más de 4–5 flags condicionales, son dos componentes
+  distintos o falta composición. No crear un "componente Dios".
+
+```ts
+// shared/components/selector-usuario/selector-usuario.ts
+@Component({
+  selector: 'app-selector-usuario',
+  templateUrl: './selector-usuario.html',
+  styleUrl: './selector-usuario.scss',
+})
+export class SelectorUsuario {
+  readonly usuarios = input.required<readonly Usuario[]>();
+  readonly placeholder = input('Seleccionar usuario');
+  readonly deshabilitado = input(false);
+  readonly seleccionado = model<Usuario['id'] | null>(null);
+}
+```
+
+```ts
+// shared/components/tabla-datos/tabla-datos.ts — tabla genérica con celdas personalizables
+export interface Columna<T> {
+  readonly clave: keyof T & string;
+  readonly titulo: string;
+}
+
+@Component({
+  selector: 'app-tabla-datos',
+  templateUrl: './tabla-datos.html',
+  imports: [NgTemplateOutlet],
+})
+export class TablaDatos<T extends { id: string | number }> {
+  readonly filas = input.required<readonly T[]>();
+  readonly columnas = input.required<readonly Columna<T>[]>();
+  readonly celda = contentChild<TemplateRef<{ $implicit: T; columna: Columna<T> }>>('celda');
+}
+```
+
+**Lógica repetida que no es UI:**
+
+| Qué se repite | Forma |
+| :--- | :--- |
+| Comportamiento sobre un elemento (foco, tooltip, overflow) | Directiva |
+| Transformación de un valor para mostrar | Pipe puro |
+| Lógica o estado | Servicio o función pura (§1.1) |
+| Estilos | Capa ITCSS ([07-styles-scss.md](./07-styles-scss.md) §7.10) |
+
+**Alcance** (§11.5):
+
+- Duplicados dentro de lo que toca la tarea: unificar en el mismo cambio, reemplazar todas las
+  copias y borrar los componentes viejos con sus specs.
+- Duplicados fuera del alcance: reportarlos con la lista de archivos y proponer la unificación.
+  Aplicarla si el usuario acepta.
+- El componente unificado tiene sus propios tests, que cubren todas las variantes que reemplaza.
+
 ---

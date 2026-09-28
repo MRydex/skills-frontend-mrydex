@@ -17,6 +17,8 @@ This project strictly follows the **Angular 22+ & Modern Frontend Best Practices
 8. **No monolithic files**: Max 200 lines per component `.ts` or template `.html`, 250 per service, 150 per `.scss`. Split by responsibility.
 9. **No `components/` folder for subcomponents**: Nest each child inside its parent's folder (`detail/sub-detail/sub-detail-header/`). Only exception: `shared/components/` for components reused across features.
 10. **Security always (Red Team + Blue Team)**: Every change passes the Red Team review in `references/15-security.md` §15.2. Never disable protections (sanitizer, CSP, XSRF, backend validation), never `bypassSecurityTrust*` with external data, never tokens in `localStorage`, never secrets in the front. Report every vulnerability found, even out of scope.
+11. **Reuse**: Before creating a component, search for an existing one. Repeated UI (user picker, data table, search box) becomes one reusable component, never adapted copies (§1.5).
+12. **AI files in `.gitignore`**: The project `.gitignore` excludes every AI/agent file (`.claude/`, `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `graphify-out/`, `tasks/todo.md`...). Ask before `git rm --cached` (§10.9).
 
 ## Agent Efficiency (always on)
 Details in `references/14-agent-efficiency.md`.

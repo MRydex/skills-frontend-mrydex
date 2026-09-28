@@ -4,7 +4,8 @@
 [10.2](#102-webconfig-para-hosting-en-iis) `web.config` IIS · [10.3](#103-backend-net--contrato-con-el-front) Contrato .NET ·
 [10.4](#104-configuración-en-runtime-vs-environmentts) Config en runtime · [10.5](#105-vs-code--settings-del-equipo) VS Code ·
 [10.6](#106-visual-studio-2026-backend-c) Visual Studio · [10.7](#107-graphify-mapa-del-repo-para-asistentes-ai) Graphify ·
-[10.8](#108-ai--mcp-server-de-angular-cli) MCP Server de Angular CLI.
+[10.8](#108-ai--mcp-server-de-angular-cli) MCP Server de Angular CLI ·
+[10.9](#109-archivos-de-ia-en-gitignore) Archivos de IA en `.gitignore`.
 
 ### 10.1 Crear o actualizar un proyecto con los schematics del equipo
 
@@ -279,5 +280,42 @@ Reglas del equipo:
 - Cualquier código generado por AI **debe pasar este checklist** ([checklists.md](./checklists.md))
   igual que el código humano antes de mergear.
 - No commitear código generado sin revisar imports, tipos y tests.
+
+### 10.9 Archivos de IA en `.gitignore`
+
+**Regla**: todo lo relacionado con IA y agentes queda fuera del repositorio. Al empezar a trabajar
+en un proyecto, el agente verifica el `.gitignore` y agrega las entradas que falten:
+
+```gitignore
+# IA / agentes (skills-frontend-mrydex)
+.claude/
+.agents/
+.cursor/
+.gemini/
+.codex/
+.windsurf/
+.aider*
+skills/desarrollo-buenas-practicas/
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+GEMINI.md
+.cursorrules
+.windsurfrules
+.github/copilot-instructions.md
+.mcp.json
+graphify-out/
+tasks/todo.md
+tasks/lessons.md
+tasks/brief-*.md
+```
+
+- Si aparece otra herramienta de IA con su propia carpeta o archivo de configuración, sumarlo al
+  bloque.
+- El instalador (`npx skills-frontend-mrydex`) agrega este bloque solo cuando instala en el proyecto.
+  Solo suma las entradas que faltan; correrlo de nuevo no duplica nada.
+- `.gitignore` no saca del repo lo que ya estaba commiteado. Para eso hace falta
+  `git rm --cached <archivo>`, que lo borra del repo para todo el equipo en el próximo push. **El
+  agente pregunta antes de correrlo.**
 
 ---

@@ -13,6 +13,8 @@ This project enforces the official **Angular 22+ (2026)** standards documented i
 - **Architecture**: Vertical slices / feature-based folder structure. No filename/class suffixes (`user-list.ts` exports `UserList`).
 - **Size**: Max 200 lines per component `.ts` or template `.html`, 250 per service, 150 per `.scss`. Split by responsibility.
 - **Subcomponents**: Never a `components/` folder inside a feature. Nest each child inside its parent's folder. Only `shared/components/` is allowed, for components reused across features.
+- **Reuse**: Before creating a component, search for an existing one. Repeated UI (user picker, data table, search box) becomes one reusable component, never adapted copies (`references/01-project-structure.md` §1.5).
+- **AI files in `.gitignore`**: Make sure the project `.gitignore` excludes every AI/agent file (`.claude/`, `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `graphify-out/`, `tasks/todo.md`...). Ask before `git rm --cached` (§10.9).
 - **Security (always)**: Every change passes the Red Team review in `references/15-security.md` §15.2. Never disable protections (sanitizer, CSP, XSRF, backend validation), never use `bypassSecurityTrust*` with external data, never store tokens in `localStorage`, never put secrets in the front. Report every vulnerability found, even out of scope.
 - **Reference Manuals**: For details on each area, inspect `references/*.md` inside the skill directory.
 

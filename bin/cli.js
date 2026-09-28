@@ -137,6 +137,7 @@ function copyBridgeFiles(projectRoot) {
     { src: '.cursorrules', dest: '.cursorrules', desc: 'Cursor / Windsurf' }
   ];
 
+  projectRoots.add(projectRoot);
   console.log(`\n${colors.bold}${colors.cyan}Generando archivos puente en el proyecto:${colors.reset}`);
   for (const b of bridges) {
     const srcFile = path.join(templatesDir, b.src);
@@ -152,7 +153,62 @@ function copyBridgeFiles(projectRoot) {
   }
 }
 
+// Archivos y carpetas de IA/agentes que nunca se commitean en los proyectos (§10.9 de la skill)
+const AI_GITIGNORE_ENTRIES = [
+  '.claude/',
+  '.agents/',
+  '.cursor/',
+  '.gemini/',
+  '.codex/',
+  '.windsurf/',
+  '.aider*',
+  'skills/desarrollo-buenas-practicas/',
+  'CLAUDE.md',
+  'CLAUDE.local.md',
+  'AGENTS.md',
+  'GEMINI.md',
+  '.cursorrules',
+  '.windsurfrules',
+  '.github/copilot-instructions.md',
+  '.mcp.json',
+  'graphify-out/',
+  'tasks/todo.md',
+  'tasks/lessons.md',
+  'tasks/brief-*.md',
+];
+const AI_GITIGNORE_HEADER = '# IA / agentes (skills-frontend-mrydex)';
+const projectRoots = new Set();
+
+function trackProjectRoot(destDir) {
+  const cwd = process.cwd();
+  if (path.resolve(destDir).startsWith(cwd + path.sep)) projectRoots.add(cwd);
+}
+
+function ensureAiGitignore(projectRoot) {
+  const gitignorePath = path.join(projectRoot, '.gitignore');
+  const hasGitignore = fs.existsSync(gitignorePath);
+  if (!hasGitignore && !fs.existsSync(path.join(projectRoot, '.git'))) return;
+
+  const current = hasGitignore ? fs.readFileSync(gitignorePath, 'utf8') : '';
+  const existing = new Set(current.split(/\r?\n/).map((line) => line.trim()));
+  const missing = AI_GITIGNORE_ENTRIES.filter((entry) => !existing.has(entry));
+  if (missing.length === 0) return;
+
+  if (isDryRun) {
+    console.log(`${colors.dim}[dry-run] Agregar a .gitignore: ${missing.join(', ')}${colors.reset}`);
+    return;
+  }
+
+  const lines = existing.has(AI_GITIGNORE_HEADER) ? missing : [AI_GITIGNORE_HEADER, ...missing];
+  let prefix = '';
+  if (current !== '') prefix = current.endsWith('\n') ? '\n' : '\n\n';
+  fs.appendFileSync(gitignorePath, `${prefix}${lines.join('\n')}\n`);
+  console.log(`\n  ${colors.green}✔${colors.reset} .gitignore: ${missing.length} entradas de IA agregadas`);
+  console.log(`  ${colors.dim}Si alguno ya estaba commiteado, sacarlo del índice con: git rm --cached <archivo>${colors.reset}`);
+}
+
 function installTarget(destDir, label) {
+  trackProjectRoot(destDir);
   const isUpdate = fs.existsSync(destDir);
   const actionText = isUpdate ? 'Actualizando' : 'Instalando';
   console.log(`\n${colors.cyan}${actionText} para ${colors.bold}${label}${colors.reset}...`);
@@ -277,6 +333,8 @@ async function run() {
 }
 
 function finish() {
+  for (const root of projectRoots) ensureAiGitignore(root);
+
   console.log(`
 ${colors.bold}${colors.green}✔ ¡Configuración completada!${colors.reset}
 
