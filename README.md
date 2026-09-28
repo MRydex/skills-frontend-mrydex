@@ -83,7 +83,11 @@ agente siga las instrucciones:
    que se consulte el grafo.
 3. Instala los hooks git `post-commit` y `post-checkout`, que actualizan el grafo en cada commit.
 4. Agrega todos los archivos de IA y agentes al `.gitignore`.
-5. Arma el grafo con `graphify update .` (solo código, sin LLM, sin costo de tokens).
+5. Subagentes `investigador`, `ejecutor` y `revisor-checklist` en el formato de cada agente instalado
+   (Claude Code, Codex, Cursor, Gemini CLI, Antigravity, Copilot). En Claude Code y Codex, que no
+   delegan solos, agrega un bloque a `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md` que pide delegar
+   **solo cuando baja el total de tokens**.
+6. Arma el grafo con `graphify update .` (solo código, sin LLM, sin costo de tokens).
 
 Fuera de un repo git se instala **solo global** (skill + CLI de graphify), sin tocar la carpeta actual.
 Dentro de un repo (o una subcarpeta) instala además en la raíz del repo. En el menú interactivo, la

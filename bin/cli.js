@@ -11,6 +11,7 @@ const path = require('path');
 const os = require('os');
 const readline = require('readline');
 const { spawnSync } = require('child_process');
+const { installSubagents } = require('./subagents');
 
 // ANSI color helpers
 const colors = {
@@ -315,9 +316,18 @@ function installTarget(destDir, label) {
 
 const SKILL_NAME = 'desarrollo-buenas-practicas';
 
+const logOk = (msg) => console.log(`  ${colors.green}✔${colors.reset} ${msg}`);
+
+function installClaudeGlobal(homeDir) {
+  installTarget(path.join(homeDir, '.claude', 'skills', SKILL_NAME), 'Claude Code (Global)');
+  installSubagents({ homeDir, isDryRun, only: 'Claude Code', log: logOk });
+}
+
+// Skill global + subagentes y pedido de delegación en cada agente instalado en la máquina.
 function installGlobals(homeDir) {
   installTarget(path.join(homeDir, '.gemini', 'config', 'skills', SKILL_NAME), 'Antigravity (Global)');
   installTarget(path.join(homeDir, '.claude', 'skills', SKILL_NAME), 'Claude Code (Global)');
+  installSubagents({ homeDir, isDryRun, log: logOk });
 }
 
 // Skill + puentes en la raíz del repo. Solo se llama con un repo git (el proyecto recibe graphify).
@@ -355,7 +365,7 @@ ${colors.bold}${colors.magenta}=== Instalador de Skills Frontend (Angular 22+) =
     const wantsWorkspace = isWorkspace || !isGlobal && ['all', 'cursor', 'windsurf', 'universal', 'codex', 'copilot'].includes(agent);
 
     if (agent === 'claude') {
-      installTarget(path.join(homeDir, '.claude', 'skills', SKILL_NAME), 'Claude Code (Global)');
+      installClaudeGlobal(homeDir);
     } else if (agent === 'antigravity') {
       installTarget(path.join(homeDir, '.gemini', 'config', 'skills', SKILL_NAME), 'Antigravity (Global)');
     } else {
@@ -392,7 +402,7 @@ ${colors.bold}${colors.magenta}=== Instalador de Skills Frontend (Angular 22+) =
   } else if (answer === '2') {
     installTarget(path.join(homeDir, '.gemini', 'config', 'skills', SKILL_NAME), 'Antigravity (Global)');
   } else if (answer === '3') {
-    installTarget(path.join(homeDir, '.claude', 'skills', SKILL_NAME), 'Claude Code (Global)');
+    installClaudeGlobal(homeDir);
   } else {
     console.log(`${colors.yellow}Instalación cancelada.${colors.reset}`);
     process.exit(0);

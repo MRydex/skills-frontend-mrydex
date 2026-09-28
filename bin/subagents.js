@@ -1,0 +1,209 @@
+/**
+ * Subagentes del equipo para cada agente de IA, generados desde una sola definición.
+ * Formatos verificados en la documentación oficial de cada agente (ver §14.3.2 de la skill).
+ *
+ * El orquestador delega en ellos solo cuando baja el total de tokens (§14.3.4):
+ * búsquedas/lecturas grandes y ediciones mecánicas en 3+ archivos. Lo chico lo hace él.
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+const ROLES = [
+  {
+    name: 'investigador',
+    readonly: true,
+    cheap: true,
+    description:
+      'Use when searching or reading would pull a lot into the main context (3+ files, big files, logs, build output, web docs). Read-only. Returns a short file:line list in caveman style. Skip for 1-2 known files.',
+    instructions: `Localizá código y devolvé solo \`archivo:línea — qué hay ahí\`, en modo caveman (frases cortas, sin relleno).
+
+1. Primero \`graphify query "<pregunta>"\` si existe \`graphify-out/graph.json\`. Recién después grep/lectura.
+2. Nunca edites archivos. Nunca propongas cambios.
+3. Máximo 15 líneas de respuesta. Si no encontrás algo, decilo en una línea.
+4. Si la pregunta es ambigua, devolvé \`NECESITA_ADVISOR: <duda>\`.`,
+  },
+  {
+    name: 'ejecutor',
+    readonly: false,
+    cheap: false,
+    description:
+      'Use to implement a concrete brief from the main model when it saves tokens (mechanical edits with a clear pattern across 3+ files, boilerplate). Returns a short caveman report of files changed. Skip for small or single-file edits.',
+    instructions: `Implementá exactamente el brief que te pasa el modelo principal. Nada más.
+
+1. Seguí la skill \`desarrollo-buenas-practicas\` (Angular 22+, signals, sin tests, sin sobreingeniería, sin componentizar lo simple).
+2. Antes de buscar código: \`graphify query "<pregunta>"\` si existe \`graphify-out/graph.json\`.
+3. No amplíes el alcance. No crees archivos de test. No agregues abstracciones que el brief no pide.
+4. Si el brief es ambiguo o te trabás, no adivines: devolvé \`NECESITA_ADVISOR: <duda>\`.
+5. Al terminar, corré \`graphify update .\` y el build/lint si el brief lo pide.
+6. Respuesta final en modo caveman, máximo 8 líneas: archivos tocados y cualquier problema.`,
+  },
+  {
+    name: 'revisor-checklist',
+    readonly: true,
+    cheap: true,
+    description:
+      'Use after large code changes (3+ files) to check the diff against the desarrollo-buenas-practicas checklists (Angular, SCSS, security, no tests, no over-engineering). Read-only. Returns one line per finding.',
+    instructions: `Revisá el diff (\`git diff\`) contra \`references/checklists.md\` de la skill \`desarrollo-buenas-practicas\`.
+
+1. Una línea por hallazgo: \`archivo:línea: problema. arreglo.\` Sin elogios, sin resumen.
+2. Solo reglas del checklist. Nada de gustos personales ni formato.
+3. Nunca edites archivos.
+4. Si no hay hallazgos: \`Sin hallazgos.\``,
+  },
+];
+
+const markdown = (frontmatter, body) => `---\n${frontmatter.join('\n')}\n---\n\n${body}\n`;
+
+// Un escritor por agente: carpeta global, nombre de archivo y contenido en su formato.
+// `requires` = carpeta que indica que el agente está instalado en la máquina.
+const TARGETS = [
+  {
+    label: 'Claude Code',
+    requires: '.claude',
+    dir: ['.claude', 'agents'],
+    file: (r) => `${r.name}.md`,
+    render: (r) =>
+      markdown(
+        [
+          `name: ${r.name}`,
+          `description: ${r.description}`,
+          `model: ${r.cheap ? 'haiku' : 'sonnet'}`,
+          ...(r.readonly ? ['tools: Read, Grep, Glob, Bash'] : []),
+        ],
+        r.instructions,
+      ),
+  },
+  {
+    label: 'Codex',
+    requires: '.codex',
+    dir: ['.codex', 'agents'],
+    file: (r) => `${r.name.replace(/-/g, '_')}.toml`,
+    // Sin `model`: hereda el del usuario y abarata con menos razonamiento (los ids cambian seguido)
+    render: (r) =>
+      [
+        `name = "${r.name.replace(/-/g, '_')}"`,
+        `description = "${r.description.replace(/"/g, '\\"')}"`,
+        `model_reasoning_effort = "${r.cheap ? 'low' : 'medium'}"`,
+        `sandbox_mode = "${r.readonly ? 'read-only' : 'workspace-write'}"`,
+        `developer_instructions = """\n${r.instructions}\n"""`,
+        '',
+      ].join('\n'),
+  },
+  {
+    label: 'Cursor',
+    requires: '.cursor',
+    dir: ['.cursor', 'agents'],
+    file: (r) => `${r.name}.md`,
+    render: (r) =>
+      markdown(
+        [`name: ${r.name}`, `description: ${r.description}`, 'model: inherit', `readonly: ${r.readonly}`],
+        r.instructions,
+      ),
+  },
+  {
+    label: 'Gemini CLI',
+    requires: '.gemini',
+    dir: ['.gemini', 'agents'],
+    file: (r) => `${r.name}.md`,
+    render: (r) =>
+      markdown(
+        [`name: ${r.name}`, `description: ${r.description}`, `model: ${r.cheap ? 'gemini-3-flash-preview' : 'inherit'}`],
+        r.instructions,
+      ),
+  },
+  {
+    label: 'Antigravity',
+    requires: path.join('.gemini', 'config'),
+    dir: ['.gemini', 'config', 'agents'],
+    file: (r) => `${r.name}.md`,
+    render: (r) =>
+      markdown(
+        [`name: ${r.name}`, `description: ${r.description}`, `model: ${r.cheap ? 'flash' : 'inherit'}`, 'subagent: true'],
+        r.instructions,
+      ),
+  },
+  {
+    label: 'Copilot (VS Code)',
+    requires: '.copilot',
+    dir: ['.copilot', 'agents'],
+    file: (r) => `${r.name}.agent.md`,
+    render: (r) =>
+      markdown(
+        [
+          `name: ${r.name}`,
+          `description: ${r.description}`,
+          ...(r.readonly ? ["tools: ['search/codebase', 'search/usages', 'web/fetch']"] : []),
+        ],
+        r.instructions,
+      ),
+  },
+];
+
+const BLOCK_START = '<!-- skills-frontend-mrydex:start -->';
+const BLOCK_END = '<!-- skills-frontend-mrydex:end -->';
+
+// Claude Code y Codex no delegan solos: hay que pedirlo en sus instrucciones de usuario.
+const DELEGATION_BLOCK = `${BLOCK_START}
+## Delegation to subagents (explicit, standing user request)
+
+You orchestrate. I explicitly authorize and ask you to delegate to subagents, without waiting for me to ask, **only when it lowers total token usage**:
+
+- Searches or reads over 3+ files, big files, logs, build output or web docs: \`investigador\` (cheap).
+- Mechanical edits following a clear pattern across 3+ files: \`ejecutor\`. Write the brief first.
+- Checking a large diff against the checklists: \`revisor-checklist\` (\`revisor_checklist\` in Codex, cheap).
+- Launch independent pieces in parallel.
+- Rule of thumb: delegate if what you would read is 3x or more what you need to know.
+
+Do it yourself when: 1-2 known files, small edits, the brief would cost as much as the work, the task needs conversation context, plain answers, decisions and the final review.
+${BLOCK_END}`;
+
+const DELEGATION_FILES = [
+  { label: 'Claude Code', requires: '.claude', file: ['.claude', 'CLAUDE.md'] },
+  { label: 'Codex', requires: '.codex', file: ['.codex', 'AGENTS.md'] },
+];
+
+// Inserta o reemplaza el bloque marcado. El resto del archivo no se toca.
+function upsertBlock(filePath, block) {
+  const current = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+  const start = current.indexOf(BLOCK_START);
+  const end = current.indexOf(BLOCK_END);
+  if (start !== -1 && end > start) {
+    fs.writeFileSync(filePath, current.slice(0, start) + block + current.slice(end + BLOCK_END.length));
+    return;
+  }
+  let separator = '';
+  if (current) separator = current.endsWith('\n') ? '\n' : '\n\n';
+  fs.writeFileSync(filePath, `${current}${separator}${block}\n`);
+}
+
+/**
+ * Instala los subagentes y el pedido de delegación en cada agente presente en el home.
+ * @param {{ homeDir: string, isDryRun: boolean, only?: string, log: (msg: string) => void }} options
+ */
+function installSubagents({ homeDir, isDryRun, only, log }) {
+  const installed = [];
+  for (const target of TARGETS) {
+    if (only && target.label !== only) continue;
+    if (!fs.existsSync(path.join(homeDir, target.requires))) continue;
+
+    const dir = path.join(homeDir, ...target.dir);
+    if (!isDryRun) {
+      fs.mkdirSync(dir, { recursive: true });
+      for (const role of ROLES) fs.writeFileSync(path.join(dir, target.file(role)), target.render(role));
+    }
+    installed.push(target.label);
+  }
+
+  for (const entry of DELEGATION_FILES) {
+    if (only && entry.label !== only) continue;
+    if (!fs.existsSync(path.join(homeDir, entry.requires))) continue;
+    if (!isDryRun) upsertBlock(path.join(homeDir, ...entry.file), DELEGATION_BLOCK);
+  }
+
+  if (installed.length > 0) {
+    log(`Subagentes investigador / ejecutor / revisor-checklist: ${installed.join(', ')}`);
+  }
+}
+
+module.exports = { installSubagents };

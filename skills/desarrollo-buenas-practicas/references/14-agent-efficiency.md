@@ -142,6 +142,24 @@ ejecutores del equipo en la carpeta del agente (`.claude/agents/`, `.codex/agent
 
 La revisión final no se delega: la hace siempre el modelo fuerte (§14.3.5).
 
+**El instalador los crea en todos los agentes.** La opción global genera `investigador` (barato,
+solo lectura), `ejecutor` y `revisor-checklist` (barato, solo lectura) desde una sola definición
+(`bin/subagents.js`), en el formato de cada agente instalado en la máquina:
+
+| Agente | Carpeta global | Modelo barato / ejecutor | ¿Delega solo? |
+| :--- | :--- | :--- | :--- |
+| Claude Code | `~/.claude/agents/*.md` | `haiku` / `sonnet` | No: regla de fábrica. El instalador agrega el pedido a `~/.claude/CLAUDE.md` |
+| Codex | `~/.codex/agents/*.toml` | Hereda el modelo; `model_reasoning_effort` `low` / `medium` | No: el instalador agrega el pedido a `~/.codex/AGENTS.md` |
+| Cursor | `~/.cursor/agents/*.md` | `inherit` (`readonly: true` en los de lectura) | Sí, según `description` |
+| Gemini CLI | `~/.gemini/agents/*.md` | `gemini-3-flash-preview` / `inherit` | Sí, según `description` |
+| Antigravity | `~/.gemini/config/agents/*.md` | `flash` / `inherit` | El planner decide según `description` |
+| Copilot (VS Code) | `~/.copilot/agents/*.agent.md` | El del chat | No: se eligen a mano en el selector de agentes |
+
+- El pedido de delegación es un bloque marcado (`skills-frontend-mrydex:start|end`). Reinstalar
+  reemplaza solo ese bloque; el resto del archivo no se toca.
+- Los subagentes solo se crean para agentes cuya carpeta existe en el home (agente instalado).
+- Todos siguen la regla de §14.3.4: se usan solo si bajan el total de tokens.
+
 #### 14.3.3 Fallback: el agente no puede lanzar subagentes con otro modelo
 
 Cambiar de modelo **por fase** en la misma sesión:
@@ -157,7 +175,29 @@ verificables, con el plan y la revisión como fases separadas.
 
 #### 14.3.4 Qué delegar y cómo
 
-**Delegar a un modelo barato cuando la tarea es:**
+**Regla de decisión: delegar solo si baja el total de tokens.** Si no, el orquestador hace todo.
+
+- **Costo de delegar:** arranque del subagente (su prompt de sistema + el brief, unos miles de
+  tokens), más lo que relee por no tener el contexto, más su respuesta.
+- **Ahorro:** lo que el subagente lee o busca **no entra** al contexto del orquestador. Ese contexto
+  se vuelve a pagar en cada turno siguiente de la sesión. Además, el subagente corre en un modelo
+  más barato.
+- **Regla práctica:** si lo que habría que leer es **3 veces o más** lo que hace falta saber,
+  delegar. Si no, hacerlo directo.
+
+| Delegar | Lo hace el orquestador |
+| :--- | :--- |
+| Buscar o leer en 3+ archivos, archivos grandes, logs, salida de build, docs web | 1–2 archivos ya ubicados |
+| Ediciones mecánicas con patrón claro en 3+ archivos | Edición chica o de un solo archivo |
+| Piezas independientes que corren en paralelo | Pasos que dependen uno del otro y son cortos |
+| Sesión larga: todo lo que entra al contexto se paga de nuevo en cada turno | Explicar el brief cuesta tanto como hacer el trabajo |
+| | Hace falta contexto de la conversación que el subagente no tiene |
+| | Responder preguntas, decidir, revisión final |
+
+Si el agente no puede lanzar subagentes con un modelo más barato, delegar solo lo que ahorra
+contexto (búsquedas y lecturas grandes). El resto lo hace el orquestador (§14.3.3).
+
+**Delegar a un modelo barato cuando la tarea es** (y cumple la regla de decisión):
 - Búsqueda y localización de código ("¿dónde se define X?", "¿quién usa Y?").
 - Lectura/resumen de archivos grandes, logs o salida de builds.
 - Edición mecánica y acotada: renombres, reemplazos repetitivos, aplicar un patrón ya definido a N archivos.
@@ -167,7 +207,7 @@ verificables, con el plan y la revisión como fases separadas.
 **No delegar (lo hace el modelo fuerte):**
 - Decisiones de arquitectura, diseño de APIs, trade-offs.
 - Diagnóstico de bugs con causa desconocida.
-- Tareas de 1-2 pasos triviales: delegar cuesta más que hacerlo directo.
+- Cualquier tarea donde delegar no baja el total de tokens (tabla de arriba).
 - Revisión final antes de entregar.
 
 **Cómo delegar bien:**
