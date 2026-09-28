@@ -99,11 +99,12 @@ export class Users {
 #### 2.2.1 Componentización estricta y extracción de lógica (Regla Anti-Monolitos)
 
 > Un componente `.ts` debe centrarse exclusivamente en enlazar el estado con la vista. Si sobrepasa
-> el límite de 200 líneas (ver [01-project-structure.md](./01-project-structure.md) §1.4), **debe
-> dividirse inmediatamente**:
+> el límite de 200 líneas, se repite o tiene lógica propia (ver "Cuándo dividir" en
+> [01-project-structure.md](./01-project-structure.md) §1.4), se divide. Si no, **queda como está**:
+> no componentizar lo simple.
 
 1. **Extraer Subcomponentes Dumb (Presentacionales) Anidados Directamente**:
-   - Si el template tiene bloques secundarios (filtros, tabla, modales, pestañas), cada bloque se extrae a un subcomponente hijo anidado **directamente** dentro de la carpeta del componente que lo contiene (ej: `detalle/subdetalle/subdetalle-cabecera/`). **NUNCA dentro de una carpeta `components/`** (esa carpeta solo existe en `shared/components/`, ver [01-project-structure.md](./01-project-structure.md) §1.2).
+   - Si el template **supera el límite** y tiene bloques secundarios (filtros, tabla, modales, pestañas), los bloques grandes se extraen a un subcomponente hijo anidado **directamente** dentro de la carpeta del componente que lo contiene (ej: `detalle/subdetalle/subdetalle-cabecera/`). **NUNCA dentro de una carpeta `components/`** (esa carpeta solo existe en `shared/components/`, ver [01-project-structure.md](./01-project-structure.md) §1.2).
    - El subcomponente hijo recibe datos con `input()` / `input.required()`, no inyecta servicios de negocio, y notifica eventos con `output()`.
 2. **Extraer Formularios de Modales**:
    - Si la pantalla abre un modal para crear/editar registros, **no meter el formulario dentro del componente principal**.

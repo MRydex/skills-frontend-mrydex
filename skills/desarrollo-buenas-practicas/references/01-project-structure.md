@@ -198,8 +198,25 @@ igual a `services/`, `models/`, `pipes/`, `validators/` y `guards/`:
 ### 1.4 Componentización, Modularidad y Regla Anti-Monolitos (Dividir con sentido)
 
 > **Regla de oro de modularidad:** ningún componente de TS, template HTML o servicio supera los
-> límites de la tabla siguiente. Si algo se puede dividir y componentizar en partes más específicas,
-> **se debe dividir**.
+> límites de la tabla siguiente. **Dividir solo cuando hace falta** (ver "Cuándo dividir"). Un archivo
+> dentro del límite y fácil de leer **no se divide**: componentizar de más complica lo simple.
+
+#### Cuándo dividir y cuándo NO
+
+Crear un subcomponente **solo** si se cumple al menos una:
+
+1. El archivo **supera el límite** de la tabla de abajo.
+2. El bloque se **usa en 2 o más lugares** (§1.5).
+3. El bloque tiene **estado o lógica propia** que ensucia al padre: modal con su Signal Form, panel
+   cargado con `@defer`, wizard.
+
+**No dividir** si no se cumple ninguna:
+
+- Bloques chicos de solo markup (título, cabecera, filtro de 2 campos, fila de botones): quedan en el
+  template del padre.
+- Un subcomponente que solo reenvía `input()` al hijo siguiente (*prop drilling*) sobra.
+- Nunca un componente de pocas líneas de template usado una sola vez.
+- Ante la duda, dejarlo junto. Separar después, cuando crezca, es fácil.
 
 #### Límites máximos por archivo
 - **Componente (`.ts`)**: 200 líneas.
@@ -213,7 +230,7 @@ refactorizarse de inmediato dividiendo el archivo, no relajando el número.
 #### 1.4.1 Cómo descomponer un Componente y Template Monolítico (Smart vs Dumb)
 
 - **El contenedor / página (`pages/`) debe ser delgado**: solo orquesta estado de alto nivel, rutas y llamadas a servicios.
-- **Extraer bloques visuales a subcomponentes anidados directamente** (nunca a una carpeta `components/`, ver más abajo):
+- **Cuando corresponda dividir** (ver arriba), extraer bloques visuales a subcomponentes anidados directamente (nunca a una carpeta `components/`, ver más abajo). Candidatos típicos en pantallas grandes:
   - Filtros y barras de búsqueda $\rightarrow$ subcomponente presentacional.
   - Tablas o listados $\rightarrow$ subcomponente con `input()` para los datos y `output()` para acciones (click, ordenar, paginar).
   - Modales de creación/edición $\rightarrow$ subcomponente independiente con su propio Signal Form.

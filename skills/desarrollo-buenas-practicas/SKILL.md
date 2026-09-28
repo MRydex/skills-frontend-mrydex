@@ -11,6 +11,10 @@ Convenciones **obligatorias** del equipo para Angular 22+ y frontend moderno, m�
 
 > **Regla maestra**: si una API legacy tiene un equivalente moderno (signals, control flow nativo, `inject()`, `input()`, `httpResource`, Signal Forms, `host: {}`, interceptores funcionales), **siempre usar el moderno**. Cualquier uso de la API legacy debe estar justificado por interoperabilidad con código existente y documentado en el PR.
 
+> **Regla de simplicidad**: la solución más simple que resuelve lo pedido. Sin abstracciones, capas,
+> genéricos, tokens ni librerías "por si acaso": se abstrae recién cuando el código aparece por segunda
+> vez. Ver [11-workflow-orchestration.md](./references/11-workflow-orchestration.md) §11.7.1.
+
 ---
 
 ### Paso 0 — Arranque de graphify (obligatorio, antes de cualquier otra acción)
@@ -63,7 +67,7 @@ La misma regla vale al actualizar el grafo al final de la tarea (§14.5 paso 5).
 3. **Nunca Reactive Forms ni `ngModel`.** Solo **Signal Forms** (`@angular/forms/signals`). Ver [06-signal-forms.md](./references/06-signal-forms.md).
 4. **`changeDetection` según la versión de `@angular/core` en `package.json`.** v22 o mayor: **no declararlo** (OnPush es el default). Menor a v22: **siempre** `changeDetection: ChangeDetectionStrategy.OnPush`. `standalone: true` solo en v18 o menor (default desde v19). Ver [02-typescript-signals.md](./references/02-typescript-signals.md).
 5. **Nunca `*ngIf` / `*ngFor` / `*ngSwitch` / `[ngClass]` / `[ngStyle]`.** Usar control flow nativo y bindings `[class.x]` / `[style.x]`. Ver [03-html-templates.md](./references/03-html-templates.md).
-6. **Nunca archivos monolíticos.** Máximo: componente `.ts` 200 líneas, template `.html` 200, servicio 250, `.scss` 150. Si se pasa, dividir por responsabilidad: subcomponentes presentacionales (`input()` / `output()`) y sub-servicios (lógica / HTTP). Ver [01-project-structure.md](./references/01-project-structure.md).
+6. **Nunca archivos monolíticos.** Máximo: componente `.ts` 200 líneas, template `.html` 200, servicio 250, `.scss` 150. Si se pasa, dividir por responsabilidad: subcomponentes presentacionales (`input()` / `output()`) y sub-servicios (lógica / HTTP). **Dentro del límite no se divide**: nada de componentizar bloques chicos usados una sola vez (§1.4 "Cuándo dividir"). Ver [01-project-structure.md](./references/01-project-structure.md).
 7. **Nunca carpeta `components/` para subcomponentes.** Cada hijo se anida dentro de la carpeta del padre que lo usa: `detalle/subdetalle/subdetalle-cabecera/`. El árbol de carpetas refleja el árbol de componentes. Única excepción: `shared/components/`, para componentes reutilizados por varias features. UI repetida (selector de usuario, tabla, buscador) = **un solo componente reutilizable**, nunca copias adaptadas. Ver [01-project-structure.md](./references/01-project-structure.md) §1.5.
 8. **Nunca sufijos `.component` / `.service` / `Component` / `Service`.** Archivo `user-list.ts` exporta `UserList`. Ver [01-project-structure.md](./references/01-project-structure.md).
 

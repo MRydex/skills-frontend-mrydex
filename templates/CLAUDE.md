@@ -13,6 +13,7 @@ This project enforces the official **Angular 22+ (2026)** standards documented i
 - **Architecture**: Vertical slices / feature-based folder structure. No filename/class suffixes (`user-list.ts` exports `UserList`).
 - **Size**: Max 200 lines per component `.ts` or template `.html`, 250 per service, 150 per `.scss`. Split by responsibility.
 - **Subcomponents**: Never a `components/` folder inside a feature. Nest each child inside its parent's folder. Only `shared/components/` is allowed, for components reused across features.
+- **No over-engineering**: Do not split into subcomponents unless the file exceeds its size limit, the block is reused, or it has its own logic; small one-off blocks stay in the parent template. Simplest solution that solves today's request. No abstractions, layers, generics, tokens or libraries "just in case"; abstract only when code appears a second time (§11.7.1).
 - **No tests**: Never create test files (`*.spec.ts`, `*.test.ts`, `tests/`). Set `skipTests: true` in `angular.json` schematics. Verify with build, lint and manual testing in the app (`references/08-sin-tests.md`).
 - **Reuse**: Before creating a component, search for an existing one. Repeated UI (user picker, data table, search box) becomes one reusable component, never adapted copies (`references/01-project-structure.md` §1.5).
 - **AI files in `.gitignore`**: Make sure the project `.gitignore` excludes every AI/agent file (`.claude/`, `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `graphify-out/`, `tasks/todo.md`...). Ask before `git rm --cached` (§10.9).

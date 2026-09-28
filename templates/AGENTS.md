@@ -20,6 +20,7 @@ This project strictly follows the **Angular 22+ & Modern Frontend Best Practices
 11. **Reuse**: Before creating a component, search for an existing one. Repeated UI (user picker, data table, search box) becomes one reusable component, never adapted copies (§1.5).
 12. **AI files in `.gitignore`**: The project `.gitignore` excludes every AI/agent file (`.claude/`, `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `graphify-out/`, `tasks/todo.md`...). Ask before `git rm --cached` (§10.9).
 13. **No tests**: Never create test files (`*.spec.ts`, `*.test.ts`, `tests/`). Set `skipTests: true` in `angular.json` schematics. Verify with build, lint and manual testing in the app (`references/08-sin-tests.md`).
+14. **No over-engineering**: Do not split into subcomponents unless the file exceeds its size limit, the block is reused, or it has its own logic; small one-off blocks stay in the parent template. Simplest solution that solves today's request. No abstractions, layers, generics, tokens or libraries "just in case"; abstract only when code appears a second time (§11.7.1).
 
 ## Agent Efficiency (always on)
 Details in `references/14-agent-efficiency.md`.

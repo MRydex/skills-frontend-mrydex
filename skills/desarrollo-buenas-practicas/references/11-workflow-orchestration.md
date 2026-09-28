@@ -10,7 +10,7 @@ cómo verificar antes de decir "terminado" y cómo aprender de las correcciones.
 [11.4](#114-commits-pequeños-y-acotados) Commits pequeños ·
 [11.5](#115-no-ampliar-el-alcance) No ampliar el alcance ·
 [11.6](#116-preguntar-todo-lo-necesario-una-sola-vez-antes-de-empezar) Preguntar todo antes de empezar ·
-[11.7](#117-causa-raíz-y-simplicidad) Causa raíz y simplicidad ·
+[11.7](#117-causa-raíz-y-simplicidad) Causa raíz, simplicidad y sin sobreingeniería ·
 [11.8](#118-ciclo-de-auto-mejora-taskslessonsmd) Ciclo de auto-mejora.
 
 ### 11.1 Explorar antes de editar
@@ -93,6 +93,36 @@ cómo verificar antes de decir "terminado" y cómo aprender de las correcciones.
 - Los límites de tamaño de archivo y la regla anti-monolito (componentizar en vez de acumular
   responsabilidades) ya están definidos en [01-project-structure.md](./01-project-structure.md) §1.4: no
   se repiten acá.
+
+#### 11.7.1 Sin sobreingeniería
+
+**Regla**: la solución más simple que resuelve lo pedido hoy. Nada "por si acaso". Código simple se
+lee, se revisa y se cambia más rápido que una abstracción.
+
+**Prohibido sin un caso real que lo pida:**
+
+| ❌ Sobreingeniería | ✅ Simple |
+| :--- | :--- |
+| Interfaz + clase abstracta + factory para una sola implementación | Una clase o función |
+| `InjectionToken` / `useFactory` para un valor que nunca cambia | Una constante exportada |
+| Servicio "genérico" (`BaseCrudService<T>`) para un solo endpoint | El servicio concreto |
+| Componente configurable con 8 inputs para un único uso | El componente concreto |
+| Partir en subcomponentes un template chico o usado una sola vez | Dejarlo en el template del padre (§1.4) |
+| Capa de "adapters" o "repositories" sobre `HttpClient` / `httpResource` | Llamar directo desde el servicio |
+| Store propio (estilo NgRx) para estado de una pantalla | Signals en el componente o en su servicio |
+| Utilidades, tipos o helpers "para el futuro" | Nada. Se crean cuando aparece el segundo uso |
+| Librería nueva para algo que Angular o la plataforma ya resuelven | La API nativa |
+
+**Cuándo sí abstraer:** cuando el mismo código aparece **por segunda vez** (§1.5, §7.10), o cuando el
+usuario lo pide. Nunca antes.
+
+**Chequeo antes de entregar:**
+- ¿Un dev nuevo entiende el cambio en 5 minutos?
+- ¿Cada archivo, clase, input y parámetro nuevo tiene un uso hoy?
+- ¿Se puede borrar algo y sigue funcionando? Entonces sobra: borrarlo.
+
+Si la solución simple tiene un límite real (rendimiento, seguridad), elegir la simple igual y avisar
+el límite en una línea. El usuario decide si vale la complejidad extra.
 
 ### 11.8 Ciclo de auto-mejora: `tasks/lessons.md`
 

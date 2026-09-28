@@ -163,5 +163,7 @@ Proceso del agente.
 - [ ] ¿Tarea de 3+ pasos con plan previo en `tasks/todo.md`? (§11.2)
 - [ ] ¿Build, lint y prueba manual antes de reportar "terminado"? (§11.3)
 - [ ] ¿El cambio se limita a lo pedido (sin refactors "de paso")? (§11.5)
+- [ ] ¿Sin subcomponentes innecesarios? Solo se dividió por límite, reutilización o lógica propia. (§1.4)
+- [ ] ¿Sin sobreingeniería? Cada archivo, clase, input y parámetro nuevo tiene un uso hoy; nada "por si acaso". (§11.7.1)
 - [ ] ¿Trabajo mecánico delegado a subagentes de menor potencia cuando era posible? (§14.3.4)
 - [ ] ¿Respuestas al usuario en modo caveman (salvo excepciones de seguridad y artefactos persistidos)? (§14.1)
