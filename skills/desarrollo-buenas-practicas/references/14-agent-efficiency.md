@@ -155,6 +155,9 @@ solo lectura), `ejecutor` y `revisor-checklist` (barato, solo lectura) desde una
 | Antigravity | `~/.gemini/config/agents/*.md` | `flash` / `inherit` | El planner decide según `description` |
 | Copilot (VS Code) | `~/.copilot/agents/*.agent.md` | El del chat | No: se eligen a mano en el selector de agentes |
 
+- El bloque también pide cargar siempre esta skill ante cualquier trabajo de frontend, en
+  `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` y `~/.gemini/GEMINI.md`: se lee en todas las sesiones,
+  sin depender de que la `description` coincida.
 - El pedido de delegación es un bloque marcado (`skills-frontend-mrydex:start|end`). Reinstalar
   reemplaza solo ese bloque; el resto del archivo no se toca.
 - Los subagentes solo se crean para agentes cuya carpeta existe en el home (agente instalado).

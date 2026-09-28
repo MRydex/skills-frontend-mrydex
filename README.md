@@ -86,7 +86,8 @@ agente siga las instrucciones:
 5. Subagentes `investigador`, `ejecutor` y `revisor-checklist` en el formato de cada agente instalado
    (Claude Code, Codex, Cursor, Gemini CLI, Antigravity, Copilot). En Claude Code y Codex, que no
    delegan solos, agrega un bloque a `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md` que pide delegar
-   **solo cuando baja el total de tokens**.
+   **solo cuando baja el total de tokens**. El mismo bloque (también en `~/.gemini/GEMINI.md`) pide
+   cargar siempre la skill ante cualquier trabajo de frontend.
 6. Arma el grafo con `graphify update .` (solo código, sin LLM, sin costo de tokens).
 
 Fuera de un repo git se instala **solo global** (skill + CLI de graphify), sin tocar la carpeta actual.

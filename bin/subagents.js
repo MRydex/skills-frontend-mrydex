@@ -143,8 +143,13 @@ const TARGETS = [
 const BLOCK_START = '<!-- skills-frontend-mrydex:start -->';
 const BLOCK_END = '<!-- skills-frontend-mrydex:end -->';
 
-// Claude Code y Codex no delegan solos: hay que pedirlo en sus instrucciones de usuario.
+// Instrucciones globales de usuario: cargar siempre la skill de frontend y, en Claude Code y Codex
+// (no delegan solos), pedir la delegación en forma explícita.
 const DELEGATION_BLOCK = `${BLOCK_START}
+## Frontend skill (always)
+
+For any frontend work (Angular, TypeScript, HTML, SCSS/CSS), load the \`desarrollo-buenas-practicas\` skill first and follow it, even if the request is vague or does not mention Angular. If it is not available as a skill, read its \`SKILL.md\`.
+
 ## Delegation to subagents (explicit, standing user request)
 
 You orchestrate. I explicitly authorize and ask you to delegate to subagents, without waiting for me to ask, **only when it lowers total token usage**:
@@ -161,6 +166,7 @@ ${BLOCK_END}`;
 const DELEGATION_FILES = [
   { label: 'Claude Code', requires: '.claude', file: ['.claude', 'CLAUDE.md'] },
   { label: 'Codex', requires: '.codex', file: ['.codex', 'AGENTS.md'] },
+  { label: 'Gemini CLI', requires: '.gemini', file: ['.gemini', 'GEMINI.md'] },
 ];
 
 // Inserta o reemplaza el bloque marcado. El resto del archivo no se toca.
