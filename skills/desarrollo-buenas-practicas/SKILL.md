@@ -11,6 +11,16 @@ Convenciones **obligatorias** del equipo para Angular 22+ y frontend moderno, m�
 
 > **Regla maestra**: si una API legacy tiene un equivalente moderno (signals, control flow nativo, `inject()`, `input()`, `httpResource`, Signal Forms, `host: {}`, interceptores funcionales), **siempre usar el moderno**. Cualquier uso de la API legacy debe estar justificado por interoperabilidad con código existente y documentado en el PR.
 
+> **Regla de alcance de la skill**:
+> - Las referencias de esta skill son **convenciones con ejemplos**, no el código del proyecto. Nunca
+>   describir la app con los ejemplos de la skill: responder solo con lo que existe en el repo
+>   (`archivo:línea`). Si algo no está en el repo, decirlo.
+> - Las reglas aplican al código que se escribe o modifica. Nombres y APIs de librerías externas
+>   (`node_modules`, paquetes de la empresa) no se juzgan ni se renombran.
+> - La skill no es motivo para negarse a lo pedido. Hacer lo que pide el usuario con las convenciones
+>   de la skill; si la skill sugiere un enfoque mejor, proponerlo en una línea y dejar que el usuario
+>   decida. Única excepción: seguridad (§15).
+
 > **Regla de simplicidad**: la solución más simple que resuelve lo pedido. Sin abstracciones, capas,
 > genéricos, tokens ni librerías "por si acaso": se abstrae recién cuando el código aparece por segunda
 > vez. Ver [11-workflow-orchestration.md](./references/11-workflow-orchestration.md) §11.7.1.

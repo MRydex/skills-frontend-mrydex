@@ -59,6 +59,8 @@ cómo verificar antes de decir "terminado" y cómo aprender de las correcciones.
 
 ### 11.5 No ampliar el alcance
 
+- Resolver exactamente lo pedido, aunque la skill prefiera otro enfoque: hacerlo y proponer la
+  alternativa en una línea. No reescribir la arquitectura por cuenta propia.
 - Resolver exactamente lo pedido. Si en el camino aparece otro problema (bug ajeno a la tarea, código
   mejorable, TODO viejo), anotarlo y reportarlo — no arreglarlo de paso dentro del mismo cambio.
 - Un refactor "ya que estamos" que no hace falta para la tarea pedida se propone aparte, no se aplica
