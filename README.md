@@ -85,7 +85,9 @@ agente siga las instrucciones:
 4. Agrega todos los archivos de IA y agentes al `.gitignore`.
 5. Arma el grafo con `graphify update .` (solo código, sin LLM, sin costo de tokens).
 
-Con una instalación solo global, instala o actualiza el CLI de graphify. Para saltear todo esto:
+Fuera de un repo git se instala **solo global** (skill + CLI de graphify), sin tocar la carpeta actual.
+Dentro de un repo (o una subcarpeta) instala además en la raíz del repo. En el menú interactivo, la
+opción 1 (default) es "Todos los agentes". Para saltear todo esto:
 `--no-graphify`. Si no hay Python, avisa y sigue con el resto de la instalación.
 
 ---

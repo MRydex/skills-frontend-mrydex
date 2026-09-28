@@ -45,14 +45,14 @@ ${colors.bold}USO:${colors.reset}
   skills-frontend [opciones]
 
 ${colors.bold}OPCIONES:${colors.reset}
-  ${colors.green}-a, --agent <nombre>${colors.reset}    Agente objetivo:
-                          ${colors.bold}antigravity${colors.reset} (Antigravity / Gemini CLI)
-                          ${colors.bold}claude${colors.reset}      (Claude Code)
-                          ${colors.bold}cursor${colors.reset}      (Cursor / Windsurf con .cursorrules)
+  ${colors.green}-a, --agent <nombre>${colors.reset}    Agente objetivo (default: all):
+                          ${colors.bold}all${colors.reset}         (Todos: global + repo actual si hay)
+                          ${colors.bold}antigravity${colors.reset} (Antigravity / Gemini CLI, global)
+                          ${colors.bold}claude${colors.reset}      (Claude Code, global)
+                          ${colors.bold}cursor${colors.reset}      (Cursor / Windsurf)
                           ${colors.bold}universal${colors.reset}   (Codex / Copilot con AGENTS.md)
-                          ${colors.bold}all${colors.reset}         (Instalar en todos los entornos)
-  ${colors.green}-g, --global${colors.reset}            Instalación global en el home (solo antigravity / claude)
-  ${colors.green}-w, --workspace${colors.reset}         Instalación en el proyecto actual (solo antigravity / claude)
+  ${colors.green}-g, --global${colors.reset}            Solo global (home), aunque estés en un repo
+  ${colors.green}-w, --workspace${colors.reset}         También en el repo actual (raíz del repo git)
   ${colors.green}-t, --target <ruta>${colors.reset}     Ruta personalizada (tiene prioridad sobre --agent)
   ${colors.green}-b, --bridge${colors.reset}            Genera archivos puente (AGENTS.md, CLAUDE.md, .cursorrules).
                           cursor, universal y all los generan siempre.
@@ -183,9 +183,12 @@ const AI_GITIGNORE_ENTRIES = [
 const AI_GITIGNORE_HEADER = '# IA / agentes (skills-frontend-mrydex)';
 const projectRoots = new Set();
 
-function trackProjectRoot(destDir) {
-  const cwd = process.cwd();
-  if (path.resolve(destDir).startsWith(cwd + path.sep)) projectRoots.add(cwd);
+// Raíz del repo git que contiene `dir`, o null. El home nunca cuenta como proyecto.
+function getRepoRoot(dir) {
+  const result = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: dir, encoding: 'utf8' });
+  if (result.status !== 0) return null;
+  const root = path.resolve(result.stdout.trim());
+  return root === path.resolve(os.homedir()) ? null : root;
 }
 
 function ensureAiGitignore(projectRoot, extraEntries = []) {
@@ -264,12 +267,11 @@ function ensureGraphifyCli() {
 function setupGraphifyProject(projectRoot) {
   if (!ensureGraphifyCli()) return;
 
-  const isGitRepo = fs.existsSync(path.join(projectRoot, '.git'));
   const hadGitattributes = fs.existsSync(path.join(projectRoot, '.gitattributes'));
   const steps = [
     ...GRAPHIFY_AGENTS.map((agent) => ({ label: `integración ${agent}`, args: [agent, 'install'] })),
     { label: 'modo estricto Claude Code', args: ['install', '--project', '--strict', '--platform', 'claude'] },
-    ...(isGitRepo ? [{ label: 'hooks git', args: ['hook', 'install'] }] : []),
+    { label: 'hooks git', args: ['hook', 'install'] },
   ];
 
   console.log(`\n${colors.bold}${colors.cyan}Graphify en el proyecto:${colors.reset} ${colors.dim}${projectRoot}${colors.reset}`);
@@ -283,9 +285,6 @@ function setupGraphifyProject(projectRoot) {
     const { ok } = runCommand('graphify', step.args, projectRoot);
     const mark = ok ? colors.green + '✔' : colors.yellow + '⚠';
     console.log(`  ${mark}${colors.reset} ${step.label}`);
-  }
-  if (!isGitRepo) {
-    console.log(`  ${colors.yellow}⚠${colors.reset} No es un repo git: sin hooks de actualización automática`);
   }
 
   // Ignorar lo generado antes de armar el grafo, así no indexa los archivos de los agentes
@@ -302,7 +301,6 @@ function setupGraphifyProject(projectRoot) {
 }
 
 function installTarget(destDir, label) {
-  trackProjectRoot(destDir);
   const isUpdate = fs.existsSync(destDir);
   const actionText = isUpdate ? 'Actualizando' : 'Instalando';
   console.log(`\n${colors.cyan}${actionText} para ${colors.bold}${label}${colors.reset}...`);
@@ -317,12 +315,30 @@ function installTarget(destDir, label) {
   console.log(`  ${colors.green}✔ ${isUpdate ? 'Actualización' : 'Instalación'} completada con éxito (v${pkgVersion}).${colors.reset}`);
 }
 
+const SKILL_NAME = 'desarrollo-buenas-practicas';
+
+function installGlobals(homeDir) {
+  installTarget(path.join(homeDir, '.gemini', 'config', 'skills', SKILL_NAME), 'Antigravity (Global)');
+  installTarget(path.join(homeDir, '.claude', 'skills', SKILL_NAME), 'Claude Code (Global)');
+}
+
+// Skill + puentes en la raíz del repo. Solo se llama con un repo git (el proyecto recibe graphify).
+function installWorkspace(repoRoot) {
+  installTarget(path.join(repoRoot, '.agents', 'skills', SKILL_NAME), 'Workspace (.agents/skills)');
+  installTarget(path.join(repoRoot, 'skills', SKILL_NAME), 'Workspace (skills/)');
+  copyBridgeFiles(repoRoot);
+}
+
 async function run() {
-  console.log(`\n${colors.bold}${colors.magenta}=== Instalador de Skills Frontend (Angular 22+) ===${colors.reset}`);
-  console.log(`${colors.dim}Compatible con Antigravity, Claude Code, Cursor, Windsurf, Copilot & Codex${colors.reset}\n`);
+  console.log(`
+${colors.bold}${colors.magenta}=== Instalador de Skills Frontend (Angular 22+) ===${colors.reset}`);
+  console.log(`${colors.dim}Compatible con Antigravity, Claude Code, Cursor, Windsurf, Copilot & Codex${colors.reset}
+`);
 
   const homeDir = os.homedir();
   const cwd = process.cwd();
+  // Fuera de un repo git todo se instala global; dentro, además en la raíz del repo.
+  const repoRoot = getRepoRoot(cwd);
 
   if (customTarget) {
     if (agentArg) {
@@ -330,54 +346,25 @@ async function run() {
     }
     const targetDir = path.resolve(cwd, customTarget);
     installTarget(targetDir, 'Directorio personalizado');
-    if (includeBridge) copyBridgeFiles(targetDir);
+    const targetRepo = getRepoRoot(fs.existsSync(targetDir) ? targetDir : cwd);
+    if (includeBridge && targetRepo) copyBridgeFiles(targetRepo);
     finish();
     return;
   }
 
-  // Determine actions based on CLI args or interactive prompt
-  let selectedOption = null;
-
   if (agentArg || isGlobal || isWorkspace) {
-    const agent = (agentArg || 'antigravity').toLowerCase();
-    const scope = isWorkspace ? 'workspace' : 'global';
+    const agent = (agentArg || 'all').toLowerCase();
+    const wantsWorkspace = isWorkspace || !isGlobal && ['all', 'cursor', 'windsurf', 'universal', 'codex', 'copilot'].includes(agent);
 
-    if (agent === 'all') {
-      // Install all
-      installTarget(path.join(homeDir, '.gemini', 'config', 'skills', 'desarrollo-buenas-practicas'), 'Antigravity (Global)');
-      installTarget(path.join(homeDir, '.claude', 'skills', 'desarrollo-buenas-practicas'), 'Claude Code (Global)');
-      installTarget(path.join(cwd, '.agents', 'skills', 'desarrollo-buenas-practicas'), 'Workspace (.agents/skills)');
-      installTarget(path.join(cwd, 'skills', 'desarrollo-buenas-practicas'), 'Workspace (skills/)');
-      copyBridgeFiles(cwd);
-      finish();
-      return;
+    if (agent === 'claude') {
+      installTarget(path.join(homeDir, '.claude', 'skills', SKILL_NAME), 'Claude Code (Global)');
+    } else if (agent === 'antigravity') {
+      installTarget(path.join(homeDir, '.gemini', 'config', 'skills', SKILL_NAME), 'Antigravity (Global)');
+    } else {
+      installGlobals(homeDir);
     }
 
-    if (agent === 'antigravity') {
-      const dest = scope === 'global'
-        ? path.join(homeDir, '.gemini', 'config', 'skills', 'desarrollo-buenas-practicas')
-        : path.join(cwd, '.agents', 'skills', 'desarrollo-buenas-practicas');
-      installTarget(dest, `Antigravity (${scope})`);
-    } else if (agent === 'claude') {
-      const dest = scope === 'global'
-        ? path.join(homeDir, '.claude', 'skills', 'desarrollo-buenas-practicas')
-        : path.join(cwd, '.claude', 'skills', 'desarrollo-buenas-practicas');
-      installTarget(dest, `Claude Code (${scope})`);
-    } else if (agent === 'cursor' || agent === 'windsurf') {
-      const dest = path.join(cwd, 'skills', 'desarrollo-buenas-practicas');
-      installTarget(dest, `Cursor/Windsurf (Workspace)`);
-      copyBridgeFiles(cwd);
-    } else if (agent === 'universal' || agent === 'codex' || agent === 'copilot') {
-      const dest = path.join(cwd, 'skills', 'desarrollo-buenas-practicas');
-      installTarget(dest, `Universal / AGENTS.md (Workspace)`);
-      copyBridgeFiles(cwd);
-    }
-
-    // cursor/windsurf/universal ya copiaron los puentes: los necesitan para funcionar.
-    if (includeBridge && (agent === 'antigravity' || agent === 'claude')) {
-      copyBridgeFiles(cwd);
-    }
-
+    if (repoRoot && (wantsWorkspace || includeBridge)) installWorkspace(repoRoot);
     finish();
     return;
   }
@@ -389,35 +376,25 @@ async function run() {
   });
 
   const question = (query) => new Promise((resolve) => rl.question(query, resolve));
+  const projectHint = repoRoot ? `Global + repo ${repoRoot}` : 'Global (no estás en un repo)';
 
   console.log(`${colors.bold}¿Dónde deseas instalar este skill?${colors.reset}`);
-  console.log(`  ${colors.green}1)${colors.reset} ${colors.bold}Antigravity Global${colors.reset} ${colors.dim}(~/.gemini/config/skills/)${colors.reset}`);
-  console.log(`  ${colors.green}2)${colors.reset} ${colors.bold}Claude Code Global${colors.reset} ${colors.dim}(~/.claude/skills/)${colors.reset}`);
-  console.log(`  ${colors.green}3)${colors.reset} ${colors.bold}Proyecto Actual / Workspace${colors.reset} ${colors.dim}(.agents/skills/ + skills/)${colors.reset}`);
-  console.log(`  ${colors.green}4)${colors.reset} ${colors.bold}Universal / Todos los agentes${colors.reset} ${colors.dim}(Global + Workspace + puentes AGENTS/CLAUDE/Cursor)${colors.reset}`);
-  console.log(`  ${colors.green}5)${colors.reset} Cancelar\n`);
+  console.log(`  ${colors.green}1)${colors.reset} ${colors.bold}Todos los agentes${colors.reset} ${colors.dim}(${projectHint})${colors.reset}`);
+  console.log(`  ${colors.green}2)${colors.reset} ${colors.bold}Antigravity Global${colors.reset} ${colors.dim}(~/.gemini/config/skills/)${colors.reset}`);
+  console.log(`  ${colors.green}3)${colors.reset} ${colors.bold}Claude Code Global${colors.reset} ${colors.dim}(~/.claude/skills/)${colors.reset}`);
+  console.log(`  ${colors.green}4)${colors.reset} Cancelar
+`);
 
-  const answer = (await question(`${colors.cyan}Selecciona una opción [1-5] (default 1): ${colors.reset}`)).trim() || '1';
+  const answer = (await question(`${colors.cyan}Selecciona una opción [1-4] (default 1): ${colors.reset}`)).trim() || '1';
   rl.close();
 
   if (answer === '1') {
-    const dest = path.join(homeDir, '.gemini', 'config', 'skills', 'desarrollo-buenas-practicas');
-    installTarget(dest, 'Antigravity Global');
+    installGlobals(homeDir);
+    if (repoRoot) installWorkspace(repoRoot);
   } else if (answer === '2') {
-    const dest = path.join(homeDir, '.claude', 'skills', 'desarrollo-buenas-practicas');
-    installTarget(dest, 'Claude Code Global');
+    installTarget(path.join(homeDir, '.gemini', 'config', 'skills', SKILL_NAME), 'Antigravity (Global)');
   } else if (answer === '3') {
-    const destAgents = path.join(cwd, '.agents', 'skills', 'desarrollo-buenas-practicas');
-    const destSkills = path.join(cwd, 'skills', 'desarrollo-buenas-practicas');
-    installTarget(destAgents, 'Antigravity Workspace (.agents)');
-    installTarget(destSkills, 'Standard Workspace (skills)');
-    copyBridgeFiles(cwd);
-  } else if (answer === '4') {
-    installTarget(path.join(homeDir, '.gemini', 'config', 'skills', 'desarrollo-buenas-practicas'), 'Antigravity (Global)');
-    installTarget(path.join(homeDir, '.claude', 'skills', 'desarrollo-buenas-practicas'), 'Claude Code (Global)');
-    installTarget(path.join(cwd, '.agents', 'skills', 'desarrollo-buenas-practicas'), 'Workspace (.agents)');
-    installTarget(path.join(cwd, 'skills', 'desarrollo-buenas-practicas'), 'Workspace (skills)');
-    copyBridgeFiles(cwd);
+    installTarget(path.join(homeDir, '.claude', 'skills', SKILL_NAME), 'Claude Code (Global)');
   } else {
     console.log(`${colors.yellow}Instalación cancelada.${colors.reset}`);
     process.exit(0);
