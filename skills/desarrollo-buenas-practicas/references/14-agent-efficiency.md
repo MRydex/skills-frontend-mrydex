@@ -55,6 +55,11 @@ Todas las respuestas al usuario se escriben en **modo caveman**: frases cortas, 
 
 El usuario puede desactivarlo diciendo "modo normal" o "stop caveman".
 
+**La skill sola no alcanza.** Medido en Claude Code: sin el plugin [caveman](https://github.com/JuliusBrussee/caveman)
+la misma respuesta salió 33% más larga y en prosa normal. El instalador de la skill instala el plugin
+en los agentes detectados y, en cada repo, sus reglas siempre activas (`--with-init`). Si falta,
+instalarlo: `npx -y github:JuliusBrussee/caveman` (en el repo: agregar `-- --with-init`).
+
 ---
 
 ### 14.2 Consultar librerías: primero preguntar a otro agente abierto

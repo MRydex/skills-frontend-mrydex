@@ -294,6 +294,8 @@ en un proyecto, el agente verifica el `.gitignore` y agrega las entradas que fal
 .gemini/
 .codex/
 .windsurf/
+.clinerules/
+.opencode/
 .aider*
 skills/desarrollo-buenas-practicas/
 CLAUDE.md

@@ -57,6 +57,7 @@ ${colors.bold}OPCIONES:${colors.reset}
   ${colors.green}-t, --target <ruta>${colors.reset}     Ruta personalizada (tiene prioridad sobre --agent)
   ${colors.green}-b, --bridge${colors.reset}            Genera archivos puente (AGENTS.md, CLAUDE.md, .cursorrules).
                           cursor, universal y all los generan siempre.
+  ${colors.green}--no-caveman${colors.reset}            No instala el plugin caveman (por defecto: global + reglas en el repo)
   ${colors.green}--no-graphify${colors.reset}           No instala ni configura graphify (por defecto: instala/actualiza
                           el CLI y, en el proyecto, integra todos los agentes y arma el grafo)
   ${colors.green}--dry-run${colors.reset}               Muestra los archivos y destinos sin escribir cambios
@@ -93,6 +94,7 @@ const isGlobal = args.includes('-g') || args.includes('--global');
 const isWorkspace = args.includes('-w') || args.includes('--workspace');
 const includeBridge = args.includes('-b') || args.includes('--bridge');
 const skipGraphify = args.includes('--no-graphify');
+const skipCaveman = args.includes('--no-caveman');
 
 function getArgValue(flags) {
   for (const flag of flags) {
@@ -166,6 +168,8 @@ const AI_GITIGNORE_ENTRIES = [
   '.gemini/',
   '.codex/',
   '.windsurf/',
+  '.clinerules/',
+  '.opencode/',
   '.aider*',
   'skills/desarrollo-buenas-practicas/',
   'CLAUDE.md',
@@ -414,12 +418,81 @@ ${colors.bold}${colors.magenta}=== Instalador de Skills Frontend (Angular 22+) =
   finish();
 }
 
+// Caveman: la skill sola no alcanza (medido: +33% de palabras sin el plugin). Se usa el instalador
+// oficial, que detecta los agentes; en un repo, --with-init deja reglas siempre activas.
+const CAVEMAN_PKG = 'github:JuliusBrussee/caveman';
+
+function runNpx(npxArgs, cwd) {
+  // npx es un .cmd en Windows y no se puede lanzar sin shell: se corre su script con node
+  const candidates = [
+    path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npx-cli.js'),
+    path.join(path.dirname(process.execPath), '..', 'lib', 'node_modules', 'npm', 'bin', 'npx-cli.js'),
+  ];
+  const npxCli = candidates.find((candidate) => fs.existsSync(candidate));
+  return npxCli ? runCommand(process.execPath, [npxCli, ...npxArgs], cwd) : runCommand('npx', npxArgs, cwd);
+}
+
+// Si el instalador oficial no encuentra el CLI `claude`, se activa el plugin desde settings.json
+function enableCavemanInClaude(homeDir) {
+  const settingsPath = path.join(homeDir, '.claude', 'settings.json');
+  if (!fs.existsSync(path.join(homeDir, '.claude'))) return;
+  let settings = {};
+  if (fs.existsSync(settingsPath)) {
+    try {
+      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    } catch {
+      return;
+    }
+  }
+  if (settings.enabledPlugins?.['caveman@caveman'] === true) return;
+  settings.extraKnownMarketplaces ??= {};
+  settings.extraKnownMarketplaces.caveman ??= {
+    source: { source: 'git', url: 'https://github.com/JuliusBrussee/caveman.git' },
+  };
+  settings.enabledPlugins ??= {};
+  settings.enabledPlugins['caveman@caveman'] = true;
+  fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}
+`);
+  logOk('Claude Code: plugin caveman activado en ~/.claude/settings.json');
+}
+
+function installCaveman(homeDir, repoRoots) {
+  console.log(`
+${colors.bold}${colors.cyan}Caveman:${colors.reset} instalando el plugin para los agentes detectados...`);
+  const base = ['-y', CAVEMAN_PKG, '--', '--non-interactive', '--no-color'];
+  if (isDryRun) {
+    console.log(`${colors.dim}[dry-run] npx ${base.join(' ')}${colors.reset}`);
+    for (const root of repoRoots) console.log(`${colors.dim}[dry-run] (en ${root}) npx ${base.join(' ')} --with-init${colors.reset}`);
+    return;
+  }
+
+  const global = runNpx(base, homeDir);
+  const agents = [...global.output.matchAll(/→ (.+?) detected/g)].map((match) => match[1]);
+  let globalOk = global.ok;
+  if (!globalOk) {
+    // En Windows el instalador de caveman no logra lanzar sus propios `npx skills add`:
+    // se reintentan directo los mismos comandos que listó.
+    const commands = [...global.output.matchAll(/^\s*\$ npx (.+)$/gm)].map((match) => match[1].trim().split(/\s+/));
+    globalOk = commands.length > 0 && commands.every((cmdArgs) => runNpx(cmdArgs, homeDir).ok);
+  }
+  if (globalOk) logOk(`caveman global: ${agents.length > 0 ? agents.join(', ') : 'sin agentes detectados'}`);
+  else console.log(`  ${colors.yellow}⚠${colors.reset} caveman global falló. Correr a mano: npx -y ${CAVEMAN_PKG}`);
+  enableCavemanInClaude(homeDir);
+
+  for (const root of repoRoots) {
+    const repo = runNpx([...base, '--with-init'], root);
+    if (repo.ok) logOk(`caveman: reglas siempre activas en ${root}`);
+    else console.log(`  ${colors.yellow}⚠${colors.reset} caveman --with-init falló en ${root}`);
+  }
+}
+
 function finish() {
   for (const root of projectRoots) ensureAiGitignore(root);
   if (!skipGraphify) {
     if (projectRoots.size === 0) ensureGraphifyCli();
     for (const root of projectRoots) setupGraphifyProject(root);
   }
+  if (!skipCaveman) installCaveman(os.homedir(), [...projectRoots]);
   if (pendingSubagents) installSubagents({ ...pendingSubagents, isDryRun, log: logOk });
 
   console.log(`

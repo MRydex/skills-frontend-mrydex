@@ -88,7 +88,11 @@ agente siga las instrucciones:
    delegan solos, agrega un bloque a `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md` que pide delegar
    **solo cuando baja el total de tokens**. El mismo bloque (también en `~/.gemini/GEMINI.md`) pide
    cargar siempre la skill ante cualquier trabajo de frontend.
-6. Arma el grafo con `graphify update .` (solo código, sin LLM, sin costo de tokens).
+6. Instala el plugin **caveman** con su instalador oficial en los agentes detectados y, dentro de un
+   repo, sus reglas siempre activas (`--with-init`: Cursor, Windsurf, Cline, Copilot, `AGENTS.md`). En
+   Claude Code lo activa en `~/.claude/settings.json`. Medido: sin el plugin las respuestas salen 33%
+   más largas. `--no-caveman` lo saltea.
+7. Arma el grafo con `graphify update .` (solo código, sin LLM, sin costo de tokens).
 
 Fuera de un repo git se instala **solo global** (skill + CLI de graphify), sin tocar la carpeta actual.
 Dentro de un repo (o una subcarpeta) instala además en la raíz del repo. En el menú interactivo, la
