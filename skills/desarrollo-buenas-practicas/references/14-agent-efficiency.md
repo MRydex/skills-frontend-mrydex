@@ -125,7 +125,7 @@ la fila de la tabla o el fallback de §14.3.3.
 | **Antigravity** | Agent Manager (conversaciones en paralelo); subagentes en `.agents/agents/<nombre>.md` o `~/.gemini/config/agents/` | Frontmatter `model: pro\|flash\|inherit` | Selector de modelo en la UI | No nativo: subagentes `pro` / `flash` |
 | **Cursor** | `.cursor/agents/*.md`; varias tareas en un turno corren en simultáneo | Frontmatter `model: inherit\|<model-id>` | Selector en la UI | No nativo |
 | **Copilot** | Custom agents en `.github/agents/*.agent.md` | Frontmatter `model:` | Selector en la UI | No nativo |
-| **Gemini CLI** | `.gemini/agents/*.md`, invocación con `@agente` | Frontmatter `model: <model-id>`; override en `settings.json` | Ver doc de la versión instalada | No nativo |
+| **Gemini CLI** | `.gemini/agents/*.md`, invocación con `@agente` | Frontmatter `model: <model-id>`; override en `settings.json` | `/model`, `--model` al iniciar | Sí, por complejidad: modelo `auto` (default) manda cada pedido a Flash o Pro. Pro solo con plan pago |
 | **OpenCode** | Agente `general`, `@general` | `model: "proveedor/model-id"` en la config del agente | Ver doc de la versión instalada | No nativo |
 | **Otro agente** | Buscar en su doc: "subagents", "agents", "tasks" | Buscar "model" en la config del agente | Buscar "switch model" | Si no hay nada: fallback §14.3.3 |
 
