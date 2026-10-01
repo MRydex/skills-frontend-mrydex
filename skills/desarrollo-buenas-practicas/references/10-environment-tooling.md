@@ -178,7 +178,7 @@ publicado como asset junto al build. El proyecto base ya trae las tres piezas en
 | :--- | :--- | :--- |
 | `app-settings-http.ts` | `AppSettingsHttp` | Lee `appsettings.json` con `fetch` (`cache: 'no-cache'`, timeout de 10 s). |
 | `app-settings.ts` | `AppSettings` | Guarda el archivo en un `signal` y expone valores derivados (`appVersion`). |
-| `version-check.ts` | `VersionCheck` | Compara el archivo publicado contra el cargado al arrancar y avisa de un deploy. |
+| `version-check.ts` | `VersionCheck` | Compara el archivo publicado contra el cargado al arrancar y avisa de un deploy. Sin RxJS: `setInterval`, `addEventListener` y el signal `router.currentNavigation()`; estado en signals. |
 
 ```ts
 // app.config.ts
@@ -196,7 +196,7 @@ export const appConfig: ApplicationConfig = {
     // Si falla, el chequeo arranca igual y toma como base la primera lectura buena.
     provideAppInitializer(() => {
       inject(VersionCheck).iniciar();
-      return inject(AppSettings).cargar().pipe(catchError(() => EMPTY));
+      return inject(AppSettings).cargar().catch(() => undefined);
     }),
     // ...resto de providers
   ],
