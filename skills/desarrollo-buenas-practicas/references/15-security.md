@@ -229,6 +229,29 @@ Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
 - Scripts externos (CDN) solo con **Subresource Integrity** (`integrity` + `crossorigin`).
 - Dependabot / Renovate activos en el repo.
 
+#### Auditoría de dependencias: siempre, no solo en CI
+
+El agente corre `npm audit` por su cuenta. No espera al CI ni a que se lo pidan.
+
+**Cuándo:**
+- Al empezar a trabajar en un proyecto, junto al Paso 0 (graphify).
+- Después de cualquier cambio en `package.json` o `package-lock.json`: `npm install`, `npm update`, `ng update` o una dependencia nueva.
+- Antes de dar por terminada una tarea que tocó dependencias.
+
+**Cómo:**
+```bash
+npm audit --omit=dev   # runtime: lo que llega al navegador del usuario
+npm audit              # completo: incluye el tooling de build (dev)
+```
+
+**Qué hacer con el resultado:**
+- **Reportar siempre**, aunque la tarea no haya tocado dependencias. Una línea por hallazgo: severidad, paquete, de qué dependencia viene y si hay fix.
+- **`high` / `critical` en runtime**: avisar antes de entregar. Bloquea la entrega igual que en CI.
+- **Corregir** con `npm audit fix`, solo si la tarea toca dependencias o el usuario lo pide. Después, build y prueba de la app.
+- **Nunca `npm audit fix --force` sin preguntar**: instala versiones mayores con cambios que rompen.
+- **Sin fix disponible**: reportarlo y proponer una salida, sin aplicarla sin aprobación. Opciones: `overrides` en `package.json`, reemplazar la dependencia o sacarla si se resuelve con el framework.
+- Vulnerabilidades solo en `dev`: reportar con menor prioridad. No llegan al usuario, pero sí corren en las máquinas de build.
+
 ### 15.11 Blue Team: detección, logging y respuesta
 
 - El `errorInterceptor` (§5.3) reporta al backend los eventos de seguridad: 401 y 403 repetidos,

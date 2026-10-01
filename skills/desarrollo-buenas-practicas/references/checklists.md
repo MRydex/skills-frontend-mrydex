@@ -146,7 +146,7 @@ Proceso del agente.
 - [ ] ¿`returnUrl` validado como ruta interna? ¿`postMessage` valida `event.origin`? ¿Links externos con `rel="noopener noreferrer"`? (§15.7)
 - [ ] ¿Sin secretos en `environment.ts` / `appsettings.json`? ¿Sin PII ni tokens en `console` o storage? ¿Errores genéricos al usuario? (§15.8)
 - [ ] ¿Cabeceras de seguridad en `web.config`? (§15.9)
-- [ ] ¿`npm ci` + `npm audit --omit=dev` sin `high`/`critical`? ¿Dependencia nueva evaluada? ¿SRI en scripts externos? (§15.10)
+- [ ] ¿`npm audit` y `npm audit --omit=dev` corridos después del último cambio de dependencias, con los hallazgos reportados y sin `high`/`critical` de runtime? ¿`npm ci` en CI? ¿Dependencia nueva evaluada? ¿SRI en scripts externos? (§15.10)
 - [ ] ¿Eventos de seguridad reportados sin datos sensibles? (§15.11)
 - [ ] ¿Payload XSS probado a mano en componentes/pipes que renderizan datos externos? (§15.12)
 
