@@ -324,9 +324,9 @@ import { form, FormField, required } from '@angular/forms/signals';
 // 2. Librerías de terceros (NG-ZORRO, etc.)
 import { NzTableModule } from 'ng-zorro-antd/table';
 
-// 3. Código propio: core → shared → feature (de lo más general a lo más local)
-import { environment } from '../../../environments/environment';
-import { SpinnerService } from '../../shared/services/spinner';
+// 3. Código propio con alias @/ (de lo más general a lo más local): environments → shared → módulo
+import { environment } from '@/environments/environment';
+import { SpinnerService } from '@/app/shared/services/spinner';
 import { JuiciosHttp } from './services/juicios-http';
 import { Juicio } from './models/juicio';
 ```

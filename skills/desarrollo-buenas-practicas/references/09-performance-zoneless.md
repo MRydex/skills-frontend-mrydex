@@ -238,7 +238,7 @@ Qué se recrea y qué no:
   comportamiento, usar una estrategia global que solo recree las rutas marcadas:
 
 ```ts
-// core/routing/recrear-ruta-strategy.ts
+// shared/services/routing/recrear-ruta-strategy.ts
 export class RecrearRutaStrategy extends BaseRouteReuseStrategy {
   override shouldReuseRoute(futuro: ActivatedRouteSnapshot, actual: ActivatedRouteSnapshot): boolean {
     if (futuro.routeConfig?.data?.['recrear'] === true) return false;

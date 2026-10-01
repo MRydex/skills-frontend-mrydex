@@ -128,7 +128,7 @@ Opciones:
 skills/desarrollo-buenas-practicas/
 ├── SKILL.md                          # Entrada principal, 8 reglas de oro, modo de operación y stack v22
 └── references/
-    ├── 01-project-structure.md       # Arquitectura vertical slices, core/shared, naming sin sufijos
+    ├── 01-project-structure.md       # Estructura protected/private/interceptors/shared, alias @/, naming sin sufijos
     ├── 02-typescript-signals.md      # TS 6, Signals reactivos, inject(), componentes, inputs/outputs
     ├── 03-html-templates.md          # Control flow nativo, @defer, NgOptimizedImage, accesibilidad
     ├── 04-resource-api.md            # httpResource, rxResource, recargas y mutaciones

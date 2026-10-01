@@ -144,7 +144,7 @@ Proceso del agente.
 - [ ] ¿Token en memoria o cookie `HttpOnly`, nunca en `localStorage`? ¿`authInterceptor` compara origen con `URL`? ¿Autorización validada en backend? (§15.5)
 - [ ] ¿XSRF configurado con sesión por cookie? ¿Sin mutaciones por `GET`? (§15.6)
 - [ ] ¿`returnUrl` validado como ruta interna? ¿`postMessage` valida `event.origin`? ¿Links externos con `rel="noopener noreferrer"`? (§15.7)
-- [ ] ¿Sin secretos en `environment.ts` / `config.json`? ¿Sin PII ni tokens en `console` o storage? ¿Errores genéricos al usuario? (§15.8)
+- [ ] ¿Sin secretos en `environment.ts` / `appsettings.json`? ¿Sin PII ni tokens en `console` o storage? ¿Errores genéricos al usuario? (§15.8)
 - [ ] ¿Cabeceras de seguridad en `web.config`? (§15.9)
 - [ ] ¿`npm ci` + `npm audit --omit=dev` sin `high`/`critical`? ¿Dependencia nueva evaluada? ¿SRI en scripts externos? (§15.10)
 - [ ] ¿Eventos de seguridad reportados sin datos sensibles? (§15.11)

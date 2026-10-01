@@ -6,107 +6,128 @@ alcance · [1.2](#12-reglas-clave-de-estructura) Reglas clave de estructura ·
 Componentización, modularidad y regla anti-monolitos ([1.4.1](#141-cómo-descomponer-un-componente-y-template-monolítico-smart-vs-dumb)
 Componente/template, [1.4.2](#142-cómo-descomponer-un-servicio-monolítico) Servicio).
 
-Estructura **híbrida**: un **core** (infraestructura/auth), un **shared** (UI y utilidades
-reutilizables) y **features** (vertical slices de negocio). Las features no dependen entre sí; usan
-core/shared. **Las dependencias siempre van de features → shared/core, nunca al revés.**
+Estructura **por zona de acceso** (la del proyecto base `angular-template` del equipo):
+
+- **`protected/`**: lo que se ve **antes** de entrar a la app: auth OpenID, login y páginas de error.
+- **`private/`**: las pantallas de la app, detrás del `authGuard`. Una carpeta por **módulo** de
+  negocio (vertical slice). En esta guía, "feature" y "módulo" son lo mismo: una carpeta dentro de
+  `private/`.
+- **`interceptors/`**: concerns HTTP transversales y providers globales (locale).
+- **`shared/`**: lo que usan **varios** módulos, sin lógica de negocio de ninguno.
+
+Los módulos no dependen entre sí; usan `shared/`. **Las dependencias van de `private/` → `shared/`,
+nunca al revés.**
 
 ```
 src/
 ├── main.ts                    # bootstrap (siempre en src/, nombre fijo)
+├── index.html                 # incluye el splash de carga previo al bootstrap
+├── styles.scss                # estilos globales (ver §7)
+├── appsettings.json           # versión publicada; se lee en runtime (ver §10.4)
 ├── app/
-│   ├── app.config.ts          # Configuración global (providers de root)
-│   ├── app.routes.ts          # Rutas raíz con lazy loading
-│   ├── app.ts                 # Componente raíz standalone (sin sufijo .component)
+│   ├── app.config.ts          # providers de root
+│   ├── app.routes.ts          # rutas raíz con lazy loading
+│   ├── app.ts                 # componente raíz standalone (sin sufijo .component)
 │   ├── app.html
 │   ├── app.scss
 │   │
-│   ├── core/                  # Infraestructura, auth, cross-cutting concerns
+│   ├── interceptors/          # Interceptores funcionales transversales (ver §5)
+│   │   ├── spinner-interceptor.ts
+│   │   ├── error-interceptor.ts
+│   │   ├── date-interceptor.ts
+│   │   ├── http-context.ts            # HttpContextTokens: SKIP_SPINNER, SKIP_ERROR_HANDLER
+│   │   └── locale-providers.ts        # provideLocale(): es-AR para pipes de fecha y número
+│   │
+│   ├── protected/             # Antes de entrar: auth, login, errores
 │   │   ├── auth/
-│   │   │   ├── auth-guard.ts          # guards mantienen el sufijo: auth-guard.ts
-│   │   │   ├── auth.ts                # AuthService — sin sufijo .service
-│   │   │   ├── session-interceptor.ts # interceptors mantienen el sufijo
-│   │   │   └── models/
-│   │   │       └── user.ts            # interface/model — sin sufijo
-│   │   ├── http/                      # interceptores transversales (ver §5)
-│   │   │   ├── spinner-interceptor.ts
-│   │   │   ├── error-interceptor.ts
-│   │   │   └── http-context.ts        # HttpContextTokens: SKIP_SPINNER, SKIP_ERROR_HANDLER
-│   │   ├── storage/
-│   │   │   └── storage.ts
-│   │   └── user-context/
-│   │       └── user-context.ts
+│   │   │   ├── auth-config.ts         # AuthConfig de angular-oauth2-oidc
+│   │   │   ├── service/auth.ts        # Auth — sin sufijo .service
+│   │   │   ├── guard/auth-guard.ts    # guards mantienen el sufijo: authGuard
+│   │   │   ├── interceptor/auth-error-interceptor.ts
+│   │   │   └── models/auth.ts
+│   │   ├── login/
+│   │   │   ├── login.ts
+│   │   │   ├── login.html
+│   │   │   └── login.scss
+│   │   └── error/                     # 401, 403, 404, IdP caído
+│   │       ├── error.ts
+│   │       └── models/error.ts
 │   │
-│   ├── shared/                # Reutilizable, sin lógica de negocio
-│   │   ├── components/
-│   │   │   ├── spinner/                # overlay global del spinner (ver §5.2)
-│   │   │   └── dashboard/
-│   │   │       ├── dashboard.ts       # antes dashboard.component.ts
-│   │   │       ├── dashboard.html
-│   │   │       ├── dashboard.scss
-│   │   │       ├── header/
-│   │   │       ├── sidebar/
-│   │   │       └── footer/
-│   │   ├── directives/
-│   │   │   ├── formularios-formatter/
-│   │   │   ├── time-formatter/
-│   │   │   ├── date-formatter/
-│   │   │   └── currency-formatter/
-│   │   ├── pipes/
-│   │   ├── validators/
-│   │   ├── models/                     # modelos compartidos por varias features
-│   │   └── services/
-│   │       ├── spinner.ts             # estado del spinner (signal contador, ver §5.2)
-│   │       └── error-notifier.ts      # fachada lib-agnóstica del modal de error (ver §5.3)
+│   ├── private/               # Las pantallas de la app (detrás de authGuard)
+│   │   ├── private.routes.ts
+│   │   └── [modulo]/                  # Ejemplo: juicios/
+│   │       ├── [modulo].routes.ts
+│   │       ├── [modulo]-lista/        # Componente de ruta (smart), directo en el módulo
+│   │       │   ├── [modulo]-lista.ts
+│   │       │   ├── [modulo]-lista.html
+│   │       │   └── [modulo]-lista.scss
+│   │       │
+│   │       ├── detalle/               # Otro componente de ruta
+│   │       │   ├── detalle.ts
+│   │       │   ├── detalle.html
+│   │       │   ├── detalle.scss
+│   │       │   ├── detalle.routes.ts  # solo si tiene rutas hijas (pestañas)
+│   │       │   ├── pages/             # componentes de esas rutas hijas
+│   │       │   ├── services/          # SOLO si los usa este componente (ver §1.1)
+│   │       │   ├── models/            # SOLO si los usa este componente (ver §1.1)
+│   │       │   │
+│   │       │   └── subdetalle/        # Subcomponente anidado directamente (NUNCA carpeta components/)
+│   │       │       ├── subdetalle.ts
+│   │       │       ├── subdetalle.html
+│   │       │       ├── subdetalle.scss
+│   │       │       │
+│   │       │       └── subdetalle-cabecera/ # Nieto anidado dentro de subdetalle
+│   │       │           ├── subdetalle-cabecera.ts
+│   │       │           ├── subdetalle-cabecera.html
+│   │       │           └── subdetalle-cabecera.scss
+│   │       │
+│   │       ├── services/              # compartidos por todo el módulo
+│   │       │   ├── [modulo].ts             # Lógica/orquestación, signals derivados
+│   │       │   └── [modulo]-http.ts        # Acceso HTTP puro
+│   │       ├── models/                # compartidos por todo el módulo
+│   │       │   └── dtos/              # DTOs por operación (ver §2.11)
+│   │       ├── guards/
+│   │       ├── pipes/
+│   │       └── utils/
 │   │
-│   └── features/              # Antes "private". Vertical slices de negocio.
-│       ├── features.routes.ts
-│       └── [feature]/                 # Ejemplo: users/
-│           ├── [feature].routes.ts
-│           ├── pages/                 # Componentes de ruta (smart)
-│           │   ├── [feature]-list/
-│           │   │   ├── [feature]-list.ts
-│           │   │   ├── [feature]-list.html
-│           │   │   └── [feature]-list.scss
-│           │   │
-│           │   └── [feature]-detalle/
-│           │       ├── [feature]-detalle.ts
-│           │       ├── [feature]-detalle.html
-│           │       ├── [feature]-detalle.scss
-│           │       ├── services/      # SOLO si los usa este componente (ver §1.1)
-│           │       ├── models/        # SOLO si los usa este componente (ver §1.1)
-│           │       │
-│           │       └── subdetalle/    # Subcomponente anidado directamente (NUNCA carpeta components/)
-│           │           ├── subdetalle.ts
-│           │           ├── subdetalle.html
-│           │           ├── subdetalle.scss
-│           │           │
-│           │           └── subdetalle-cabecera/ # Nieto anidado dentro de subdetalle
-│           │               ├── subdetalle-cabecera.ts
-│           │               ├── subdetalle-cabecera.html
-│           │               └── subdetalle-cabecera.scss
-│           │
-│           ├── services/              # compartidos por toda la feature
-│           │   ├── [feature].ts            # Lógica/orquestación, signals derivados
-│           │   └── [feature]-http.ts       # Acceso HTTP puro
-│           ├── models/                # compartidos por toda la feature
-│           │   └── dtos/              # DTOs por operación (ver §2.11)
-│           ├── guards/
-│           ├── pipes/
-│           └── validators/
+│   └── shared/                # Reutilizable por varios módulos, sin lógica de negocio
+│       ├── components/
+│       │   ├── dashboard/             # dashboard de la librería (header, sidebar, footer)
+│       │   │   ├── dashboard.ts
+│       │   │   ├── dashboard.html
+│       │   │   └── dashboard.scss
+│       │   └── spinner/               # overlay global del spinner (ver §5.2)
+│       ├── directives/
+│       ├── pipes/
+│       ├── validators/
+│       ├── utils/
+│       ├── models/                    # modelos de varios módulos (ej: response-api.ts)
+│       └── services/
+│           ├── appsettings/           # AppSettings (lee appsettings.json) y VersionCheck (aviso de deploy)
+│           ├── user/                  # usuario logueado: user-context.ts + user-context-http.ts
+│           ├── libreria/              # implementaciones de los servicios abstractos de la librería
+│           │   ├── user/concrete-user.ts
+│           │   └── sidebar/concrete-main-sidebar.ts
+│           ├── spinner.ts             # estado del spinner (signal contador, ver §5.2)
+│           └── error-notifier.ts      # fachada lib-agnóstica del modal de error (ver §5.3)
 │
 ├── environments/
 │   ├── environment.ts
-│   ├── environment.local.ts
 │   ├── environment.dev.ts
-│   ├── environment.test.ts
+│   ├── environment.uat.ts
 │   └── environment.prod.ts
 │
-└── assets/
-    ├── logos/
-    ├── imagenes/
-    └── styles/
-        └── variables/         # Variables SCSS globales (colores, breakpoints, tokens tipográficos)
+├── assets/
+│   ├── images/
+│   └── styles/                # Partials SCSS: variables.scss, tools/, components/, zorro/, utilities/ (ver §7)
+│
+├── proxy/                     # proxy del dev server por ambiente
+└── certificates/              # certificado HTTPS local para ng serve
 ```
+
+**Imports con alias `@/`**: `tsconfig.json` declara `"paths": { "@/*": ["./src/*"] }` y se importa
+`@/app/shared/services/user/user-context` o `@/environments/environment`, nunca
+`../../../..`. Entre archivos de la misma carpeta (o de una subcarpeta propia) se usa `./`.
 
 ### 1.1 Regla de ubicación por alcance (servicios y modelos)
 
@@ -116,13 +137,14 @@ igual a `services/`, `models/`, `pipes/`, `validators/` y `guards/`:
 | ¿Quién lo usa?                             | Dónde va                                                        |
 |--------------------------------------------|-----------------------------------------------------------------|
 | **Un solo componente**                     | `services/` o `models/` **dentro de la carpeta de ese componente** |
-| **Varios componentes de la misma feature** | `services/` o `models/` **de la feature** (un nivel más arriba)  |
-| **Varias features**                        | `shared/services/` o `shared/models/`                           |
-| **Infraestructura / auth / transversal**   | `core/…`                                                        |
+| **Varios componentes del mismo módulo**    | `services/` o `models/` **del módulo** (un nivel más arriba)     |
+| **Varios módulos**                         | `shared/services/` o `shared/models/`                           |
+| **Auth, login, páginas de error**          | `protected/…`                                                   |
+| **Interceptor HTTP o provider global**     | `interceptors/`                                                 |
 
 - Cuando un segundo componente empieza a necesitar un servicio o modelo local, **se sube un nivel**
   en el mismo commit; no se duplica ni se importa "cruzado" desde la carpeta de otro componente.
-- **Nunca** importar desde `features/a/**` hacia `features/b/**`. Si dos features lo necesitan, sube
+- **Nunca** importar desde `private/a/**` hacia `private/b/**`. Si dos módulos lo necesitan, sube
   a `shared/`.
 
 ### 1.2 Reglas clave de estructura
@@ -130,29 +152,32 @@ igual a `services/`, `models/`, `pipes/`, `validators/` y `guards/`:
 - **Modelos** siempre en una carpeta `models/`. **Nunca** declarados dentro de un componente.
 - **DTOs** en `models/dtos/`, **uno por operación** (Create / Update / Query / Delete). Ver §2.11.
 - **Servicios divididos por responsabilidad**:
-  - `[feature].ts` → lógica de negocio, orquestación, signals derivados, validaciones.
-  - `[feature]-concrete.ts` → proxy de implementación de un servicio abstracto de la librería,
+  - `[modulo].ts` → lógica de negocio, orquestación, signals derivados, validaciones.
+  - `concrete-[tema].ts` → implementación de un servicio abstracto de la librería,
     siempre y cuando tenga llamadas HTTP; si no, el servicio de lógica de negocio oficia de
-    implementación del contrato abstracto. Ejemplo mínimo:
+    implementación del contrato abstracto. Si la usa toda la app (usuario, sidebar, routing) va en
+    `shared/services/libreria/[tema]/`; si la usa un solo módulo, en `services/` de ese módulo. Ejemplo mínimo:
     ```ts
     // en la librería: clase abstracta que define el contrato
     export abstract class ExportadorPdf { abstract exportar(datos: unknown): Promise<void>; }
 
-    // [feature]-concrete.ts: implementación concreta con la llamada HTTP real
+    // concrete-exportador-pdf.ts: implementación concreta con la llamada HTTP real
     @Service()
     export class ExportadorPdfConcrete implements ExportadorPdf { /* ... */ }
 
     // se registra en providers: { provide: ExportadorPdf, useClass: ExportadorPdfConcrete }
     ```
-  - `[feature]-http.ts` → solo llamadas HTTP / `httpResource`. Sin lógica de presentación.
+  - `[modulo]-http.ts` → solo llamadas HTTP / `httpResource`. Sin lógica de presentación.
 - **Concerns transversales** (spinner, manejo global de errores, headers de auth, retries, logging)
-  van en **interceptores funcionales** dentro de `core/http/`, **no** dispersos en cada servicio o
+  van en **interceptores funcionales** dentro de `interceptors/`, **no** dispersos en cada servicio o
   componente (ver §5).
-- **Pages vs shared components**:
-  - `pages/` (dentro de cada feature) → componentes asociados a rutas (smart, inyectan servicios).
+- **Componentes de ruta vs shared components**:
+  - Componentes de ruta (smart, inyectan servicios) → directo en la carpeta del módulo
+    (`private/juicios/detalle/`). Si un componente de ruta tiene rutas hijas (pestañas), los
+    componentes de esas rutas van en su `pages/` (`private/juicios/detalle/pages/fojas/`).
   - `shared/components/` → la **única** carpeta `components/` de todo el proyecto: componentes
-    presentacionales reutilizados por **varias** features (reciben `input()`, emiten `output()`).
-  - Un componente presentacional usado por **una sola** feature **no** va a `shared/components/`: se
+    presentacionales reutilizados por **varios** módulos (reciben `input()`, emiten `output()`).
+  - Un componente presentacional usado por **un solo** módulo **no** va a `shared/components/`: se
     anida directamente donde lo consume (ver regla de anidación más abajo y §1.1).
 - A partir de **5 o más archivos** del mismo tipo (directives, pipes, validators, interceptors),
   agrupar por subcarpeta temática.
@@ -160,17 +185,17 @@ igual a `services/`, `models/`, `pipes/`, `validators/` y `guards/`:
   degradan el tree-shaking.
 - **Nunca archivos de test** (`*.spec.ts`, carpeta `tests/`). Ver [08-sin-tests.md](./08-sin-tests.md).
 - **Anidación jerárquica de subcomponentes (NUNCA carpeta `components/`)**:
-  - Los componentes asociados a rutas viven en `pages/` (ej: `detalle/`).
+  - Los componentes asociados a rutas viven en la carpeta del módulo (ej: `detalle/`).
   - Todo subcomponente hijo vive **directamente anidado** dentro de la carpeta del componente que lo
     consume (`detalle/subdetalle/`).
   - Si un subcomponente a su vez tiene partes más chicas, se anidan en su interior
     (`detalle/subdetalle/subdetalle-cabecera/`).
-  - **Prohibido crear carpetas genéricas llamadas `components/`** dentro de una feature o página para
+  - **Prohibido crear carpetas genéricas llamadas `components/`** dentro de un módulo o página para
     meter subcomponentes: la relación de pertenencia debe ser clara en el árbol de carpetas.
 
 > **Divergencia consciente con el style guide oficial**: angular.dev recomienda no agrupar por tipo
 > de archivo. El equipo **sí** agrupa así `services/`, `models/`, `pipes/`, `validators/` y `guards/`
-> dentro de cada feature o componente, porque facilita la navegación en proyectos grandes; la regla
+> dentro de cada módulo o componente, porque facilita la navegación en proyectos grandes; la regla
 > de alcance de §1.1 evita que degenere en un "type-first" global. La excepción es `components/`: ahí
 > el equipo va **más allá** de lo que pide el style guide oficial y la elimina directamente de
 > cualquier feature o componente — solo sobrevive en `shared/components/` (ver más arriba y §1.4).
@@ -229,7 +254,7 @@ refactorizarse de inmediato dividiendo el archivo, no relajando el número.
 
 #### 1.4.1 Cómo descomponer un Componente y Template Monolítico (Smart vs Dumb)
 
-- **El contenedor / página (`pages/`) debe ser delgado**: solo orquesta estado de alto nivel, rutas y llamadas a servicios.
+- **El componente de ruta (el contenedor) debe ser delgado**: solo orquesta estado de alto nivel, rutas y llamadas a servicios.
 - **Cuando corresponda dividir** (ver arriba), extraer bloques visuales a subcomponentes anidados directamente (nunca a una carpeta `components/`, ver más abajo). Candidatos típicos en pantallas grandes:
   - Filtros y barras de búsqueda $\rightarrow$ subcomponente presentacional.
   - Tablas o listados $\rightarrow$ subcomponente con `input()` para los datos y `output()` para acciones (click, ordenar, paginar).
@@ -239,17 +264,17 @@ refactorizarse de inmediato dividiendo el archivo, no relajando el número.
   - `detalle/` (componente principal)
     - $\rightarrow$ `subdetalle/` (subcomponente hijo, anidado directamente dentro de `detalle/`)
       - $\rightarrow$ `subdetalle-cabecera/` (subcomponente nieto, anidado directamente dentro de `subdetalle/`)
-  - No crear jamás contenedores artificiales como `pages/users/components/`: la jerarquía de carpetas debe ser idéntica a la jerarquía de composición de los componentes.
+  - No crear jamás contenedores artificiales como `private/usuarios/components/`: la jerarquía de carpetas debe ser idéntica a la jerarquía de composición de los componentes.
 
 ##### ❌ Ejemplo monolítico o mal agrupado (archivos gigantes, muy por encima de los límites de §1.4)
 ```text
-pages/
+private/usuarios/
 └── users/
     ├── users.ts      # 650 líneas: lógica de tabla, filtros, 3 modales, cálculos, validaciones
     ├── users.html    # 580 líneas: tabla + toolbar + modal alta + modal baja + drawer permisos
     └── users.scss    # 400 líneas
 
-pages/
+private/usuarios/
 └── users-detalle/
     ├── users-detalle.ts      # 650 líneas: todo mezclado en un archivo gigante
     ├── users-detalle.html    # 580 líneas kilométricas
@@ -258,7 +283,7 @@ pages/
 
 ##### ✅ Ejemplo componentizado (anidación directa, sin carpeta `components/`)
 ```text
-pages/
+private/usuarios/
 └── users/
     ├── users.ts                       # ~80 líneas: orquesta signals principales y eventos
     ├── users.html                     # ~35 líneas: composición limpia de subcomponentes
@@ -285,7 +310,7 @@ pages/
         ├── user-permissions-drawer.html
         └── user-permissions-drawer.scss
 
-pages/
+private/usuarios/
 └── users-detalle/                     # Componente principal (~80 líneas)
     ├── users-detalle.ts
     ├── users-detalle.html
@@ -304,7 +329,7 @@ pages/
 ```
 
 > Los subcomponentes de `users/` (`user-filters/`, `user-table/`, …) están al mismo nivel que
-> `users.ts` porque son exclusivos de esa página; si mañana los necesitara otra feature, suben a
+> `users.ts` porque son exclusivos de esa página; si mañana los necesitara otro módulo, suben a
 > `shared/components/` (regla de alcance de §1.1).
 
 #### 1.4.2 Cómo descomponer un Servicio Monolítico
@@ -334,15 +359,15 @@ sus consumidores.
 | ¿Quién lo usa? | Dónde va |
 | :--- | :--- |
 | Varios hijos del mismo padre | Carpeta del padre común |
-| Varias pantallas de la misma feature | Carpeta raíz de la feature |
-| Varias features | `shared/components/<nombre>/` |
+| Varias pantallas del mismo módulo | Carpeta raíz del módulo |
+| Varios módulos | `shared/components/<nombre>/` |
 
 ```text
 ❌ MAL — 4 componentes que hacen lo mismo
-features/juicios/alta/alta-selector-usuario/
-features/juicios/editar/editar-selector-usuario/
-features/agenda/evento/evento-usuario-select/
-features/admin/permisos/permisos-usuario-picker/
+private/juicios/alta/alta-selector-usuario/
+private/juicios/editar/editar-selector-usuario/
+private/agenda/evento/evento-usuario-select/
+private/admin/permisos/permisos-usuario-picker/
 
 ✅ BIEN — uno solo, reutilizado en los 4 lugares
 shared/components/selector-usuario/

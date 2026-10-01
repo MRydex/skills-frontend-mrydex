@@ -68,7 +68,7 @@ export class SpinnerService {
 ```
 
 ```ts
-// core/http/spinner-interceptor.ts
+// interceptors/spinner-interceptor.ts
 export const spinnerInterceptor: HttpInterceptorFn = (req, next) => {
   const spinner = inject(SpinnerService);
 
@@ -121,7 +121,7 @@ export class ErrorNotifier {
 ```
 
 ```ts
-// core/http/error-interceptor.ts
+// interceptors/error-interceptor.ts
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notifier = inject(ErrorNotifier);
 
@@ -140,7 +140,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 interceptores, sin ensuciar headers ni la URL. Se declara con un valor por defecto (`() => T`):
 
 ```ts
-// core/http/http-context.ts
+// interceptors/http-context.ts
 export const SKIP_SPINNER = new HttpContextToken<boolean>(() => false);
 export const SKIP_ERROR_HANDLER = new HttpContextToken<boolean>(() => false);
 
@@ -207,7 +207,7 @@ Reintentar peticiones fallidas (timeouts, `502`/`503` puntuales) también es un 
 en un interceptor, no repetido con el operador `retry` de RxJS en cada servicio.
 
 ```ts
-// core/http/retry-interceptor.ts
+// interceptors/retry-interceptor.ts
 export const retryInterceptor: HttpInterceptorFn = (req, next) => {
   // Reintentar solo métodos idempotentes seguros por defecto: GET (y HEAD, si aplica).
   // PUT/DELETE son idempotentes en teoría, pero acá NO se reintentan: sumarlos a esta condición

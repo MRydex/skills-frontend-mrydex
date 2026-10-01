@@ -126,8 +126,8 @@ this.html = this._sanitizer.bypassSecurityTrustHtml(respuesta.descripcion);
 
 ```ts
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const token = inject(AuthStore).accessToken();
-  const apiOrigin = new URL(inject(ConfigService).apiUrl()).origin;
+  const token = inject(Auth).accessToken();
+  const apiOrigin = new URL(environment.API_URL).origin;
   const destino = new URL(req.url, location.origin).origin;
 
   if (!token || destino !== apiOrigin) return next(req);
@@ -176,7 +176,7 @@ this._router.navigateByUrl(destino);
 
 ### 15.8 Datos sensibles y secretos en el front
 
-- **Todo lo que está en el bundle es público**: `environment.ts`, `config.json` (§10.4),
+- **Todo lo que está en el bundle es público**: `environment.ts`, `appsettings.json` (§10.4),
   constantes, source maps. **Nunca** claves de API privadas, connection strings ni secretos. Si una
   integración necesita secreto, pasa por el backend.
 - Source maps desactivados en producción (`"sourceMap": false`, default) o subidos solo a la

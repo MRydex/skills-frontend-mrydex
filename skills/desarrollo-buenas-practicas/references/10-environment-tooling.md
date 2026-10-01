@@ -170,19 +170,33 @@ página), comprimir la respuesta y cachear agresivamente solo los archivos con h
 ### 10.4 Configuración en runtime vs. `environment.ts`
 
 Los `environment.ts` de Angular se compilan **dentro** del bundle: cualquier valor ahí queda fijo hasta
-el próximo build. Para valores que cambian por servidor sin rebuildear (URL de API por ambiente, feature
-flags), cargar un `config.json` en runtime con `provideAppInitializer`, que corre en contexto de
-inyección antes de que arranque la app:
+el próximo build. Lo que tiene que cambiar sin rebuildear se lee en runtime de **`src/appsettings.json`**,
+publicado como asset junto al build. El proyecto base ya trae las tres piezas en
+`shared/services/appsettings/`:
+
+| Archivo | Clase | Qué hace |
+| :--- | :--- | :--- |
+| `app-settings-http.ts` | `AppSettingsHttp` | Lee `appsettings.json` con `fetch` (`cache: 'no-cache'`, timeout de 10 s). |
+| `app-settings.ts` | `AppSettings` | Guarda el archivo en un `signal` y expone valores derivados (`appVersion`). |
+| `version-check.ts` | `VersionCheck` | Compara el archivo publicado contra el cargado al arrancar y avisa de un deploy. |
 
 ```ts
 // app.config.ts
 export const appConfig: ApplicationConfig = {
   providers: [
+    provideRouter(
+      routes,
+      // Chunk lazy inexistente = hubo un deploy mientras la pestaña estaba abierta.
+      withNavigationErrorHandler(({ error }) => {
+        const versionCheck = inject(VersionCheck);
+        if (versionCheck.esErrorDeChunk(error)) versionCheck.chunkFallido();
+      }),
+    ),
+    // La carga inicial es la base contra la que VersionCheck detecta un deploy.
+    // Si falla, el chequeo arranca igual y toma como base la primera lectura buena.
     provideAppInitializer(() => {
-      const configService = inject(ConfigService);
-      return fetch('/config.json')
-        .then((res) => res.json())
-        .then((config) => configService.setConfig(config));
+      inject(VersionCheck).iniciar();
+      return inject(AppSettings).cargar().pipe(catchError(() => EMPTY));
     }),
     // ...resto de providers
   ],
@@ -194,11 +208,16 @@ export const appConfig: ApplicationConfig = {
 directo, sin declarar dependencias por constructor) y, si devuelve una `Promise` o un `Observable`, el
 bootstrap de la app espera a que termine antes de renderizar.
 
-- `config.json` se sirve como asset estático (`public/config.json` en Angular 22), no pasa por el
-  compilador: se puede pisar por ambiente sin rebuildear (útil para IIS con un `config.json` por sitio).
-- No usar `HttpClient` acá si algún interceptor depende de configuración todavía no cargada (ej. la URL
-  base de la API): `fetch` nativo evita esa dependencia circular.
-- Guardar el resultado en un `signal` del `ConfigService` (nunca en una variable mutable suelta), para
+- **`fetch` y no `HttpClient`**: así la lectura no pasa por los interceptores (sin spinner ni modal de
+  error en los chequeos periódicos) y no depende de configuración que todavía no se cargó.
+- **Ruta relativa** (`fetch('appsettings.json')`): resuelve contra el `<base href>`, así que también
+  anda con la app publicada en un subdirectorio de IIS.
+- **`npm run sync-version`** copia la `version` de `package.json` a `appsettings.json` antes de cada
+  build: subir la versión del paquete es lo que dispara el aviso de deploy en los usuarios conectados.
+- **`VersionCheck`** chequea al volver a la pestaña, al navegar y cada 30 minutos (nunca más de una vez
+  cada 5). Si el archivo cambió, muestra un modal bloqueante "Nueva versión disponible"; si no
+  responde, muestra "Actualizando sistema" y reintenta cada 30 segundos.
+- Guardar siempre el resultado en un `signal` del servicio (nunca en una variable mutable suelta), para
   que el resto de la app lo consuma de forma reactiva.
 
 ### 10.5 VS Code — settings del equipo
@@ -207,22 +226,37 @@ bootstrap de la app espera a que termine antes de renderizar.
 {
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,
-  "editor.rulers": [85], // igual al printWidth de Prettier: marca visual del límite de línea
+  "editor.rulers": [160], // igual al printWidth de .prettierrc: marca visual del límite de línea
   "editor.linkedEditing": true,
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit",
     "source.fixAll.stylelint": "explicit",
     "source.organizeImports": "explicit"
   },
-  "prettier.printWidth": 85,
-  "prettier.singleQuote": true,
-  "prettier.bracketSameLine": true,
-  "prettier.arrowParens": "avoid",
   "typescript.updateImportsOnFileMove.enabled": "always",
   "explorer.compactFolders": false,
   "files.autoSave": "onFocusChange",
   "git.autofetch": true,
   "git.enableSmartCommit": true
+}
+```
+
+El formato lo define el **`.prettierrc`** del proyecto (no los settings de VS Code, para que todos los
+editores y la CLI formateen igual):
+
+```json
+{
+  "bracketSpacing": true,
+  "semi": true,
+  "singleQuote": true,
+  "bracketSameLine": true,
+  "singleAttributePerLine": true,
+  "htmlWhitespaceSensitivity": "css",
+  "trailingComma": "all",
+  "printWidth": 160,
+  "tabWidth": 2,
+  "arrowParens": "avoid",
+  "overrides": [{ "files": "*.html", "options": { "parser": "angular" } }]
 }
 ```
 
