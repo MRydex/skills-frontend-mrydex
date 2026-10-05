@@ -483,12 +483,12 @@ animar las propiedades **discretas** (`display`, `overlay`) con
 ```css
 dialog {
   /* allow-discrete: permite animar display/overlay (de none↔block, top-layer↔normal) */
-  transition: all 0.3s ease, display 0.3s ease allow-discrete;
+  transition: scale 0.3s ease, display 0.3s ease allow-discrete, overlay 0.3s ease allow-discrete;
 }
 
 dialog[open] {
   scale: 1;
-  transition: all 0.3s ease-in-out;
+  transition: scale 0.3s ease-in-out, display 0.3s ease-in-out allow-discrete, overlay 0.3s ease-in-out allow-discrete;
 
   /* estado DESDE el que arranca la animación de entrada */
   @starting-style {
@@ -549,7 +549,7 @@ select {
 option {
   padding: 5px 10px;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out;
   border-radius: 4px;
 
   &::checkmark { display: none; }        /* ocultar el check nativo si se quiere */

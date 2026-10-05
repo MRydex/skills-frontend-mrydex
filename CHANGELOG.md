@@ -3,6 +3,41 @@
 Cambios de la skill `desarrollo-buenas-practicas` y del instalador `skills-frontend-mrydex`.
 Para actualizar en un proyecto: `npx skills-frontend-mrydex@latest`.
 
+## [1.20.0] - 2026-10-05
+
+### Agregado
+- **Skills externas, siempre en su última versión.** El instalador agrega globalmente, con
+  `npx skills add`, estas skills:
+  - `security-audit` de [cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill);
+  - las skills web de [emilkowalski/skills](https://github.com/emilkowalski/skills): `animate`,
+    `animation-vocabulary`, `break-ui`, `emil-design-eng`, `find-animation-opportunities`,
+    `improve-animations`, `pick-ui-library`, `prototype` y `review-animations`. No incluye las de
+    Swift, Expo, mobile nativo, Apple ni Sonner (React).
+  - `--no-external-skills` saltea este paso.
+- **`/batch` para cambios grandes** (`references/14-agent-efficiency.md` §14.3.4 y §14.7). Para un
+  cambio en todo el codebase que se divide en 5 o más unidades independientes, el agente propone
+  `/batch <instrucción>`. Corre un subagente por unidad, cada uno en su propio worktree. Cada unidad
+  se verifica con build y lint, sin tests nuevos.
+
+### Cambiado
+- **Umbral de delegación unificado.** El `ejecutor` se usa para ediciones mecánicas en 8 o más
+  archivos en todos los archivos: `AGENTS.md`, `.cursorrules`, `CLAUDE.md` y la descripción del
+  subagente. Antes, algunos todavía decían 3 o más.
+- `templates/CLAUDE.md` ya no pide delegar siempre: delega solo cuando baja el total de tokens.
+- **Avisos de estado.** El agente escribe una línea de estado al empezar cada fase o antes de un paso
+  largo. Sigue sin narrar cada tool call.
+- **Sin topes numéricos de largo.** Se quitaron "máximo ~8 viñetas" del reporte final y los límites
+  de líneas de los subagentes. El reporte final dice solo qué cambió, qué falló y qué decide el
+  usuario.
+- **`effect()` prohibido sin excepciones.** Antes `SKILL.md`, `checklists.md` y `CLAUDE.md` decían
+  "nunca para sincronizar estado". Ahora dicen "nunca", igual que `02-typescript-signals.md`.
+- Los subagentes de Gemini CLI usan el alias `flash` en lugar de `gemini-3-flash-preview`.
+- Se quitó el "MUST" de `.cursorrules`.
+
+### Corregido
+- Los ejemplos de `13-css3-layouts-animations.md` §13.19 y §13.20 usaban `transition: all`, que el
+  mismo archivo desaconseja. Ahora nombran las propiedades que animan.
+
 ## [1.19.0] - 2026-10-01
 
 ### Agregado
