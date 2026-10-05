@@ -163,6 +163,7 @@ You orchestrate. I explicitly authorize and ask you to delegate to subagents, wi
 - Mechanical edits across 8+ files once the approach is decided: \`ejecutor\`. Orient with \`graphify query\`, write a short brief (files, pattern, one example), hand it off, then review the diff. For fewer files, edit yourself: in a measured test (3 files), delegating cost 38% more.
 - Checking a large diff against the checklists: \`revisor-checklist\` (\`revisor_checklist\` in Codex, cheap).
 - Launch independent pieces in parallel.
+- Codebase-wide change that splits into 5+ independent units (migrations, a new rule applied to every feature): propose \`/batch <instruction>\` in Claude Code (one background subagent per unit, each in its own worktree; verify with build and lint, no new tests).
 - Rule of thumb: delegate if what you would read is 3x or more what you need to know.
 
 Do it yourself when: 1-2 known files, small edits, the brief would cost as much as the work, the task needs conversation context, plain answers, decisions and the final review.

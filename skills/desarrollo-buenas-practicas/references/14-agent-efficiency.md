@@ -220,6 +220,14 @@ verificables, con el plan y la revisión como fases separadas.
 Si el agente no puede lanzar subagentes con un modelo más barato, delegar solo lo que ahorra
 contexto (búsquedas y lecturas grandes). El resto lo hace el orquestador (§14.3.3).
 
+**Tareas muy grandes: `/batch` (Claude Code).** Un cambio que recorre todo el codebase y se parte en
+unidades independientes (migrar todas las features a Signal Forms, aplicar una regla nueva en cada
+módulo, renombres masivos) no se hace con un solo `ejecutor`: proponer al usuario
+`/batch <instrucción>`. Investiga el código, arma un plan de 5 a 30 unidades y lo presenta para
+aprobar. Después corre un subagente en background por unidad, cada uno en su propio worktree, que
+implementa y publica su cambio. Requiere repo git. La instrucción debe pedir verificar con build y
+lint, nunca con tests nuevos (§8). Para un patrón mecánico en una sola sesión alcanza el `ejecutor`.
+
 **Delegar a un modelo barato cuando la tarea es** (y cumple la regla de decisión):
 - Búsqueda y localización de código ("¿dónde se define X?", "¿quién usa Y?").
 - Lectura/resumen de archivos grandes, logs o salida de builds.
@@ -450,6 +458,7 @@ comando se aplica **traducida al agente y a los modelos que usa la persona**.
 | :--- | :--- | :--- |
 | Modelo fuerte / ejecutor / rápido | Opus / Sonnet / Haiku | Niveles de su proveedor (§14.3.1) |
 | Lanzar subagente con modelo propio | `Agent(model: ...)`, `.claude/agents/*.md` | Tabla de §14.3.2 |
+| Cambio grande en paralelo, un worktree por unidad | `/batch <instrucción>` | Varios subagentes en paralelo con el mismo brief por unidad; si no hay, unidades en secuencia |
 | Continuar un subagente con su contexto | `SendMessage` | Retomar el hilo si existe; si no, relanzar con el brief actualizado |
 | Consultar a otra sesión abierta | `ListAgents` + `SendMessage` | Medio nativo del agente; si no hay, saltar al paso siguiente de §14.2 |
 | Preguntar con opciones | `AskUserQuestion` | Tool de preguntas del agente; si no hay, una lista numerada en un solo mensaje, con la opción recomendada marcada |

@@ -92,7 +92,11 @@ agente siga las instrucciones:
    repo, sus reglas siempre activas (`--with-init`: Cursor, Windsurf, Cline, Copilot, `AGENTS.md`). En
    Claude Code lo activa en `~/.claude/settings.json`. Medido: sin el plugin las respuestas salen 33%
    más largas. `--no-caveman` lo saltea.
-7. Arma el grafo con `graphify update .` (solo código, sin LLM, sin costo de tokens).
+7. Instala globalmente, siempre en su última versión, las skills `security-audit`
+   ([cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill)) y las de web de
+   [emilkowalski/skills](https://github.com/emilkowalski/skills) (animaciones, diseño de UI, prototipos;
+   sin Swift, Expo, mobile, Apple ni Sonner, que es de React). `--no-external-skills` lo saltea.
+8. Arma el grafo con `graphify update .` (solo código, sin LLM, sin costo de tokens).
 
 Fuera de un repo git se instala **solo global** (skill + CLI de graphify), sin tocar la carpeta actual.
 Dentro de un repo (o una subcarpeta) instala además en la raíz del repo. En el menú interactivo, la

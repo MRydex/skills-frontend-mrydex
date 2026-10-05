@@ -58,6 +58,8 @@ ${colors.bold}OPCIONES:${colors.reset}
   ${colors.green}-b, --bridge${colors.reset}            Genera archivos puente (AGENTS.md, CLAUDE.md, .cursorrules).
                           cursor, universal y all los generan siempre.
   ${colors.green}--no-caveman${colors.reset}            No instala el plugin caveman (por defecto: global + reglas en el repo)
+  ${colors.green}--no-external-skills${colors.reset}    No instala las skills de cloudflare/security-audit-skill y
+                          emilkowalski/skills (por defecto: global, última versión)
   ${colors.green}--no-graphify${colors.reset}           No instala ni configura graphify (por defecto: instala/actualiza
                           el CLI y, en el proyecto, integra todos los agentes y arma el grafo)
   ${colors.green}--dry-run${colors.reset}               Muestra los archivos y destinos sin escribir cambios
@@ -95,6 +97,7 @@ const isWorkspace = args.includes('-w') || args.includes('--workspace');
 const includeBridge = args.includes('-b') || args.includes('--bridge');
 const skipGraphify = args.includes('--no-graphify');
 const skipCaveman = args.includes('--no-caveman');
+const skipExternalSkills = args.includes('--no-external-skills');
 
 function getArgValue(flags) {
   for (const flag of flags) {
@@ -486,6 +489,33 @@ ${colors.bold}${colors.cyan}Caveman:${colors.reset} instalando el plugin para lo
   }
 }
 
+// Skills de terceros: `skills add` clona el repo en cada instalación, así que siempre queda la última versión
+const EXTERNAL_SKILLS = [
+  { repo: 'cloudflare/security-audit-skill', skills: ['security-audit'] },
+  {
+    repo: 'emilkowalski/skills',
+    // Solo las de web sin React: se excluyen write-swift, animate-expo, mobile-native, apple-design y ask-sonner
+    skills: [
+      'animate', 'animation-vocabulary', 'break-ui', 'emil-design-eng',
+      'find-animation-opportunities', 'improve-animations', 'pick-ui-library', 'prototype', 'review-animations',
+    ],
+  },
+];
+
+function installExternalSkills(homeDir) {
+  console.log(`
+${colors.bold}${colors.cyan}Skills externas:${colors.reset} instalando la última versión (global)...`);
+  for (const { repo, skills } of EXTERNAL_SKILLS) {
+    const npxArgs = ['-y', 'skills', 'add', repo, '--global', '--yes', '--skill', ...skills];
+    if (isDryRun) {
+      console.log(`${colors.dim}[dry-run] npx ${npxArgs.join(' ')}${colors.reset}`);
+      continue;
+    }
+    if (runNpx(npxArgs, homeDir).ok) logOk(`${repo}: ${skills.join(', ')}`);
+    else console.log(`  ${colors.yellow}⚠${colors.reset} ${repo} falló. Correr a mano: npx ${npxArgs.join(' ')}`);
+  }
+}
+
 function finish() {
   for (const root of projectRoots) ensureAiGitignore(root);
   if (!skipGraphify) {
@@ -493,6 +523,7 @@ function finish() {
     for (const root of projectRoots) setupGraphifyProject(root);
   }
   if (!skipCaveman) installCaveman(os.homedir(), [...projectRoots]);
+  if (!skipExternalSkills) installExternalSkills(os.homedir());
   if (pendingSubagents) installSubagents({ ...pendingSubagents, isDryRun, log: logOk });
 
   console.log(`
