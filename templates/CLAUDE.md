@@ -3,7 +3,7 @@
 ## Frontend / Angular Stack Conventions
 This project enforces the official **Angular 22+ (2026)** standards documented in [`skills/desarrollo-buenas-practicas/SKILL.md`](./skills/desarrollo-buenas-practicas/SKILL.md) (or `~/.claude/skills/desarrollo-buenas-practicas/SKILL.md`):
 
-- **Reactivity**: Strictly **Signals**. Never use `effect()` for state synchronization (use `computed()` or `linkedSignal()`).
+- **Reactivity**: Strictly **Signals**. Never use `effect()` (use `computed()` or `linkedSignal()`).
 - **Data Fetching**: Resource API only (`httpResource`, `rxResource`, `resource`).
 - **Forms**: Signal Forms (`@angular/forms/signals`). Never Reactive Forms or `ngModel`.
 - **Change Detection**: Zoneless (`provideZonelessChangeDetection()`). Check `@angular/core` in `package.json`: v22+ do not specify `changeDetection` (OnPush is default); below v22 always set `ChangeDetectionStrategy.OnPush`. `standalone: true` only in v18 or lower.
@@ -24,9 +24,9 @@ This project enforces the official **Angular 22+ (2026)** standards documented i
 See `references/14-agent-efficiency.md`.
 
 - **Adapt to the agent and models in use**: Model and tool names in the skill (Opus, Haiku, `/compact`, `AskUserQuestion`) are examples. Detect which agent and models are available and use the equivalent. Rules never change, only syntax (§14.7).
-- **Caveman mode**: Terse replies, no filler, no tool-call narration. Technical terms, code and errors exact. Normal prose only for security warnings, irreversible actions, code, commits, PRs and docs.
+- **Caveman mode**: Terse replies, no filler. One short status line when starting a new phase or before a long-running step; no per-call narration. Technical terms, code and errors exact. Normal prose only for security warnings, irreversible actions, code, commits, PRs and docs.
 - **Library lookups**: Before researching a library, check for another open agent session (`ListAgents`) that knows it and ask it (`SendMessage`). Then docs MCP, then `node_modules`, then web.
-- **Orchestrate (advisor strategy, explicit standing request: delegate without waiting to be asked)**: The strongest available model (Opus by default) plans, delegates and always reviews. Cheaper subagents (`Agent` with `model: "haiku"` or `"sonnet"`) execute search, reads, edits and boilerplate, in parallel when independent. Shared context in `tasks/brief-<task>.md`. Executors never guess: when stuck they return `NECESITA_ADVISOR: <question>`.
+- **Orchestrate, delegate only when it saves tokens**: The selected model plans, decides and always reviews. Delegate to cheaper subagents (`Agent` with `model: "haiku"` or `"sonnet"`) large searches/reads (3+ files, logs, docs) and mechanical edits across 8+ files, in parallel when independent; do small tasks yourself (§14.3.4). Shared context in `tasks/brief-<task>.md`. Executors never guess: when stuck they return `NECESITA_ADVISOR: <question>`.
 - **Ask upfront**: Before non-trivial work, ask all questions that change the result in one turn, with options and a recommended one (`AskUserQuestion`). Do not ask what the repo already answers.
 - **Auto-compact**: At the end of each phase or before an unrelated task, save state to `tasks/todo.md` and run `/compact` with focus (keep decisions, touched files, pending items). Never mid-change or with a pending question.
 - **Graphify startup (mandatory, first action of every session, before searching, reading or editing)**: run `graphify --help`, `graphify hook status` and `graphify update .`. Command not found → `pip install graphifyy && graphify install`. `warning: skill is from graphify X, package is Y` → `pip install --upgrade graphifyy && graphify install`. Hooks not installed → `graphify hook install` + `graphify claude install`. Then the first search on the code is always `graphify query "<question>"`; grep/read to explore without a prior query violates the skill. After a task touching 3+ files or before compacting: `graphify update .`.

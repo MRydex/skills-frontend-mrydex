@@ -25,7 +25,7 @@ Proceso del agente.
 - [ ] ¿Sin `any`? (`unknown` si es incierto) ¿Tipos explícitos cuando la inferencia no alcanza?
 - [ ] ¿El estado usa **signals**? ¿El derivado usa `computed()` / `linkedSignal()`?
 - [ ] ¿Sin mutación in-place de arrays/objetos dentro de signals (siempre nueva referencia)?
-- [ ] **¿CERO `effect()` para sincronizar estado?** ¿Cada caso resuelto con computed / linkedSignal / resource / interceptor?
+- [ ] **¿CERO `effect()`?** ¿Cada caso resuelto con computed / linkedSignal / resource / interceptor?
 - [ ] **¿CERO `Observable` / `Subject` / `BehaviorSubject` / `subscribe` guardado como estado?**
 - [ ] ¿Debounce con `debounced()` (leído con `.value()`), no con `debounceTime` a mano?
 - [ ] ¿Orden de declaraciones: injects → inputs/outputs → variables → signals → constructor → ngOnInit → públicas (onXxx primero) → privadas? (§2.6)

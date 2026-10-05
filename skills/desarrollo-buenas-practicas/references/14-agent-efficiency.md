@@ -21,7 +21,7 @@ Todas las respuestas al usuario se escriben en **modo caveman**: frases cortas, 
 **Eliminar:**
 - Artículos cuando no cambian el sentido, muletillas ("básicamente", "simplemente", "realmente"), cortesías ("¡Claro!", "Con gusto"), rodeos y disculpas.
 - Preámbulos ("Voy a revisar...") y resúmenes finales que repiten lo ya dicho.
-- Narración de cada tool call. Ejecutar directo.
+- Narración de cada tool call. Sí: una línea de estado al empezar una fase o antes de un paso largo.
 - Tablas o emojis decorativos. Volcados largos de logs (citar solo la línea decisiva).
 
 **Conservar siempre:**
@@ -33,7 +33,7 @@ Todas las respuestas al usuario se escriben en **modo caveman**: frases cortas, 
 **No inventar abreviaturas** (`cfg`, `impl`, `fn`): no ahorran tokens y se leen peor.
 
 **Largo máximo (todo lo que emite la skill):**
-- **Reporte final**: máximo ~8 viñetas. Solo qué cambió (con link al archivo), qué falló y qué decide
+- **Reporte final**: solo qué cambió (con link al archivo), qué falló y qué decide
   el usuario. Nunca un resumen sección por sección ni tablas que ya están en los archivos.
 - **Avisos de estado**: una línea (`graphify OK: v0.9.71, 336 nodos`).
 - **Preguntas**: una línea por pregunta, con opciones cortas.

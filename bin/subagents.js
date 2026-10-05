@@ -3,7 +3,7 @@
  * Formatos verificados en la documentación oficial de cada agente (ver §14.3.2 de la skill).
  *
  * El orquestador delega en ellos solo cuando baja el total de tokens (§14.3.4):
- * búsquedas/lecturas grandes y ediciones mecánicas en 3+ archivos. Lo chico lo hace él.
+ * búsquedas/lecturas grandes y ediciones mecánicas en 8+ archivos. Lo chico lo hace él.
  */
 
 const fs = require('fs');
@@ -21,7 +21,7 @@ const ROLES = [
 
 1. Primero \`graphify query "<pregunta>"\` si existe \`graphify-out/graph.json\`. Recién después grep/lectura.
 2. Nunca edites archivos. Nunca propongas cambios.
-3. Máximo 15 líneas de respuesta. Si no encontrás algo, decilo en una línea.
+3. Respuesta: solo la lista \`archivo:línea\`, sin prosa. Si no encontrás algo, decilo en una línea.
 4. Si la pregunta es ambigua, devolvé \`NECESITA_ADVISOR: <duda>\`.`,
   },
   {
@@ -29,7 +29,7 @@ const ROLES = [
     readonly: false,
     cheap: false,
     description:
-      'Use to implement a concrete brief from the main model when it saves tokens (mechanical edits with a clear pattern across 3+ files, boilerplate). Returns a short caveman report of files changed. Skip for small or single-file edits.',
+      'Use to implement a concrete brief from the main model when it saves tokens (mechanical edits with a clear pattern across 8+ files, boilerplate). Returns a short caveman report of files changed. Skip for edits in fewer than 8 files.',
     instructions: `Implementá exactamente el brief que te pasa el modelo principal. Nada más.
 
 1. Seguí la skill \`desarrollo-buenas-practicas\` (Angular 22+, signals, sin tests, sin sobreingeniería, sin componentizar lo simple).
@@ -37,7 +37,7 @@ const ROLES = [
 3. No amplíes el alcance. No crees archivos de test. No agregues abstracciones que el brief no pide.
 4. Si el brief es ambiguo o te trabás, no adivines: devolvé \`NECESITA_ADVISOR: <duda>\`.
 5. Al terminar, corré \`graphify update .\` y el build/lint si el brief lo pide.
-6. Respuesta final en modo caveman, máximo 8 líneas: archivos tocados y cualquier problema.`,
+6. Respuesta final en modo caveman: solo archivos tocados y cualquier problema.`,
   },
   {
     name: 'revisor-checklist',
@@ -109,7 +109,7 @@ const TARGETS = [
     file: (r) => `${r.name}.md`,
     render: (r) =>
       markdown(
-        [`name: ${r.name}`, `description: ${r.description}`, `model: ${r.cheap ? 'gemini-3-flash-preview' : 'inherit'}`],
+        [`name: ${r.name}`, `description: ${r.description}`, `model: ${r.cheap ? 'flash' : 'inherit'}`],
         r.instructions,
       ),
   },
