@@ -116,7 +116,7 @@ Las `§14.x` están en [14-agent-efficiency.md](./references/14-agent-efficiency
 - **Incremental Hydration** viene activada por defecto con `provideClientHydration()` (desactivable con `withNoIncrementalHydration()`).
 - Imágenes estáticas vía `NgOptimizedImage`.
 - Accesibilidad: AXE limpio + WCAG **AA** mínimo. Para primitivas headless accesibles usar **`@angular/aria`** (estable desde v22).
-- **NG-ZORRO** como librería de componentes en la mayoría de los proyectos del equipo.
+- **Librería de componentes, en este orden** (mirar `package.json`): **NG-ZORRO** si está instalado (la mayoría de los proyectos del equipo); si no, **Angular Material**; si no hay ninguna, **controles propios** (nativos o `FormValueControl`). Nunca mezclar dos librerías ni instalar una para un solo control. Ver [06-signal-forms.md](./references/06-signal-forms.md) §6.10.
 
 ---
 

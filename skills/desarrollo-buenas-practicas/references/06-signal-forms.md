@@ -6,7 +6,8 @@
 [6.5](#65-validación-cruzada-entre-campos-validatetree) Validación cruzada (`validateTree`) ·
 [6.6](#66-validación-asíncrona-validateasync--validatehttp) Validación asíncrona ·
 [6.7](#67-errores-accesibles-en-el-template) Errores accesibles · [6.8](#68-reset-y-estado-imperativo) Reset y estado imperativo ·
-[6.9](#69-controles-propios-e-integración-con-ng-zorro) Controles propios / NG-ZORRO
+[6.9](#69-controles-propios-e-integración-con-ng-zorro) Controles propios / NG-ZORRO ·
+[6.10](#610-formulario-reutilizable-con-campos-envoltorio-patrón-del-equipo) Formulario reutilizable con campos envoltorio
 
 > **Regla del equipo: todos los formularios se hacen con Signal Forms
 > (`@angular/forms/signals`).** Nada de Reactive Forms (`FormGroup` / `FormControl` /
@@ -122,7 +123,10 @@ inválido o pendiente.
 - **Usar `invalid()`, no `!valid()`** cuando hay validación asíncrona: durante `pending()`, `valid()`
   e `invalid()` pueden ser ambos `false`.
 - **Habilitar/deshabilitar el submit** con el estado **del form** (`registroForm().valid()`), no
-  campo por campo.
+  campo por campo. **Excepción**: si el form puede arrancar inválido sin que el usuario haya tocado
+  nada (precarga, filtros guardados en `localStorage`), **no** deshabilitar: el error no se ve
+  (falta `touched()`) y el botón queda gris sin explicación. `submit()` marca todo como `touched`
+  y `onInvalid` lleva el foco al primer error.
 - **Condicionales de campo con `disabled` / `readonly` / `hidden` + `when`**, no con lógica suelta en
   el template:
   ```ts
@@ -321,6 +325,8 @@ validateHttp(path.email, {
 
 ### 6.9 Controles propios e integración con NG-ZORRO
 
+> Qué librería usar (NG-ZORRO → Angular Material → controles propios): ver §6.10.
+
 - **Controles propios**: implementar `FormValueControl<T>` (expone `value = model<T>()`) o
   `FormCheckboxControl` (expone `checked`) para que `[formField]` pueda bindearlos — es el mecanismo
   **preferido** para controles nuevos. `[formField]` también puede bindear directo a un componente que
@@ -347,5 +353,310 @@ validateHttp(path.email, {
 - **`SignalFormControl`** (`@angular/forms/signals/compat`) permite escribir las reglas con
   validadores de Signal Forms (`required`, `minLength`, etc.) y seguir usando el control dentro de un
   `FormGroup`/`FormArray` de Reactive Forms — puente para migración incremental, no para código nuevo.
+
+### 6.10 Formulario reutilizable con campos envoltorio (patrón del equipo)
+
+Patrón para formularios que se reutilizan en varias pantallas o dentro de un modal NG-ZORRO
+(ejemplo: alta/edición de un contacto). Tres piezas:
+
+1. **Campo envoltorio** (`app-campo`): un solo componente genérico que pone etiqueta, asterisco de
+   obligatorio y mensaje de error alrededor de **cualquier** control proyectado (`<input>`,
+   `nz-select`, `nz-date-picker`, `nz-input-number`). No hay un envoltorio por tipo de control ni
+   una lista de inputs que replican atributos del control (`type`, `placeholder`, `options`,
+   `optionLabel`...): esos atributos los pone el padre directo sobre el control.
+2. **Formulario hijo**: dueño del modelo, del schema y del payload. Expone solo lo mínimo
+   (`contacto`, `permiteEmpresa`, `enviado`, `enviar()`, `limpiar()`). No guarda nada.
+3. **Contenedor** (página o modal): decide cuándo enviar y qué hacer con el payload.
+
+**Qué control proyectar, en este orden** (mirar `package.json` antes de elegir):
+
+1. **NG-ZORRO** (`ng-zorro-antd` instalado): `nz-input`, `nz-select`, `nz-date-picker`,
+   `nz-range-picker`, `nz-input-number`, `nz-checkbox`. Traen `ControlValueAccessor`, así que
+   `[formField]` los ata directo (§6.9).
+2. **Angular Material** (sin NG-ZORRO, con `@angular/material`): `matInput`, `mat-select`,
+   `mat-datepicker`, `mat-checkbox`. También se atan directo con `[formField]`. Con Material, el
+   envoltorio puede ser el propio `mat-form-field` (`mat-label` + `mat-error`); `app-campo` solo
+   aporta si se quiere el mismo layout de error en toda la app.
+3. **Controles propios** (sin ninguna de las dos): elementos nativos (`<input>`, `<select>`,
+   `<input type="date">`) con `[formField]`; si hace falta un control compuesto, un componente con
+   `FormValueControl` / `FormCheckboxControl` (§6.9).
+
+Nunca mezclar dos librerías de componentes en el mismo formulario, ni instalar una para un solo
+control.
+
+Layout con **BEM + CSS Grid** en el SCSS del formulario. Nada de clases utilitarias tipo
+`row` / `col-md-4`, nada de `style="..."` inline.
+
+**Modelo y payload** (en `models/`, nunca en el componente). Los campos solo de UI quedan fuera del
+payload con `Omit`:
+
+```ts
+// models/contacto-form.model.ts
+export interface ContactoFormModel {
+  nombre: string;
+  idCategoria: number | null;
+  fechaAlta: Date | null;
+  email: string;
+  responsable: string;
+  esEmpresa: boolean;            // solo UI: muestra/oculta la razón social
+  razonSocial: string;
+}
+
+/** Valores listos para persistir (sin campos solo de UI). */
+export type ContactoPayload = Omit<ContactoFormModel, 'esEmpresa'>;
+
+export const CONTACTO_FORM_VACIO: ContactoFormModel = {
+  nombre: '',
+  idCategoria: null,
+  fechaAlta: null,
+  email: '',
+  responsable: '',
+  esEmpresa: false,
+  razonSocial: '',
+};
+```
+
+**Campo envoltorio genérico.** Recibe la etiqueta y el `FieldTree` del campo (para leer su estado,
+no para atarlo). El asterisco y el error salen del **estado del campo**: si el schema dice
+`required`, la etiqueta lo muestra sola; no hay `[required]="true"` duplicado. El `<label>` envuelve
+el control proyectado, así la asociación etiqueta-control es implícita y no hace falta pasar ids.
+
+```ts
+// shared/components/campo/campo.ts
+@Component({
+  selector: 'app-campo',
+  templateUrl: './campo.html',
+  styleUrl: './campo.scss',
+  host: { class: 'campo', '[class.campo--error]': 'mostrarError()' },
+})
+export class Campo {
+  readonly etiqueta = input.required<string>();
+  readonly control = input.required<FieldTree<unknown>>();
+
+  protected readonly estado = computed(() => this.control()());
+  protected readonly mostrarError = computed(
+    () => this.estado().touched() && this.estado().invalid(),
+  );
+  protected readonly mensajeError = computed(() => this.estado().errors()[0]?.message ?? '');
+}
+```
+
+```html
+<!-- campo.html -->
+<label class="campo__label">
+  <span class="campo__texto">
+    {{ etiqueta() }}
+    @if (estado().required()) {
+      <span class="campo__obligatorio" aria-hidden="true">*</span>
+    }
+    <ng-content select="[campoAyuda]" />
+  </span>
+  <ng-content />
+</label>
+<ng-content select="[campoNota]" />
+@if (mostrarError()) {
+  <p class="campo__error" role="alert">{{ mensajeError() }}</p>
+}
+```
+
+```scss
+// campo.scss
+:host {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.campo {
+  // Grid y no flex: los ítems de grid se estiran solos, así nz-select / mat-select / nz-date-picker
+  // ocupan todo el ancho sin tocarlos desde acá (nada de ::ng-deep, §7.4).
+  &__label {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  &__texto {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__obligatorio,
+  &__error {
+    color: var(--color-error);
+  }
+
+  &__error {
+    margin: 0;
+    font-size: 14px;
+  }
+}
+```
+
+> **Slots opcionales**: `[campoAyuda]` va dentro de la etiqueta (ej. ícono con tooltip) y
+> `[campoNota]` debajo del control (ej. una aclaración condicional). Los dos son elementos del
+> template del padre, así que los estila el SCSS del padre.
+>
+> ```html
+> <app-campo etiqueta="Usuario" [control]="filtroForm.usuario">
+>   <span campoAyuda class="filtro__ayuda" nz-tooltip nzTooltipTitle="..." aria-hidden="true"></span>
+>   <nz-select [formField]="filtroForm.usuario">...</nz-select>
+>   @if (filtroForm.usuario().value() === USUARIO_EXTERNO) {
+>     <small campoNota class="filtro__nota">Solo usuarios externos</small>
+>   }
+> </app-campo>
+> ```
+
+**Formulario hijo.**
+
+```ts
+@Component({
+  selector: 'app-form-contacto',
+  templateUrl: './form-contacto.html',
+  styleUrl: './form-contacto.scss',
+  imports: [FormRoot, FormField, NzInputModule, NzSelectModule, NzDatePickerModule, NzCheckboxModule, Campo],
+})
+export class FormContacto {
+  private readonly _modalData = inject<ContactoModalData | null>(NZ_MODAL_DATA, { optional: true });
+  private readonly _categoriasHttp = inject(CategoriasHttp);
+
+  readonly contacto = input<Partial<ContactoFormModel> | null>(null);
+  readonly permiteEmpresa = input(true);
+  readonly enviado = output<ContactoPayload>();
+
+  protected readonly categorias = this._categoriasHttp.listarResource();
+
+  // Se recalcula si cambia el input (edición) y sigue siendo editable por el usuario.
+  protected readonly modelo = linkedSignal<ContactoFormModel>(() => ({
+    ...CONTACTO_FORM_VACIO,
+    ...this._modalData?.contacto,
+    ...this.contacto(),
+  }));
+
+  protected readonly contactoForm = form(this.modelo, (path) => {
+    required(path.nombre, { message: '"Nombre" es obligatorio.' });
+    required(path.idCategoria, { message: '"Categoría" es obligatoria.' });
+    required(path.fechaAlta, { message: '"Fecha de alta" es obligatoria.' });
+    required(path.email, { message: '"Email" es obligatorio.' });
+
+    hidden(path.esEmpresa, () => !this.permiteEmpresa());
+    hidden(
+      path.razonSocial,
+      ({ valueOf }) => !this.permiteEmpresa() || !valueOf(path.esEmpresa),
+    );
+    required(path.razonSocial, { message: 'Ingresá la razón social.' });
+  }, {
+    // Obligatorio con [formRoot]: un Enter en un input dispara submit(); sin action tira NG01915.
+    submission: {
+      action: () => Promise.resolve(this.enviado.emit(this._payload())),
+      onInvalid: (f) => f().errorSummary()[0]?.fieldTree().focusBoundControl(),
+    },
+  });
+
+  /** Lo llama el contenedor (ej. botón "Guardar" del footer del modal). Usa la submission de arriba. */
+  enviar(): Promise<boolean> {
+    return submit(this.contactoForm);
+  }
+
+  limpiar(): void {
+    this.contactoForm().reset({ ...CONTACTO_FORM_VACIO });
+  }
+
+  private _payload(): ContactoPayload {
+    const { esEmpresa: _, ...payload } = this.modelo();
+    return payload;
+  }
+}
+```
+
+```html
+<form class="form-contacto" [formRoot]="contactoForm">
+  <app-campo class="form-contacto__campo form-contacto__campo--completo"
+    etiqueta="Nombre" [control]="contactoForm.nombre">
+    <input nz-input [formField]="contactoForm.nombre" />
+  </app-campo>
+
+  <app-campo class="form-contacto__campo" etiqueta="Categoría" [control]="contactoForm.idCategoria">
+    <nz-select [formField]="contactoForm.idCategoria" [nzLoading]="categorias.isLoading()">
+      @for (categoria of categorias.value() ?? []; track categoria.id) {
+        <nz-option [nzValue]="categoria.id" [nzLabel]="categoria.descripcion" />
+      }
+    </nz-select>
+  </app-campo>
+
+  <app-campo class="form-contacto__campo" etiqueta="Fecha de alta" [control]="contactoForm.fechaAlta">
+    <nz-date-picker [formField]="contactoForm.fechaAlta" nzFormat="dd/MM/yyyy" />
+  </app-campo>
+
+  <app-campo class="form-contacto__campo" etiqueta="Email" [control]="contactoForm.email">
+    <input nz-input type="email" [formField]="contactoForm.email" />
+  </app-campo>
+
+  @if (!contactoForm.esEmpresa().hidden()) {
+    <label class="form-contacto__empresa" nz-checkbox [formField]="contactoForm.esEmpresa">
+      Es empresa
+    </label>
+  }
+  @if (!contactoForm.razonSocial().hidden()) {
+    <app-campo class="form-contacto__campo form-contacto__campo--completo"
+      etiqueta="Razón social" [control]="contactoForm.razonSocial">
+      <input nz-input [formField]="contactoForm.razonSocial" />
+    </app-campo>
+  }
+</form>
+```
+
+```scss
+// form-contacto.scss
+.form-contacto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 224px), 1fr));
+  gap: 16px 24px;
+
+  &__campo--completo,
+  &__empresa {
+    grid-column: 1 / -1;
+  }
+}
+```
+
+> `form-contacto__campo` sobre el host de `app-campo` es un **mix BEM**: el padre posiciona al
+> hijo en su grilla (elemento del bloque padre) y el hijo maneja su interior (bloque `campo`).
+> El hijo nunca sabe en qué columna está.
+
+**Reglas del patrón:**
+
+- **Un envoltorio genérico con `<ng-content>`**, no uno por control (`app-input`, `app-select`,
+  `app-datepicker`) que reexpone como inputs los atributos del control. Si el control tiene lógica
+  propia (máscara, parseo), es un control con `FormValueControl` (§6.9), no un envoltorio.
+- **API mínima del formulario hijo**: inputs de datos, un `output` con el payload y métodos
+  públicos `enviar()` / `limpiar()`. Modelo, form y helpers son `protected` o `private`.
+- **Layout con BEM + Grid en el SCSS**, nunca clases utilitarias (`row`, `col-md-*`) ni
+  `[class]="'...'"` ni `style` inline. Nunca un input llamado `class`.
+- **Cero `effect()` en formularios** ([02](./02-typescript-signals.md) §2, regla del equipo). Campos
+  dependientes (ej. usuario ↔ rol): cada lista de opciones es un `computed()` filtrado por el otro
+  campo, así la UI no permite combinaciones inválidas. Si aun así pueden aparecer (datos guardados,
+  opciones que cambian), se marca con `validate()` / `validateTree()` en el schema; nunca un
+  `effect` que hace `campo().value.set(...)` para "limpiar".
+- **Precarga con `linkedSignal`, no con `effect`.** Un `effect` que hace `modelo.update(...)` corre
+  de nuevo cada vez que cambia cualquier signal que lee y pisa lo que el usuario ya tipeó.
+- **Condiciones de `hidden` con `valueOf(path.x)`**, no con `this.modelo().x`. En el template se lee
+  `campo().hidden()`: nunca se repite la lógica con `@if (modelo().x)`.
+- **Un `required` sobre un campo condicional es seguro**: mientras está `hidden`, no valida.
+- **Un signal en el template siempre se invoca**: `@if (permiteEmpresa())`, nunca
+  `@if (permiteEmpresa)` (la función siempre es truthy).
+- **Sin `@if (miForm)` envolviendo el `<form>`**: el `FieldTree` existe desde la construcción.
+- **Sin decoradores mezclados**: todo `input()` / `output()`. Inputs que aceptan `null` lo declaran
+  (`input<number | null>(null)`).
+- **Valor inicial en una constante** compartida entre modelo y reset. `reset(valor)` limpia también
+  `touched` / `dirty`; `modelo.set(...)` no.
+- **Datos del modal tipados**: `inject<MiModalData | null>(NZ_MODAL_DATA, { optional: true })`.
+- **Opciones de selects con Resource API** en el formulario (o su servicio), no con un envoltorio
+  que recibe `method="ruta/del/endpoint"` y pide los datos por dentro.
+- **Búsqueda de autocomplete** (ej. responsable): `debounce(path.responsable, 300)` en el
+  schema y un `httpResource` cuyo request lee el campo y devuelve `undefined` con menos de 3
+  caracteres (ver [04-resource-api.md](./04-resource-api.md)). Nada de un signal aparte que copia el
+  resultado del resource.
 
 ---

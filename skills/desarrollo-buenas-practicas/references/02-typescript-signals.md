@@ -353,6 +353,8 @@ bloque se mantiene solo.
 | Debouncing                                      | `debounced()` (§2.5)                                     |
 | Transformar un resource entero                  | `snapshot` + `resourceFromSnapshots()` (§4.10)           |
 | Tocar el DOM después del primer render          | `afterNextRender()` / `afterRenderEffect()`              |
+| Limpiar un campo del form cuando cambia otro    | Opciones derivadas con `computed()` que solo ofrecen valores compatibles; si igual puede quedar inválido, `validate()` / `validateTree()` en el schema (06 §6.10) |
+| Mostrar/ocultar o habilitar un campo del form   | `hidden()` / `disabled()` / `readonly()` en el schema (06 §6.3) |
 
 ```ts
 // ❌ MAL — effect anónimo en el constructor, derivando estado

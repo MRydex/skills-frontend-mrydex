@@ -3,6 +3,33 @@
 Cambios de la skill `desarrollo-buenas-practicas` y del instalador `skills-frontend-mrydex`.
 Para actualizar en un proyecto: `npx skills-frontend-mrydex@latest`.
 
+## [1.21.0] - 2026-10-08
+
+### Agregado
+- **Formulario reutilizable con campos envoltorio** (`references/06-signal-forms.md` §6.10):
+  - Un solo `app-campo` genérico con `<ng-content>`. Pone etiqueta, asterisco y error, y los lee
+    del `FieldTree`. Tiene slots `[campoAyuda]` y `[campoNota]`. No hay un envoltorio por control
+    ni inputs que repitan atributos del control.
+  - El formulario hijo tiene el modelo, el schema y el payload (`Omit` para los campos solo de UI).
+    Su API pública es mínima: inputs, un `output` y `enviar()` / `limpiar()`.
+  - Precarga con `linkedSignal`, `hidden()` con `valueOf()` y `@if (!campo().hidden())`, y
+    `submission` en `form()` siempre que se use `[formRoot]`.
+  - Layout con BEM + CSS Grid en px, sin `row` / `col-md-*`, `style` inline ni `::ng-deep`.
+- **Librería de componentes, en orden**: NG-ZORRO si está instalado; si no, Angular Material; si no,
+  controles propios. Una sola librería por formulario. Está en `SKILL.md`, §6.9, §6.10 y
+  `checklists.md`.
+- `checklists.md` tiene ítems nuevos de formularios: envoltorio genérico, librería, cero `effect()`
+  y `hidden`.
+
+### Cambiado
+- **Cero `effect()` en formularios.** La tabla de `02-typescript-signals.md` suma dos casos:
+  - limpiar un campo cuando cambia otro: opciones con `computed()` y, si igual puede quedar
+    inválido, `validate()` / `validateTree()`;
+  - mostrar u ocultar un campo: `hidden()` / `disabled()` / `readonly()`.
+- §6.3: el submit **no** se deshabilita si el form puede arrancar inválido sin que el usuario haya
+  tocado nada (precarga, filtros guardados). En ese caso el error no se ve: `submit()` marca todo
+  como `touched` y `onInvalid` lleva el foco al primer error.
+
 ## [1.20.0] - 2026-10-05
 
 ### Agregado
