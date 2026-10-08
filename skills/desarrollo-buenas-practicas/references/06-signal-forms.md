@@ -374,15 +374,21 @@ Patrón para formularios que se reutilizan en varias pantallas o dentro de un mo
    `nz-range-picker`, `nz-input-number`, `nz-checkbox`. Traen `ControlValueAccessor`, así que
    `[formField]` los ata directo (§6.9).
 2. **Angular Material** (sin NG-ZORRO, con `@angular/material`): `matInput`, `mat-select`,
-   `mat-datepicker`, `mat-checkbox`. También se atan directo con `[formField]`. `mat-form-field`
-   sí se usa, porque `matInput` / `mat-select` lo necesitan para verse bien; la grilla alrededor es
-   SCSS propio.
+   `mat-datepicker`, `mat-checkbox`. También se atan directo con `[formField]`. Acá el envoltorio
+   de cada campo es `mat-form-field` (`mat-label` + `mat-error`) **en vez de** `app-campo`:
+   `matInput` / `mat-select` lo necesitan para verse bien, y no es layout (no arma columnas).
 3. **Controles propios** (sin ninguna de las dos): elementos nativos (`<input>`, `<select>`,
    `<input type="date">`) con `[formField]`; si hace falta un control compuesto, un componente con
    `FormValueControl` / `FormCheckboxControl` (§6.9).
 
 Nunca mezclar dos librerías de componentes en el mismo formulario, ni instalar una para un solo
 control.
+
+| Proyecto con… | Envoltorio de cada campo | Grilla de columnas |
+|---|---|---|
+| NG-ZORRO | `app-campo` | SCSS propio |
+| Angular Material | `mat-form-field` | SCSS propio |
+| Ninguna librería | `app-campo` | SCSS propio |
 
 Layout con **SCSS propio: BEM + CSS Grid** en el SCSS del formulario, reutilizando el `@mixin` o
 partial de grilla que el proyecto ya tenga si hay uno parecido. Nada de componentes de layout de la

@@ -479,7 +479,7 @@ assets/styles/
     y el layout de formulario `nz-form` / `nz-form-item` / `nz-form-label` / `nz-form-control` /
     `nzLayout`. Etiqueta, obligatorio y error los pone el envoltorio `app-campo`
     ([06](./06-signal-forms.md) §6.10).
-  - Angular Material: `mat-grid-list`. (`mat-form-field` sí, porque `matInput` / `mat-select` lo
+  - Angular Material: `mat-grid-list`. (`mat-form-field` sí: es el envoltorio de **un** campo, el equivalente de `app-campo`, y `matInput` / `mat-select` lo
     necesitan para verse bien; la grilla alrededor sigue siendo SCSS propio.)
   - Clases utilitarias de grilla (`row`, `col-md-*`, utilidades de Bootstrap o Tailwind).
 - **Sí** se usan los **controles** de la librería (`nz-input`, `nz-select`, `nz-date-picker`...):
