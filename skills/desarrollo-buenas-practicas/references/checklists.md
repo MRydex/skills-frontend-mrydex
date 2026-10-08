@@ -65,7 +65,7 @@ Proceso del agente.
 ### Formularios ([06](./06-signal-forms.md))
 - [ ] ¿Es **Signal Forms**? (cero `FormGroup` / `FormControl` / `ngModel` / `valueChanges`)
 - [ ] ¿El `<form>` tiene `[formRoot]` y los campos `[formField]`?
-- [ ] ¿Un solo envoltorio genérico (`<ng-content>`) que lee `required` / errores del `FieldTree`, sin reexponer atributos del control? ¿Layout BEM + Grid, sin `row` / `col-md-*`? ([06](./06-signal-forms.md) §6.10)
+- [ ] ¿Un solo envoltorio genérico (`<ng-content>`) que lee `required` / errores del `FieldTree`, sin reexponer atributos del control? ¿Layout con SCSS propio (BEM + Grid), sin `nz-row` / `nz-col` / `nz-form-item` ni `row` / `col-md-*`, reutilizando el `@mixin` de grilla si ya existe? (§7.11) ([06](./06-signal-forms.md) §6.10)
 - [ ] ¿Controles de NG-ZORRO si está instalado, si no Angular Material, si no propios? ¿Una sola librería por formulario? (§6.10)
 - [ ] ¿Cero `effect()`? Campos dependientes con opciones `computed()` y, si hace falta, `validate()` / `validateTree()` (§6.10)
 - [ ] ¿Los campos `hidden` usan `valueOf(path.x)` en el schema y `@if (!f.x().hidden())` en el template?

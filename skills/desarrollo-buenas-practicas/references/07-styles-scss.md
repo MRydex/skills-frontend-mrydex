@@ -12,6 +12,7 @@
 - 7.8 Responsividad
 - 7.9 Tamaño máximo de archivo
 - 7.10 SCSS repetido: triángulo invertido (ITCSS)
+- 7.11 Layout con SCSS propio, nunca con componentes de layout de la librería
 
 ### 7.1 Módulos Sass: `@use` y `@forward` (nunca `@import`)
 
@@ -466,5 +467,39 @@ assets/styles/
   se compila aislado) y genera selectores inflados. Usar `@mixin`.
 - Las capas 3–7 viven solo en `styles.scss` (global). Nunca en la hoja de un componente.
 - Si una repetición no encaja en ninguna capa, probablemente es un subcomponente: extraerlo (§7.9).
+
+### 7.11 Layout con SCSS propio, nunca con componentes de layout de la librería
+
+> **Regla del equipo:** el layout (grillas, columnas, espaciado, alineación) se hace con **SCSS
+> propio** (CSS Grid / Flexbox + BEM), nunca con los componentes o directivas de layout de la
+> librería de UI.
+
+- **Prohibido**:
+  - NG-ZORRO: `nz-row`, `nz-col`, `nzGutter`, `nzSpan`, `nzFlex`, `nz-space`, `nz-flex`, `nz-grid`,
+    y el layout de formulario `nz-form` / `nz-form-item` / `nz-form-label` / `nz-form-control` /
+    `nzLayout`. Etiqueta, obligatorio y error los pone el envoltorio `app-campo`
+    ([06](./06-signal-forms.md) §6.10).
+  - Angular Material: `mat-grid-list`. (`mat-form-field` sí, porque `matInput` / `mat-select` lo
+    necesitan para verse bien; la grilla alrededor sigue siendo SCSS propio.)
+  - Clases utilitarias de grilla (`row`, `col-md-*`, utilidades de Bootstrap o Tailwind).
+- **Sí** se usan los **controles** de la librería (`nz-input`, `nz-select`, `nz-date-picker`...):
+  lo que se descarta es su sistema de layout, no sus componentes.
+- **Reutilizar antes de escribir**: antes de armar una grilla nueva, buscar si el proyecto ya tiene
+  algo parecido (un `@mixin` en `tools/` como `grilla-campos`, un partial del módulo, una clase de
+  layout global) y usarlo. Si el mismo layout aparece en un segundo componente, se sube a un
+  `@mixin` en la capa que corresponda (§7.10), no se copia.
+- Grilla de formulario típica, sin media queries
+  ([13-css3-layouts-animations.md](./13-css3-layouts-animations.md) §13.13):
+  ```scss
+  .form-contacto {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 224px), 1fr));
+    gap: 16px 24px;
+
+    &__campo--completo {
+      grid-column: 1 / -1;
+    }
+  }
+  ```
 
 ---

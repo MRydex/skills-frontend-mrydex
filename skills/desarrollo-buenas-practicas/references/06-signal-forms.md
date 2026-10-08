@@ -374,9 +374,9 @@ Patrón para formularios que se reutilizan en varias pantallas o dentro de un mo
    `nz-range-picker`, `nz-input-number`, `nz-checkbox`. Traen `ControlValueAccessor`, así que
    `[formField]` los ata directo (§6.9).
 2. **Angular Material** (sin NG-ZORRO, con `@angular/material`): `matInput`, `mat-select`,
-   `mat-datepicker`, `mat-checkbox`. También se atan directo con `[formField]`. Con Material, el
-   envoltorio puede ser el propio `mat-form-field` (`mat-label` + `mat-error`); `app-campo` solo
-   aporta si se quiere el mismo layout de error en toda la app.
+   `mat-datepicker`, `mat-checkbox`. También se atan directo con `[formField]`. `mat-form-field`
+   sí se usa, porque `matInput` / `mat-select` lo necesitan para verse bien; la grilla alrededor es
+   SCSS propio.
 3. **Controles propios** (sin ninguna de las dos): elementos nativos (`<input>`, `<select>`,
    `<input type="date">`) con `[formField]`; si hace falta un control compuesto, un componente con
    `FormValueControl` / `FormCheckboxControl` (§6.9).
@@ -384,8 +384,11 @@ Patrón para formularios que se reutilizan en varias pantallas o dentro de un mo
 Nunca mezclar dos librerías de componentes en el mismo formulario, ni instalar una para un solo
 control.
 
-Layout con **BEM + CSS Grid** en el SCSS del formulario. Nada de clases utilitarias tipo
-`row` / `col-md-4`, nada de `style="..."` inline.
+Layout con **SCSS propio: BEM + CSS Grid** en el SCSS del formulario, reutilizando el `@mixin` o
+partial de grilla que el proyecto ya tenga si hay uno parecido. Nada de componentes de layout de la
+librería (`nz-row`, `nz-col`, `nzGutter`, `nz-space`, `nz-form-item`, `nz-form-label`,
+`nz-form-control`, `mat-grid-list`), nada de clases utilitarias tipo `row` / `col-md-4`, nada de
+`style="..."` inline ([07](./07-styles-scss.md) §7.11).
 
 **Modelo y payload** (en `models/`, nunca en el componente). Los campos solo de UI quedan fuera del
 payload con `Omit`:
@@ -632,8 +635,10 @@ export class FormContacto {
   propia (máscara, parseo), es un control con `FormValueControl` (§6.9), no un envoltorio.
 - **API mínima del formulario hijo**: inputs de datos, un `output` con el payload y métodos
   públicos `enviar()` / `limpiar()`. Modelo, form y helpers son `protected` o `private`.
-- **Layout con BEM + Grid en el SCSS**, nunca clases utilitarias (`row`, `col-md-*`) ni
-  `[class]="'...'"` ni `style` inline. Nunca un input llamado `class`.
+- **Layout con SCSS propio (BEM + Grid)**, nunca `nz-row` / `nz-col` / `nz-form-item` ni otros
+  componentes de layout de la librería, ni clases utilitarias (`row`, `col-md-*`), ni
+  `[class]="'...'"`, ni `style` inline. Si el proyecto ya tiene un `@mixin` de grilla parecido, se
+  reutiliza. Nunca un input llamado `class`.
 - **Cero `effect()` en formularios** ([02](./02-typescript-signals.md) §2, regla del equipo). Campos
   dependientes (ej. usuario ↔ rol): cada lista de opciones es un `computed()` filtrado por el otro
   campo, así la UI no permite combinaciones inválidas. Si aun así pueden aparecer (datos guardados,

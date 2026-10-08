@@ -423,8 +423,8 @@ tocar `.ant-select-dropdown` ni `.ant-select-item`): es un input del componente
 
 Con `false`, el select sigue siendo el `min-width` del panel, pero el panel **crece hasta el
 option más ancho** (el overlay se dimensiona por contenido). Es la opción a usar en selects
-angostos con labels largos (tipos, prioridades, organismos), típicamente dentro de grids de
-formulario con `nz-col` chicos.
+angostos con labels largos (tipos, prioridades, organismos), típicamente en las columnas angostas
+de una grilla de formulario.
 
 - Mantener el default (`true`) cuando el select ya es ancho o las labels son cortas: un panel más
   ancho que el control rompe la alineación visual.
