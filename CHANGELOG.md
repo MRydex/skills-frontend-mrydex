@@ -3,6 +3,11 @@
 Cambios de la skill `desarrollo-buenas-practicas` y del instalador `skills-frontend-mrydex`.
 Para actualizar en un proyecto: `npx skills-frontend-mrydex@latest`.
 
+## [Unreleased]
+
+### Corregido
+- §6.10: el archivo del modelo se llama `contacto-form.ts`, sin sufijo `.model` (§1.3).
+
 ## [1.21.0] - 2026-10-08
 
 ### Agregado

@@ -391,7 +391,7 @@ Layout con **BEM + CSS Grid** en el SCSS del formulario. Nada de clases utilitar
 payload con `Omit`:
 
 ```ts
-// models/contacto-form.model.ts
+// models/contacto-form.ts
 export interface ContactoFormModel {
   nombre: string;
   idCategoria: number | null;
