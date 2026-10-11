@@ -158,7 +158,7 @@ intermedio, solo lectura: en una prueba real el modelo barato se perdía en bús
 | Claude Code | `~/.claude/agents/*.md` | `haiku` / `sonnet` | No: regla de fábrica. El instalador agrega el pedido a `~/.claude/CLAUDE.md` |
 | Codex | `~/.codex/agents/*.toml` | Hereda el modelo; `model_reasoning_effort` `low` / `medium` | No: el instalador agrega el pedido a `~/.codex/AGENTS.md` |
 | Cursor | `~/.cursor/agents/*.md` | `inherit` (`readonly: true` en los de lectura) | Sí, según `description` |
-| Gemini CLI | `~/.gemini/agents/*.md` | `gemini-3-flash-preview` / `inherit` | Sí, según `description` |
+| Gemini CLI | `~/.gemini/agents/*.md` | `flash` / `inherit` | Sí, según `description` |
 | Antigravity | `~/.gemini/config/agents/*.md` | `flash` / `inherit` | El planner decide según `description` |
 | Copilot (VS Code) | `~/.copilot/agents/*.agent.md` | El del chat | No: se eligen a mano en el selector de agentes |
 
@@ -247,8 +247,10 @@ lint, nunca con tests nuevos (§8). Para un patrón mecánico en una sola sesió
    convenciones aplicables (citar la referencia de esta skill) y el criterio de terminado.
 2. Una tarea por subagente. Tareas independientes en paralelo.
 3. Pedir salida comprimida: `archivo:línea`, diff o lista corta. Nunca volcados completos.
-4. Si existen agentes especializados comprimidos (ej. `cavecrew-investigator`, `cavecrew-builder`,
-   `cavecrew-reviewer` en Claude Code), preferirlos sobre agentes genéricos.
+4. Delegar en los subagentes del equipo (`investigador`, `ejecutor`, `revisor-checklist`): el
+   instalador los crea en todos los agentes con el modelo medido para cada rol. Solo si no están
+   instalados, usar equivalentes comprimidos que existan (ej. `cavecrew-*` en Claude Code) antes que
+   agentes genéricos.
 
 ```text
 Modelo fuerte (orquestador + revisor)

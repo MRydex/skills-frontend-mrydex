@@ -29,8 +29,8 @@ Convenciones **obligatorias** del equipo para Angular 22+ y frontend moderno, m�
 
 ### Paso 0 — Arranque de graphify (obligatorio, antes de cualquier otra acción)
 
-Primera acción de cada sesión, en cualquier repo, **antes** de buscar, leer o editar código. No es
-opcional ni se saltea "porque la tarea es chica". Sin preguntar:
+Primera acción de cada sesión, en cualquier repo, antes de buscar, leer o editar código, también en
+tareas chicas: una consulta al grafo cuesta menos que leer los archivos que reemplaza. Sin preguntar:
 
 ```bash
 graphify --help 2>&1 | head -3   # ¿existe? ¿warning de versión?
@@ -64,9 +64,9 @@ con búsqueda normal. Causas conocidas:
 La misma regla vale al actualizar el grafo al final de la tarea (§14.5 paso 5). Detalle en
 [14-agent-efficiency.md](./references/14-agent-efficiency.md) §14.5.
 
-**Durante la tarea**: la primera búsqueda sobre el código es siempre `graphify query`. `grep`,
-`Glob` o leer archivos para explorar sin una consulta previa al grafo es una violación de la skill.
-Única excepción: el usuario nombró el archivo y la línea exactos.
+**Durante la tarea**: la primera búsqueda sobre el código es `graphify query`, antes de `grep`,
+`Glob` o leer archivos, porque el grafo dice dónde mirar con muchos menos tokens. Excepción: el
+usuario nombró el archivo y la línea exactos.
 
 ---
 
@@ -95,9 +95,8 @@ Rige durante toda la sesión desde que la skill se carga. Para que rija también
 5. **Autocompactar el contexto.** Al cerrar cada fase o antes de una tarea nueva: guardar el estado en `tasks/todo.md` y compactar con foco (`/compact Conservar: decisiones, archivos tocados, pendientes`). Nunca con un cambio a medio aplicar ni con una pregunta pendiente. Ver §14.4.
 6. **Graphify primero.** Arranque obligatorio del **Paso 0** al empezar cada sesión: instalar, actualizar la versión, integrar y poner el grafo al día. Ante cualquier pregunta sobre el código, `graphify query` antes de `grep` o leer archivos. Tras una tarea que tocó 3+ archivos o antes de compactar: `graphify update .` (sin LLM). Ver §14.5.
 7. **Herramientas del agente, siempre.** task-observer al empezar cada sesión; ponytail (código mínimo, `ponytail-review` antes del reporte final); agent-skills por fase, nunca las de tests; claude-code-setup en repos sin setup; Headroom y OmniRoute los levanta el hook `SessionStart` en Claude Code; en otros agentes, sesión lanzada con `headroom wrap <agente>`. Si falta una, instalarla y avisar en una línea. Ver §14.8.
-
-7. **Seguridad siempre (Red Team + Blue Team).** Todo cambio pasa la revisión ofensiva de §15.2 antes de entregarse. Nunca desactivar protecciones (sanitizador, CSP, XSRF, validación del backend). Nunca secretos en el front. Toda vulnerabilidad encontrada se reporta, aunque esté fuera del alcance. **`npm audit` siempre**: al empezar en un proyecto, después de cada cambio en `package.json`/lockfile y antes de entregar; reportar todo hallazgo y avisar los `high`/`critical` de runtime (§15.10). Ver [15-security.md](./references/15-security.md).
-8. **Archivos de IA en `.gitignore`.** Al empezar en un proyecto, verificar que `.gitignore` excluya todo lo de IA y agentes (`.claude/`, `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `graphify-out/`, `tasks/todo.md`, etc.). Agregar lo que falte. Preguntar antes de `git rm --cached`. Ver [10-environment-tooling.md](./references/10-environment-tooling.md) §10.9.
+8. **Seguridad siempre (Red Team + Blue Team).** Todo cambio pasa la revisión ofensiva de §15.2 antes de entregarse. Nunca desactivar protecciones (sanitizador, CSP, XSRF, validación del backend). Nunca secretos en el front. Toda vulnerabilidad encontrada se reporta, aunque esté fuera del alcance. **`npm audit` siempre**: al empezar en un proyecto, después de cada cambio en `package.json`/lockfile y antes de entregar; reportar todo hallazgo y avisar los `high`/`critical` de runtime (§15.10). Ver [15-security.md](./references/15-security.md).
+9. **Archivos de IA en `.gitignore`.** Al empezar en un proyecto, verificar que `.gitignore` excluya todo lo de IA y agentes (`.claude/`, `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `graphify-out/`, `tasks/todo.md`, etc.). Agregar lo que falte. Preguntar antes de `git rm --cached`. Ver [10-environment-tooling.md](./references/10-environment-tooling.md) §10.9.
 
 Las `§14.x` están en [14-agent-efficiency.md](./references/14-agent-efficiency.md): leer solo la sección que hace falta.
 
