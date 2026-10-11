@@ -657,6 +657,14 @@ function initHeadroom(homeDir) {
     if (ok) logOk(`headroom: ${label} pasa siempre por Headroom (el proxy arranca solo)`);
     else console.log(`  ${colors.yellow}⚠${colors.reset} headroom init ${agent} falló: ${output.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
   }
+  // Windows: si el hook tiene que levantar el proxy, abre una consola. Con la tarea programada
+  // (oculta, al iniciar sesión) el proxy ya está arriba cuando corre el hook.
+  if (process.platform === 'win32' && targets[0].present) {
+    const { ok, output } = runCommand('headroom', ['install', 'apply', '--preset', 'persistent-task', '--profile', 'init-user',
+      '--providers', 'manual', '--target', 'claude', '--port', '8787', '--no-rate-limit'], homeDir, env);
+    if (ok) logOk('headroom: proxy como tarea programada oculta (sin consola)');
+    else console.log(`  ${colors.yellow}⚠${colors.reset} headroom install apply falló: ${output.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
+  }
   console.log(`  ${colors.dim}Codex en Windows: headroom wrap codex · Cursor: headroom wrap cursor · VS Code Copilot: headroom wrap vscode`);
   console.log(`  Gemini CLI y Antigravity: Headroom todavía no los soporta${colors.reset}`);
 }
