@@ -58,10 +58,12 @@ ${colors.bold}OPCIONES:${colors.reset}
   ${colors.green}-b, --bridge${colors.reset}            Genera archivos puente (AGENTS.md, CLAUDE.md, .cursorrules).
                           cursor, universal y all los generan siempre.
   ${colors.green}--no-caveman${colors.reset}            No instala el plugin caveman (por defecto: global + reglas en el repo)
-  ${colors.green}--no-external-skills${colors.reset}    No instala las skills de cloudflare/security-audit-skill y
-                          emilkowalski/skills (por defecto: global, última versión)
+  ${colors.green}--no-external-skills${colors.reset}    No instala las skills externas: security-audit, emilkowalski/skills,
+                          ponytail, agent-skills y task-observer (por defecto: global, última versión)
   ${colors.green}--no-graphify${colors.reset}           No instala ni configura graphify (por defecto: instala/actualiza
                           el CLI y, en el proyecto, integra todos los agentes y arma el grafo)
+  ${colors.green}--no-agent-tools${colors.reset}        No instala OmniRoute, Headroom ni claude-code-setup
+                          (por defecto: global, última versión)
   ${colors.green}--dry-run${colors.reset}               Muestra los archivos y destinos sin escribir cambios
   ${colors.green}-v, --version${colors.reset}           Muestra la versión del paquete
   ${colors.green}-h, --help${colors.reset}              Muestra esta ayuda
@@ -98,6 +100,7 @@ const includeBridge = args.includes('-b') || args.includes('--bridge');
 const skipGraphify = args.includes('--no-graphify');
 const skipCaveman = args.includes('--no-caveman');
 const skipExternalSkills = args.includes('--no-external-skills');
+const skipAgentTools = args.includes('--no-agent-tools');
 
 function getArgValue(flags) {
   for (const flag of flags) {
@@ -227,19 +230,20 @@ function ensureAiGitignore(projectRoot, extraEntries = []) {
 // Integraciones de graphify por agente (proyecto). Claude Code además en modo estricto:
 // bloquea la primera lectura de archivos hasta que se haga un `graphify query`.
 const GRAPHIFY_AGENTS = ['claude', 'cursor', 'codex', 'gemini', 'vscode', 'antigravity'];
-const PIP_CANDIDATES = [
-  ['pip', ['install', '--upgrade', 'graphifyy']],
-  ['python', ['-m', 'pip', 'install', '--upgrade', 'graphifyy']],
-  ['py', ['-m', 'pip', 'install', '--upgrade', 'graphifyy']],
-  ['python3', ['-m', 'pip', 'install', '--upgrade', 'graphifyy']],
-  ['uv', ['tool', 'install', '--upgrade', 'graphifyy']],
+// Instaladores Python en orden de preferencia para un paquete PyPI
+const pipCandidates = (pkg) => [
+  ['pip', ['install', '--upgrade', pkg]],
+  ['python', ['-m', 'pip', 'install', '--upgrade', pkg]],
+  ['py', ['-m', 'pip', 'install', '--upgrade', pkg]],
+  ['python3', ['-m', 'pip', 'install', '--upgrade', pkg]],
+  ['uv', ['tool', 'install', '--upgrade', pkg]],
 ];
 let graphifyReady = null;
 
-function runCommand(cmd, cmdArgs, cwd) {
+function runCommand(cmd, cmdArgs, cwd, env) {
   // Sin shell: pip, python, py, uv y graphify son ejecutables (.exe en Windows), no hace falta
   // y evita DEP0190 (args concatenados sin escapar).
-  const result = spawnSync(cmd, cmdArgs, { cwd, encoding: 'utf8' });
+  const result = spawnSync(cmd, cmdArgs, { cwd, encoding: 'utf8', env: env ?? process.env });
   return { ok: result.status === 0, output: `${result.stdout || ''}${result.stderr || ''}` };
 }
 
@@ -254,7 +258,7 @@ function ensureGraphifyCli() {
     return graphifyReady;
   }
 
-  const installed = PIP_CANDIDATES.some(([cmd, cmdArgs]) => runCommand(cmd, cmdArgs).ok);
+  const installed = pipCandidates('graphifyy').some(([cmd, cmdArgs]) => runCommand(cmd, cmdArgs).ok);
   const check = runCommand('graphify', ['--help']);
   if (!check.ok) {
     console.log(`  ${colors.yellow}⚠ No se pudo instalar graphify${installed ? '' : ' (sin pip/python/uv)'}.${colors.reset}`);
@@ -425,18 +429,22 @@ ${colors.bold}${colors.magenta}=== Instalador de Skills Frontend (Angular 22+) =
 // oficial, que detecta los agentes; en un repo, --with-init deja reglas siempre activas.
 const CAVEMAN_PKG = 'github:JuliusBrussee/caveman';
 
-function runNpx(npxArgs, cwd) {
-  // npx es un .cmd en Windows y no se puede lanzar sin shell: se corre su script con node
+// npm y npx son .cmd en Windows y no se pueden lanzar sin shell: se corre su script con node
+function runNpmCli(tool, toolArgs, cwd) {
+  const script = `${tool}-cli.js`;
   const candidates = [
-    path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npx-cli.js'),
-    path.join(path.dirname(process.execPath), '..', 'lib', 'node_modules', 'npm', 'bin', 'npx-cli.js'),
+    path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', script),
+    path.join(path.dirname(process.execPath), '..', 'lib', 'node_modules', 'npm', 'bin', script),
   ];
-  const npxCli = candidates.find((candidate) => fs.existsSync(candidate));
-  return npxCli ? runCommand(process.execPath, [npxCli, ...npxArgs], cwd) : runCommand('npx', npxArgs, cwd);
+  const cli = candidates.find((candidate) => fs.existsSync(candidate));
+  return cli ? runCommand(process.execPath, [cli, ...toolArgs], cwd) : runCommand(tool, toolArgs, cwd);
 }
 
-// Si el instalador oficial no encuentra el CLI `claude`, se activa el plugin desde settings.json
-function enableCavemanInClaude(homeDir) {
+const runNpx = (npxArgs, cwd) => runNpmCli('npx', npxArgs, cwd);
+
+// Activa plugins de Claude Code desde settings.json: Claude Code los instala al arrancar.
+// `repo` es null para el marketplace oficial (ya conocido por Claude Code).
+function enableClaudePlugins(homeDir, plugins) {
   const settingsPath = path.join(homeDir, '.claude', 'settings.json');
   if (!fs.existsSync(path.join(homeDir, '.claude'))) return;
   let settings = {};
@@ -444,19 +452,36 @@ function enableCavemanInClaude(homeDir) {
     try {
       settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
     } catch {
+      console.log(`  ${colors.yellow}⚠${colors.reset} ~/.claude/settings.json no es JSON válido: no se activaron plugins`);
       return;
     }
   }
-  if (settings.enabledPlugins?.['caveman@caveman'] === true) return;
+  // Un plugin ya activo desde otro marketplace no se duplica (mismo nombre antes de '@')
+  const enabledNames = Object.entries(settings.enabledPlugins ?? {})
+    .filter(([, enabled]) => enabled === true)
+    .map(([key]) => key.split('@')[0]);
+  const missing = plugins.filter(({ id }) => !enabledNames.includes(id.split('@')[0]));
+  if (missing.length === 0) return;
   settings.extraKnownMarketplaces ??= {};
-  settings.extraKnownMarketplaces.caveman ??= {
-    source: { source: 'git', url: 'https://github.com/JuliusBrussee/caveman.git' },
-  };
   settings.enabledPlugins ??= {};
-  settings.enabledPlugins['caveman@caveman'] = true;
+  for (const { id, repo } of missing) {
+    const marketplace = id.split('@')[1];
+    if (repo) {
+      settings.extraKnownMarketplaces[marketplace] ??= {
+        // Mismo formato que `claude plugin marketplace add`: si difiere, el CLI rechaza el marketplace
+        source: { source: 'github', repo },
+      };
+    }
+    settings.enabledPlugins[id] = true;
+  }
   fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}
 `);
-  logOk('Claude Code: plugin caveman activado en ~/.claude/settings.json');
+  logOk(`Claude Code: ${missing.map(({ id }) => id).join(', ')} activado en ~/.claude/settings.json`);
+}
+
+// Si el instalador oficial no encuentra el CLI `claude`, se activa el plugin desde settings.json
+function enableCavemanInClaude(homeDir) {
+  enableClaudePlugins(homeDir, [{ id: 'caveman@caveman', repo: 'JuliusBrussee/caveman' }]);
 }
 
 function installCaveman(homeDir, repoRoots) {
@@ -500,6 +525,23 @@ const EXTERNAL_SKILLS = [
       'find-animation-opportunities', 'improve-animations', 'pick-ui-library', 'prototype', 'review-animations',
     ],
   },
+  // Código mínimo: reglas de ponytail en todos los agentes (las 6 skills)
+  { repo: 'DietrichGebert/ponytail', skills: ['*'] },
+  // Skills de ingeniería por fase; sin test-driven-development ni browser-testing-with-devtools (§8 de la skill)
+  {
+    repo: 'addyosmani/agent-skills',
+    skills: [
+      'api-and-interface-design', 'ci-cd-and-automation', 'code-review-and-quality', 'code-simplification',
+      'constraint-driven-development', 'context-engineering', 'debugging-and-error-recovery',
+      'deprecation-and-migration', 'documentation-and-adrs', 'doubt-driven-development', 'frontend-ui-engineering',
+      'git-workflow-and-versioning', 'idea-refine', 'incremental-implementation', 'interview-me',
+      'observability-and-instrumentation', 'performance-optimization', 'planning-and-task-breakdown',
+      'security-and-hardening', 'shipping-and-launch', 'source-driven-development', 'spec-driven-development',
+      'using-agent-skills',
+    ],
+  },
+  // Observa la sesión y registra mejoras para skills; se activa con el bloque global de instrucciones
+  { repo: 'rebelytics/one-skill-to-rule-them-all', skills: ['task-observer'] },
 ];
 
 function installExternalSkills(homeDir) {
@@ -516,6 +558,178 @@ ${colors.bold}${colors.cyan}Skills externas:${colors.reset} instalando la últim
   }
 }
 
+// Plugins solo de Claude Code (sin equivalente como skill suelta). `repo` null: marketplace oficial.
+// claude-mem quedó afuera: su memoria hosteada es paga y, sin suscripción, gasta tokens del plan.
+const CLAUDE_PLUGINS = [
+  { id: 'claude-code-setup@claude-plugins-official', repo: null },
+];
+
+// Herramientas de eficiencia: Headroom (PyPI) comprime el contexto y OmniRoute (npm) es el gateway de modelos.
+// Solo se instalan: el uso se arranca con `headroom wrap <agente>` / `omniroute launch` (§14.8 de la skill).
+function installAgentTools(homeDir) {
+  console.log(`
+${colors.bold}${colors.cyan}Herramientas del agente:${colors.reset} Headroom, OmniRoute y claude-code-setup...`);
+  const omniArgs = ['install', '-g', 'omniroute@latest'];
+  if (isDryRun) {
+    console.log(`${colors.dim}[dry-run] pip install --upgrade "headroom-ai[all]"${colors.reset}`);
+    console.log(`${colors.dim}[dry-run] npm ${omniArgs.join(' ')}${colors.reset}`);
+    console.log(`${colors.dim}[dry-run] Claude Code: activar ${CLAUDE_PLUGINS.map(({ id }) => id).join(', ')}${colors.reset}`);
+    console.log(`${colors.dim}[dry-run] Claude Code: hook SessionStart + ANTHROPIC_BASE_URL=${HEADROOM_URL}${colors.reset}`);
+    return;
+  }
+
+  pipCandidates('headroom-ai[all]').some(([cmd, cmdArgs]) => runCommand(cmd, cmdArgs).ok);
+  if (runCommand('headroom', ['--help']).ok) {
+    logOk('headroom listo');
+    initHeadroom(homeDir);
+  } else {
+    console.log(`  ${colors.yellow}⚠${colors.reset} headroom falló. Instalar a mano: uv tool install --python 3.13 "headroom-ai[all]"`);
+  }
+
+  // Con el servidor corriendo, npm no puede reemplazar sus archivos (EBUSY): se detiene antes.
+  // El hook SessionStart lo vuelve a levantar en la próxima sesión.
+  spawnSync('omniroute stop', { shell: true, stdio: 'ignore' });
+  const omniOk = runNpmCli('npm', omniArgs, homeDir).ok;
+  if (omniOk) logOk('omniroute listo');
+  else console.log(`  ${colors.yellow}⚠${colors.reset} omniroute falló. Instalar a mano: npm ${omniArgs.join(' ')}`);
+
+  installClaudePlugins(homeDir);
+  installSessionStartHook(homeDir);
+  if (omniOk) printOmniRouteGuide();
+}
+
+// Comandos instalados por npm (.cmd en Windows): necesitan shell. Solo se pasan líneas fijas.
+function runShell(commandLine, cwd) {
+  const result = spawnSync(commandLine, { cwd, shell: true, encoding: 'utf8' });
+  return { ok: result.status === 0, output: `${result.stdout || ''}${result.stderr || ''}` };
+}
+
+// Plugins con el CLI de Claude Code, que los descarga en el momento: activarlos solo en settings.json
+// puede dejarlos registrados sin descargar. El CLI en el PATH también lo usa `headroom init`.
+function installClaudePlugins(homeDir) {
+  if (!fs.existsSync(path.join(homeDir, '.claude'))) return;
+  if (!runShell('claude --version').ok) runNpmCli('npm', ['install', '-g', '@anthropic-ai/claude-code'], homeDir);
+
+  if (!runShell('claude --version').ok) {
+    console.log(`  ${colors.yellow}⚠${colors.reset} sin CLI de Claude Code: plugins activados en settings.json (se descargan al reiniciar)`);
+    enableClaudePlugins(homeDir, CLAUDE_PLUGINS);
+    return;
+  }
+  // Un plugin ya activo desde otro marketplace no se duplica (mismo nombre antes de '@', otro id).
+  // El mismo id se reinstala igual: puede estar activo sin descargar.
+  let enabled = {};
+  try {
+    enabled = JSON.parse(fs.readFileSync(path.join(homeDir, '.claude', 'settings.json'), 'utf8')).enabledPlugins ?? {};
+  } catch {
+    // Sin settings.json válido no hay plugins previos que respetar
+  }
+  const fromOtherMarketplace = (id) => Object.keys(enabled)
+    .some((key) => enabled[key] === true && key !== id && key.split('@')[0] === id.split('@')[0]);
+  for (const { id, repo } of CLAUDE_PLUGINS.filter((plugin) => !fromOtherMarketplace(plugin.id))) {
+    if (repo) runShell(`claude plugin marketplace add ${repo}`, homeDir);
+    const { ok, output } = runShell(`claude plugin install ${id} --scope user`, homeDir);
+    if (ok) logOk(`Claude Code: plugin ${id}`);
+    else console.log(`  ${colors.yellow}⚠${colors.reset} ${id} falló: ${output.trim().split(/\r?\n/).pop()}`);
+  }
+
+}
+
+// `claude` suele no estar en el PATH cuando solo se usa la extensión de VS Code: se usa su binario
+function claudeBinDir(homeDir) {
+  if (runCommand('claude', ['--version']).ok) return null;
+  const extensionsDir = path.join(homeDir, '.vscode', 'extensions');
+  if (!fs.existsSync(extensionsDir)) return null;
+  const latest = fs.readdirSync(extensionsDir)
+    .filter((name) => name.startsWith('anthropic.claude-code-'))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    .pop();
+  const binDir = latest && path.join(extensionsDir, latest, 'resources', 'native-binary');
+  return binDir && fs.existsSync(binDir) ? binDir : null;
+}
+
+// Integración durable oficial de Headroom: env del agente apuntando al proxy + hooks que lo levantan
+// solos al iniciar sesión y antes de cada comando. En Windows Codex no corre hooks: sin hook el proxy
+// no arranca solo y Codex fallaría, así que ahí se usa `headroom wrap codex`.
+function initHeadroom(homeDir) {
+  const binDir = claudeBinDir(homeDir);
+  const env = { ...process.env, HEADROOM_UPDATE_CHECK: 'off' };
+  // En Windows la clave es `Path`: se reutiliza la existente para no duplicarla
+  const pathKey = Object.keys(env).find((key) => key.toUpperCase() === 'PATH') ?? 'PATH';
+  if (binDir) env[pathKey] = `${binDir}${path.delimiter}${env[pathKey] ?? ''}`;
+
+  const targets = [
+    { agent: 'claude', label: 'Claude Code', present: fs.existsSync(path.join(homeDir, '.claude')) },
+    { agent: 'copilot', label: 'Copilot CLI', present: runCommand('copilot', ['--version']).ok },
+    { agent: 'codex', label: 'Codex', present: process.platform !== 'win32' && runCommand('codex', ['--version']).ok },
+  ];
+  for (const { agent, label } of targets.filter((target) => target.present)) {
+    const { ok, output } = runCommand('headroom', ['init', '-g', '--port', '8787', agent], homeDir, env);
+    if (ok) logOk(`headroom: ${label} pasa siempre por Headroom (el proxy arranca solo)`);
+    else console.log(`  ${colors.yellow}⚠${colors.reset} headroom init ${agent} falló: ${output.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
+  }
+  console.log(`  ${colors.dim}Codex en Windows: headroom wrap codex · Cursor: headroom wrap cursor · VS Code Copilot: headroom wrap vscode`);
+  console.log(`  Gemini CLI y Antigravity: Headroom todavía no los soporta${colors.reset}`);
+}
+
+function printOmniRouteGuide() {
+  console.log(`
+${colors.bold}${colors.yellow}OmniRoute: instalado, falta configurarlo (una sola vez)${colors.reset}
+  En Claude Code arranca solo en cada sesión, solo en esta máquina: ${colors.cyan}http://localhost:20128${colors.reset}
+  Sin configurar no rutea nada: los agentes siguen usando su modelo normal.
+  Para usarlo:
+    1. Abrir ${colors.cyan}http://localhost:20128${colors.reset} (o correr: ${colors.cyan}omniroute dashboard${colors.reset}).
+    2. Conectar proveedores: suscripciones por OAuth (Claude, Copilot), API keys o pools gratis.
+    3. Crear una API key en Dashboard → Endpoints.
+    4. Lanzar el agente por el gateway: ${colors.cyan}omniroute launch${colors.reset} (Claude Code) o ${colors.cyan}omniroute configure codex${colors.reset}.
+  El software es gratis (MIT). El costo depende de cada proveedor: los free tiers tienen límites.
+  ${colors.yellow}Ojo:${colors.reset} el gateway ve los prompts y guarda las credenciales. Con proveedores gratis el código
+  pasa por terceros: usar solo proveedores permitidos para el código del proyecto.`);
+}
+
+const HEADROOM_URL = 'http://127.0.0.1:8787';
+const HOOK_MARKER = 'skills-frontend-mrydex';
+
+// Hook SessionStart: levanta Headroom y OmniRoute y fuerza task-observer en cada sesión.
+// Claude Code pasa por Headroom solo si `headroom` funciona y no hay otra ANTHROPIC_BASE_URL.
+function installSessionStartHook(homeDir) {
+  const claudeDir = path.join(homeDir, '.claude');
+  if (!fs.existsSync(claudeDir)) return;
+  const settingsPath = path.join(claudeDir, 'settings.json');
+  let settings = {};
+  if (fs.existsSync(settingsPath)) {
+    try {
+      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    } catch {
+      console.log(`  ${colors.yellow}⚠${colors.reset} ~/.claude/settings.json no es JSON válido: no se instaló el hook SessionStart`);
+      return;
+    }
+  }
+
+  const hookDir = path.join(claudeDir, 'hooks', HOOK_MARKER);
+  const hookPath = path.join(hookDir, 'session-start.js');
+  fs.mkdirSync(hookDir, { recursive: true });
+  fs.copyFileSync(path.join(__dirname, 'hooks', 'session-start.js'), hookPath);
+
+  // Reinstalar reemplaza solo la entrada propia; el resto de los hooks no se toca
+  settings.hooks ??= {};
+  const others = (settings.hooks.SessionStart ?? []).filter(
+    (entry) => !entry.hooks?.some((hook) => hook.command?.includes(HOOK_MARKER)),
+  );
+  const command = `node "${hookPath.replaceAll('\\', '/')}"`;
+  settings.hooks.SessionStart = [...others, { hooks: [{ type: 'command', command, timeout: 30 }] }];
+
+  const headroomOk = runCommand('headroom', ['--help']).ok;
+  settings.env ??= {};
+  const currentUrl = settings.env.ANTHROPIC_BASE_URL;
+  if (headroomOk && !currentUrl) settings.env.ANTHROPIC_BASE_URL = HEADROOM_URL;
+
+  fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}
+`);
+  logOk('Claude Code: hook SessionStart (Headroom, OmniRoute en 127.0.0.1, task-observer)');
+  if (settings.env.ANTHROPIC_BASE_URL === HEADROOM_URL) logOk(`Claude Code: modelo vía Headroom (${HEADROOM_URL})`);
+  else if (currentUrl) console.log(`  ${colors.dim}ANTHROPIC_BASE_URL ya era ${currentUrl}: no se cambió${colors.reset}`);
+}
+
 function finish() {
   for (const root of projectRoots) ensureAiGitignore(root);
   if (!skipGraphify) {
@@ -524,6 +738,7 @@ function finish() {
   }
   if (!skipCaveman) installCaveman(os.homedir(), [...projectRoots]);
   if (!skipExternalSkills) installExternalSkills(os.homedir());
+  if (!skipAgentTools) installAgentTools(os.homedir());
   if (pendingSubagents) installSubagents({ ...pendingSubagents, isDryRun, log: logOk });
 
   console.log(`

@@ -155,6 +155,16 @@ In any repo with \`angular.json\` or frontend code (TypeScript, HTML, SCSS/CSS),
 
 Before the first search or file read in a git repo: run \`graphify update .\` (no LLM, no cost), then \`graphify query "<question>"\`. Grep/Glob/Read to explore without a prior query is not allowed. If graphify is missing: \`pip install --upgrade graphifyy\`. If it creates \`.gitattributes\` or \`graphify-out/\`, add them to \`.gitignore\`. **After editing any file, run \`graphify update .\` before your final answer.** If something fails, tell me the exact error.
 
+## Agent tools (always)
+
+Installed by skills-frontend-mrydex. Use them in every session; if one is missing, install it and tell me in one line (exact error if it fails):
+
+- **task-observer**: invoke the \`task-observer\` skill before the first tool call of every session, and log what is worth turning into a skill.
+- **ponytail**: write only the code the task needs. Prefer the platform and standard library over new dependencies or abstractions. Before the final answer on a code change, run \`ponytail-review\` on the diff.
+- **agent-skills**: use the skill that matches the phase (spec, plan, build, review, ship). Never the ones that write tests: team rules forbid test files.
+- **claude-code-setup** (Claude Code): in a repo without Claude Code setup, run \`claude-automation-recommender\` once and propose its result.
+- **Headroom / OmniRoute**: Headroom is wired durably (\`headroom init -g\`) in Claude Code, Copilot CLI and Codex on macOS/Linux; its hooks start the proxy on 127.0.0.1:8787. Codex on Windows, Cursor and VS Code Copilot: start them with \`headroom wrap <agent>\`. In Claude Code a SessionStart hook also starts OmniRoute on 127.0.0.1:20128; it routes models only after its dashboard is set up (\`omniroute launch\`).
+
 ## Delegation to subagents (explicit, standing user request)
 
 You orchestrate. I explicitly authorize and ask you to delegate to subagents, without waiting for me to ask, **only when it lowers total token usage**:

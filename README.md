@@ -95,8 +95,21 @@ agente siga las instrucciones:
 7. Instala globalmente, siempre en su última versión, las skills `security-audit`
    ([cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill)) y las de web de
    [emilkowalski/skills](https://github.com/emilkowalski/skills) (animaciones, diseño de UI, prototipos;
-   sin Swift, Expo, mobile, Apple ni Sonner, que es de React). `--no-external-skills` lo saltea.
-8. Arma el grafo con `graphify update .` (solo código, sin LLM, sin costo de tokens).
+   sin Swift, Expo, mobile, Apple ni Sonner, que es de React), más
+   [ponytail](https://github.com/DietrichGebert/ponytail),
+   [agent-skills](https://github.com/addyosmani/agent-skills) y `task-observer`
+   ([rebelytics/one-skill-to-rule-them-all](https://github.com/rebelytics/one-skill-to-rule-them-all)).
+   `--no-external-skills` lo saltea.
+8. Instala [Headroom](https://github.com/chopratejas/headroom) (`headroom-ai[all]` con pip/uv) y
+   [OmniRoute](https://github.com/diegosouzapw/OmniRoute) (`npm install -g omniroute`), y activa en
+   Claude Code el plugin `claude-code-setup`.
+   Integra Headroom en cada agente soportado con `headroom init -g` (Claude Code, Copilot CLI, Codex
+   en macOS/Linux): el proxy arranca solo. En Claude Code registra además un hook `SessionStart` que
+   levanta OmniRoute solo en `127.0.0.1` y fuerza task-observer. Al terminar, la consola explica
+   cómo configurar OmniRoute. El bloque global
+   pide usar las seis herramientas en todas las sesiones (§14.8 de la skill).
+   `--no-agent-tools` lo saltea.
+9. Arma el grafo con `graphify update .` (solo código, sin LLM, sin costo de tokens).
 
 Fuera de un repo git se instala **solo global** (skill + CLI de graphify), sin tocar la carpeta actual.
 Dentro de un repo (o una subcarpeta) instala además en la raíz del repo. En el menú interactivo, la
