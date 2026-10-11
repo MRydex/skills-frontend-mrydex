@@ -662,8 +662,20 @@ function initHeadroom(homeDir) {
   if (process.platform === 'win32' && targets[0].present) {
     const { ok, output } = runCommand('headroom', ['install', 'apply', '--preset', 'persistent-task', '--profile', 'init-user',
       '--providers', 'manual', '--target', 'claude', '--port', '8787', '--no-rate-limit'], homeDir, env);
-    if (ok) logOk('headroom: proxy como tarea programada oculta (sin consola)');
+    if (ok) logOk('headroom: proxy como tarea programada (al iniciar sesión)');
     else console.log(`  ${colors.yellow}⚠${colors.reset} headroom install apply falló: ${output.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
+    // Si Windows rechaza S4U (cuenta de dominio), Headroom deja solo la tarea -health con token
+    // interactivo: muestra consola cada 5 min y no corre al iniciar sesión. Se corre sin consola
+    // (conhost --headless) y se le suma un disparador de inicio de sesión.
+    const fix = runCommand('powershell', ['-NoProfile', '-Command', `
+      $n = 'headroom-init-user-health'
+      $t = Get-ScheduledTask -TaskName $n -ErrorAction Stop
+      $cmd = $t.Actions[0].Execute
+      $a = if ($cmd -like '*conhost.exe') { $t.Actions } else { New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless \`"$cmd\`"" }
+      $trig = @($t.Triggers | Where-Object { $_.CimClass.CimClassName -ne 'MSFT_TaskLogonTrigger' }) + (New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\\$env:USERNAME")
+      Set-ScheduledTask -TaskName $n -Action $a -Trigger $trig | Out-Null`]);
+    if (ok && fix.ok) logOk('headroom: tarea sin consola');
+    else if (ok) console.log(`  ${colors.yellow}⚠${colors.reset} headroom: no se pudo ocultar la tarea: ${fix.output.trim().split(/\r?\n/).pop()}`);
   }
   console.log(`  ${colors.dim}Codex en Windows: headroom wrap codex · Cursor: headroom wrap cursor · VS Code Copilot: headroom wrap vscode`);
   console.log(`  Gemini CLI y Antigravity: Headroom todavía no los soporta${colors.reset}`);
