@@ -10,7 +10,7 @@ const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const HEADROOM_PORT = 8787;
 const HEADROOM_WAIT_MS = 20000;
@@ -69,7 +69,10 @@ async function main() {
   const usesHeadroom = baseUrl().includes(`:${HEADROOM_PORT}`);
   let headroomUp = await isUp(HEADROOM_PORT, '/health');
   if (!headroomUp && usesHeadroom) {
-    startDetached('headroom', ['proxy', '--port', String(HEADROOM_PORT)]);
+    // Windows: detached abre una consola visible por sesión. La tarea programada corre oculta
+    // y con IgnoreNew varias sesiones a la vez levantan un solo proxy.
+    if (process.platform === 'win32') spawnSync('schtasks', ['/Run', '/TN', 'headroom-init-user-health'], { windowsHide: true });
+    else startDetached('headroom', ['proxy', '--port', String(HEADROOM_PORT)]);
     headroomUp = await waitUp(HEADROOM_PORT, '/health', HEADROOM_WAIT_MS);
   }
 
