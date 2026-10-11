@@ -10,18 +10,16 @@ Para actualizar en un proyecto: `npx skills-frontend-mrydex@latest`.
   - Skills globales con `npx skills add`: [ponytail](https://github.com/DietrichGebert/ponytail),
     [agent-skills](https://github.com/addyosmani/agent-skills) y `task-observer`
     ([rebelytics/one-skill-to-rule-them-all](https://github.com/rebelytics/one-skill-to-rule-them-all)).
-  - [Headroom](https://github.com/chopratejas/headroom) (`headroom-ai[all]`) y
-    [OmniRoute](https://github.com/diegosouzapw/OmniRoute) (`npm install -g omniroute`).
+  - [Headroom](https://github.com/chopratejas/headroom) (`headroom-ai[all]`).
   - Plugin de Claude Code `claude-code-setup@claude-plugins-official`,
     activados en `~/.claude/settings.json`.
   - El bloque global de `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` pide usarlas en cada sesión.
   - Headroom durable con `headroom init -g` en Claude Code, Copilot CLI y Codex (macOS/Linux): el
     proxy arranca solo por hooks, sin servicio. Codex en Windows, Cursor y VS Code Copilot: `headroom wrap`.
-  - Hook `SessionStart` en Claude Code (`bin/hooks/session-start.js`): respaldo de Headroom,
-    OmniRoute solo en `127.0.0.1` (por defecto escucha en `0.0.0.0`) y task-observer en cada sesión.
-  - La consola explica al instalar cómo configurar OmniRoute, su costo y el riesgo de privacidad.
+  - Hook `SessionStart` en Claude Code (`bin/hooks/session-start.js`): respaldo de Headroom
+    y task-observer en cada sesión.
   - `agent-skills` sin `test-driven-development` ni `browser-testing-with-devtools`.
-  - `--no-agent-tools` saltea Headroom, OmniRoute, los plugins y el hook.
+  - `--no-agent-tools` saltea Headroom, los plugins y el hook.
 
 ### Corregido
 - §6.10: el archivo del modelo se llama `contacto-form.ts`, sin sufijo `.model` (§1.3).

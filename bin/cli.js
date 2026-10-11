@@ -62,7 +62,7 @@ ${colors.bold}OPCIONES:${colors.reset}
                           ponytail, agent-skills y task-observer (por defecto: global, última versión)
   ${colors.green}--no-graphify${colors.reset}           No instala ni configura graphify (por defecto: instala/actualiza
                           el CLI y, en el proyecto, integra todos los agentes y arma el grafo)
-  ${colors.green}--no-agent-tools${colors.reset}        No instala OmniRoute, Headroom ni claude-code-setup
+  ${colors.green}--no-agent-tools${colors.reset}        No instala Headroom ni claude-code-setup
                           (por defecto: global, última versión)
   ${colors.green}--dry-run${colors.reset}               Muestra los archivos y destinos sin escribir cambios
   ${colors.green}-v, --version${colors.reset}           Muestra la versión del paquete
@@ -564,15 +564,13 @@ const CLAUDE_PLUGINS = [
   { id: 'claude-code-setup@claude-plugins-official', repo: null },
 ];
 
-// Herramientas de eficiencia: Headroom (PyPI) comprime el contexto y OmniRoute (npm) es el gateway de modelos.
-// Solo se instalan: el uso se arranca con `headroom wrap <agente>` / `omniroute launch` (§14.8 de la skill).
+// Herramientas de eficiencia: Headroom (PyPI) comprime el contexto (§14.8 de la skill).
+// Solo se instala: el uso se arranca con `headroom wrap <agente>` (§14.8 de la skill).
 function installAgentTools(homeDir) {
   console.log(`
-${colors.bold}${colors.cyan}Herramientas del agente:${colors.reset} Headroom, OmniRoute y claude-code-setup...`);
-  const omniArgs = ['install', '-g', 'omniroute@latest'];
+${colors.bold}${colors.cyan}Herramientas del agente:${colors.reset} Headroom y claude-code-setup...`);
   if (isDryRun) {
     console.log(`${colors.dim}[dry-run] pip install --upgrade "headroom-ai[all]"${colors.reset}`);
-    console.log(`${colors.dim}[dry-run] npm ${omniArgs.join(' ')}${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: activar ${CLAUDE_PLUGINS.map(({ id }) => id).join(', ')}${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: hook SessionStart + ANTHROPIC_BASE_URL=${HEADROOM_URL}${colors.reset}`);
     return;
@@ -586,16 +584,8 @@ ${colors.bold}${colors.cyan}Herramientas del agente:${colors.reset} Headroom, Om
     console.log(`  ${colors.yellow}⚠${colors.reset} headroom falló. Instalar a mano: uv tool install --python 3.13 "headroom-ai[all]"`);
   }
 
-  // Con el servidor corriendo, npm no puede reemplazar sus archivos (EBUSY): se detiene antes.
-  // El hook SessionStart lo vuelve a levantar en la próxima sesión.
-  spawnSync('omniroute stop', { shell: true, stdio: 'ignore' });
-  const omniOk = runNpmCli('npm', omniArgs, homeDir).ok;
-  if (omniOk) logOk('omniroute listo');
-  else console.log(`  ${colors.yellow}⚠${colors.reset} omniroute falló. Instalar a mano: npm ${omniArgs.join(' ')}`);
-
   installClaudePlugins(homeDir);
   installSessionStartHook(homeDir);
-  if (omniOk) printOmniRouteGuide();
 }
 
 // Comandos instalados por npm (.cmd en Windows): necesitan shell. Solo se pasan líneas fijas.
@@ -671,25 +661,10 @@ function initHeadroom(homeDir) {
   console.log(`  Gemini CLI y Antigravity: Headroom todavía no los soporta${colors.reset}`);
 }
 
-function printOmniRouteGuide() {
-  console.log(`
-${colors.bold}${colors.yellow}OmniRoute: instalado, falta configurarlo (una sola vez)${colors.reset}
-  En Claude Code arranca solo en cada sesión, solo en esta máquina: ${colors.cyan}http://localhost:20128${colors.reset}
-  Sin configurar no rutea nada: los agentes siguen usando su modelo normal.
-  Para usarlo:
-    1. Abrir ${colors.cyan}http://localhost:20128${colors.reset} (o correr: ${colors.cyan}omniroute dashboard${colors.reset}).
-    2. Conectar proveedores: suscripciones por OAuth (Claude, Copilot), API keys o pools gratis.
-    3. Crear una API key en Dashboard → Endpoints.
-    4. Lanzar el agente por el gateway: ${colors.cyan}omniroute launch${colors.reset} (Claude Code) o ${colors.cyan}omniroute configure codex${colors.reset}.
-  El software es gratis (MIT). El costo depende de cada proveedor: los free tiers tienen límites.
-  ${colors.yellow}Ojo:${colors.reset} el gateway ve los prompts y guarda las credenciales. Con proveedores gratis el código
-  pasa por terceros: usar solo proveedores permitidos para el código del proyecto.`);
-}
-
 const HEADROOM_URL = 'http://127.0.0.1:8787';
 const HOOK_MARKER = 'skills-frontend-mrydex';
 
-// Hook SessionStart: levanta Headroom y OmniRoute y fuerza task-observer en cada sesión.
+// Hook SessionStart: levanta Headroom si hace falta y fuerza task-observer en cada sesión.
 // Claude Code pasa por Headroom solo si `headroom` funciona y no hay otra ANTHROPIC_BASE_URL.
 function installSessionStartHook(homeDir) {
   const claudeDir = path.join(homeDir, '.claude');
@@ -725,7 +700,7 @@ function installSessionStartHook(homeDir) {
 
   fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}
 `);
-  logOk('Claude Code: hook SessionStart (Headroom, OmniRoute en 127.0.0.1, task-observer)');
+  logOk('Claude Code: hook SessionStart (Headroom, task-observer)');
   if (settings.env.ANTHROPIC_BASE_URL === HEADROOM_URL) logOk(`Claude Code: modelo vía Headroom (${HEADROOM_URL})`);
   else if (currentUrl) console.log(`  ${colors.dim}ANTHROPIC_BASE_URL ya era ${currentUrl}: no se cambió${colors.reset}`);
 }
@@ -750,6 +725,7 @@ ${colors.bold}¿Cómo lo usan los agentes de IA?${colors.reset}
 - ${colors.bold}Cursor / Windsurf:${colors.reset} Guiado por ${colors.cyan}.cursorrules${colors.reset} referenciando las reglas modulares.
 - ${colors.bold}Codex / Copilot Workspace:${colors.reset} Sigue el estándar ${colors.cyan}AGENTS.md${colors.reset} en la raíz del proyecto.
 `);
+  process.exit(0);
 }
 
 run().catch((err) => {

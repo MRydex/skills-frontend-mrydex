@@ -489,7 +489,7 @@ concretos ("que lo revise Opus", "usá Haiku para buscar", "corré `/compact`"):
 
 ### 14.8 Herramientas del agente: instalar y usar siempre
 
-Seis herramientas complementan a caveman y graphify. El instalador de la skill las instala en su
+Cinco herramientas complementan a caveman y graphify. El instalador de la skill las instala en su
 última versión (`--no-external-skills` saltea las skills; `--no-agent-tools` saltea el resto). El
 agente las **usa siempre**: si falta una, la instala y avisa en una línea (con el error exacto si
 falla). El bloque global (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`) repite
@@ -502,7 +502,6 @@ estas reglas para que rijan en todas las sesiones.
 | [agent-skills](https://github.com/addyosmani/agent-skills) | Skills de ingeniería por fase (spec, plan, build, review, ship) | `npx skills add addyosmani/agent-skills -g --skill <todas menos test-driven-development y browser-testing-with-devtools>` (lista en `bin/cli.js`) | Usar la skill de la fase en curso. Las de tests no se instalan (§8) |
 | [claude-code-setup](https://github.com/anthropics/claude-plugins-official) | Recomienda hooks, subagentes, skills y MCP para el repo (Claude Code) | `/plugin install claude-code-setup@claude-plugins-official` | En un repo sin setup de Claude Code: correr `claude-automation-recommender` una vez y proponer el resultado |
 | [Headroom](https://github.com/chopratejas/headroom) | Proxy local que comprime el contexto de entrada | `uv tool install --python 3.13 "headroom-ai[all]"` (o `pip install "headroom-ai[all]"`) | Automático por agente (tabla de abajo). Si un agente quedó sin integrar: `headroom init -g <agente>` o `headroom wrap <agente>` |
-| [OmniRoute](https://github.com/diegosouzapw/OmniRoute) | Gateway local de modelos con fallback entre proveedores | `npm install -g omniroute` | Configurar una vez el dashboard (`omniroute`, `http://localhost:20128`): proveedores y API key. Después arrancar con `omniroute launch` |
 
 - **Claude Code**: el instalador instala claude-code-setup con `claude plugin install` (si no hay CLI,
   lo activa en `enabledPlugins`). No se usa claude-mem: su memoria hosteada es paga y, sin
@@ -529,16 +528,10 @@ estas reglas para que rijan en todas las sesiones.
   - Respaldo de Headroom: si `ANTHROPIC_BASE_URL` apunta al puerto 8787 y el proxy no corre, lo
     levanta (6 s en frío, 0,1 s si ya está arriba). Si no levanta en 20 s, avisa al usuario con el
     comando para arreglarlo: sin proxy cada llamada al modelo reintenta ~3 min y falla (`ECONNREFUSED`).
-  - Levanta OmniRoute (`omniroute serve --daemon`) con `HOST=127.0.0.1`: por defecto escucha en
-    `0.0.0.0` y quedaría expuesto en la red. Rutea modelos recién cuando se configura su dashboard.
   - Inyecta la orden de invocar `task-observer` antes de la primera tool call.
 - Medido (Claude Code + Headroom, suscripción): la autenticación pasa sin API key; en una tarea
   chica que leyó 2 archivos, Headroom ahorró 63.204 tokens (casi todo en schemas de tools) y 24,4%
   del costo.
-- **OmniRoute al instalar.** La consola muestra los pasos para configurarlo (dashboard, proveedores,
-  API key, `omniroute launch`), que el software es gratis y el costo depende de cada proveedor, y el
-  aviso de que el gateway ve los prompts. Antes de actualizarlo, el instalador corre `omniroute stop`:
-  con el servidor arriba npm falla con `EBUSY`.
 - **Desactivar Headroom**: `headroom unwrap claude` (o quitar `ANTHROPIC_BASE_URL` del `env` de `~/.claude/settings.json`).
   **Desactivar el hook**: quitar la entrada `skills-frontend-mrydex` de `hooks.SessionStart`.
 - Las reglas del equipo ganan ante un conflicto: sin tests (§8), caveman, graphify primero y la

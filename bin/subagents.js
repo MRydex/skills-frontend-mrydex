@@ -163,7 +163,7 @@ Installed by skills-frontend-mrydex. Use them in every session; if one is missin
 - **ponytail**: write only the code the task needs. Prefer the platform and standard library over new dependencies or abstractions. Before the final answer on a code change, run \`ponytail-review\` on the diff.
 - **agent-skills**: use the skill that matches the phase (spec, plan, build, review, ship). Never the ones that write tests: team rules forbid test files.
 - **claude-code-setup** (Claude Code): in a repo without Claude Code setup, run \`claude-automation-recommender\` once and propose its result.
-- **Headroom / OmniRoute**: Headroom is wired durably (\`headroom init -g\`) in Claude Code, Copilot CLI and Codex on macOS/Linux; its hooks start the proxy on 127.0.0.1:8787. Codex on Windows, Cursor and VS Code Copilot: start them with \`headroom wrap <agent>\`. In Claude Code a SessionStart hook also starts OmniRoute on 127.0.0.1:20128; it routes models only after its dashboard is set up (\`omniroute launch\`).
+- **Headroom**: Headroom is wired durably (\`headroom init -g\`) in Claude Code, Copilot CLI and Codex on macOS/Linux; its hooks start the proxy on 127.0.0.1:8787. Codex on Windows, Cursor and VS Code Copilot: start them with \`headroom wrap <agent>\`.
 
 ## Delegation to subagents (explicit, standing user request)
 

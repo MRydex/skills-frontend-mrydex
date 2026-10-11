@@ -2,7 +2,7 @@
 
 /**
  * Hook SessionStart de Claude Code (skills-frontend-mrydex).
- * Levanta el proxy de Headroom y OmniRoute si no están corriendo y obliga a usar task-observer.
+ * Levanta el proxy de Headroom si no está corriendo y obliga a usar task-observer.
  * Claude Code apunta al proxy por `env.ANTHROPIC_BASE_URL` en ~/.claude/settings.json.
  */
 
@@ -13,7 +13,6 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const HEADROOM_PORT = 8787;
-const OMNIROUTE_PORT = 20128;
 const HEADROOM_WAIT_MS = 20000;
 
 function isUp(port, urlPath) {
@@ -31,7 +30,7 @@ function isUp(port, urlPath) {
 }
 
 // Proceso independiente: sigue vivo al cerrar la sesión y la próxima lo reutiliza.
-// Con shell en Windows porque omniroute es un .cmd; los argumentos son fijos.
+// En Windows con shell para ejecutables CLI; los argumentos son fijos.
 function startDetached(cmd, args, env = {}) {
   try {
     const options = { detached: true, stdio: 'ignore', windowsHide: true, env: { ...process.env, ...env } };
@@ -74,13 +73,6 @@ async function main() {
     headroomUp = await waitUp(HEADROOM_PORT, '/health', HEADROOM_WAIT_MS);
   }
 
-  // OmniRoute escucha en 0.0.0.0 por defecto: HOST/HOSTNAME lo limitan a la máquina local
-  if (!(await isUp(OMNIROUTE_PORT, '/'))) {
-    startDetached('omniroute', ['serve', '--daemon', '--no-open', '--no-tray'], {
-      HOST: '127.0.0.1',
-      HOSTNAME: '127.0.0.1',
-    });
-  }
 
   const output = {
     hookSpecificOutput: {

@@ -100,14 +100,12 @@ agente siga las instrucciones:
    [agent-skills](https://github.com/addyosmani/agent-skills) y `task-observer`
    ([rebelytics/one-skill-to-rule-them-all](https://github.com/rebelytics/one-skill-to-rule-them-all)).
    `--no-external-skills` lo saltea.
-8. Instala [Headroom](https://github.com/chopratejas/headroom) (`headroom-ai[all]` con pip/uv) y
-   [OmniRoute](https://github.com/diegosouzapw/OmniRoute) (`npm install -g omniroute`), y activa en
+8. Instala [Headroom](https://github.com/chopratejas/headroom) (`headroom-ai[all]` con pip/uv) y activa en
    Claude Code el plugin `claude-code-setup`.
    Integra Headroom en cada agente soportado con `headroom init -g` (Claude Code, Copilot CLI, Codex
    en macOS/Linux): el proxy arranca solo. En Claude Code registra además un hook `SessionStart` que
-   levanta OmniRoute solo en `127.0.0.1` y fuerza task-observer. Al terminar, la consola explica
-   cómo configurar OmniRoute. El bloque global
-   pide usar las seis herramientas en todas las sesiones (§14.8 de la skill).
+   fuerza task-observer y asegura el proxy de Headroom. El bloque global
+   pide usar las cinco herramientas en todas las sesiones (§14.8 de la skill).
    `--no-agent-tools` lo saltea.
 9. Arma el grafo con `graphify update .` (solo código, sin LLM, sin costo de tokens).
 
