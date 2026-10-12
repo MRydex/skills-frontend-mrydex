@@ -687,9 +687,14 @@ function initHeadroom(homeDir) {
   // Windows: si el hook tiene que levantar el proxy, abre una consola. Con la tarea programada
   // (oculta, al iniciar sesión) el proxy ya está arriba cuando corre el hook.
   if (process.platform === 'win32' && targets[0].present) {
-    const { ok, output } = runCommand('headroom', ['install', 'apply', '--preset', 'persistent-task', '--profile', 'init-user',
-      '--providers', 'manual', '--target', 'claude', '--port', '8787', '--no-rate-limit'], homeDir, env);
-    if (ok) logOk('headroom: proxy como tarea programada (al iniciar sesión)');
+    // Reinstalar con la tarea ya creada falla: Headroom no logra frenar el proxy que está corriendo
+    // ("is still answering ... after stop"). La tarea existente ya sirve, no se vuelve a aplicar.
+    const taskExists = runCommand('schtasks', ['/Query', '/TN', 'headroom-init-user-health']).ok;
+    const { ok, output } = taskExists ? { ok: true, output: '' }
+      : runCommand('headroom', ['install', 'apply', '--preset', 'persistent-task', '--profile', 'init-user',
+        '--providers', 'manual', '--target', 'claude', '--port', '8787', '--no-rate-limit'], homeDir, env);
+    if (taskExists) logOk('headroom: tarea programada ya instalada');
+    else if (ok) logOk('headroom: proxy como tarea programada (al iniciar sesión)');
     else console.log(`  ${colors.yellow}⚠${colors.reset} headroom install apply falló: ${output.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
     // Si Windows rechaza S4U (cuenta de dominio), Headroom deja solo la tarea -health con token
     // interactivo: muestra consola cada 5 min y no corre al iniciar sesión. Se corre sin consola
