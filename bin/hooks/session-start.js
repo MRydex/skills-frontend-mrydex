@@ -2,7 +2,7 @@
 
 /**
  * Hook SessionStart de Claude Code (skills-frontend-mrydex).
- * Levanta el proxy de Headroom si no está corriendo y obliga a usar task-observer.
+ * Levanta el proxy de Headroom si no está corriendo.
  * Claude Code apunta al proxy por `env.ANTHROPIC_BASE_URL` en ~/.claude/settings.json.
  */
 
@@ -71,24 +71,19 @@ async function main() {
   if (!headroomUp && usesHeadroom) {
     // Windows: detached abre una consola visible por sesión. La tarea programada corre oculta
     // y con IgnoreNew varias sesiones a la vez levantan un solo proxy.
-    if (process.platform === 'win32') spawnSync('schtasks', ['/Run', '/TN', 'headroom-init-user-health'], { windowsHide: true });
-    else startDetached('headroom', ['proxy', '--port', String(HEADROOM_PORT)]);
+    // Sin la tarea (falló `headroom install apply`) se lanza igual, aunque abra una consola.
+    const task = process.platform === 'win32'
+      && spawnSync('schtasks', ['/Run', '/TN', 'headroom-init-user-health'], { windowsHide: true }).status === 0;
+    if (!task) startDetached('headroom', ['proxy', '--port', String(HEADROOM_PORT)]);
     headroomUp = await waitUp(HEADROOM_PORT, '/health', HEADROOM_WAIT_MS);
   }
 
-
-  const output = {
-    hookSpecificOutput: {
-      hookEventName: 'SessionStart',
-      additionalContext: 'Invoke the task-observer skill before the first tool call of this session.',
-    },
-  };
   // Sin proxy cada llamada al modelo falla: el aviso va al usuario, no al modelo
   if (usesHeadroom && !headroomUp) {
-    output.systemMessage = `Headroom no responde en 127.0.0.1:${HEADROOM_PORT}: las llamadas al modelo van a fallar. `
+    const systemMessage = `Headroom no responde en 127.0.0.1:${HEADROOM_PORT}: las llamadas al modelo van a fallar. `
       + `Correr "headroom proxy --port ${HEADROOM_PORT}" o quitar ANTHROPIC_BASE_URL del env de ~/.claude/settings.json.`;
+    process.stdout.write(JSON.stringify({ systemMessage }));
   }
-  process.stdout.write(JSON.stringify(output));
 }
 
 main();

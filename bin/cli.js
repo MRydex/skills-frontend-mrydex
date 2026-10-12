@@ -59,7 +59,7 @@ ${colors.bold}OPCIONES:${colors.reset}
                           cursor, universal y all los generan siempre.
   ${colors.green}--no-caveman${colors.reset}            No instala el plugin caveman (por defecto: global + reglas en el repo)
   ${colors.green}--no-external-skills${colors.reset}    No instala las skills externas: security-audit, emilkowalski/skills,
-                          ponytail, agent-skills y task-observer (por defecto: global, última versión)
+                          ponytail y agent-skills (por defecto: global, última versión)
   ${colors.green}--no-graphify${colors.reset}           No instala ni configura graphify (por defecto: instala/actualiza
                           el CLI y, en el proyecto, integra todos los agentes y arma el grafo)
   ${colors.green}--no-agent-tools${colors.reset}        No instala Headroom ni claude-code-setup
@@ -487,7 +487,8 @@ function enableCavemanInClaude(homeDir) {
 function installCaveman(homeDir, repoRoots) {
   console.log(`
 ${colors.bold}${colors.cyan}Caveman:${colors.reset} instalando el plugin para los agentes detectados...`);
-  const base = ['-y', CAVEMAN_PKG, '--', '--non-interactive', '--no-color'];
+  // --no-hooks: en Claude Code los hooks los trae el plugin; sumarlos en settings.json los duplica
+  const base = ['-y', CAVEMAN_PKG, '--', '--non-interactive', '--no-color', '--no-hooks'];
   if (isDryRun) {
     console.log(`${colors.dim}[dry-run] npx ${base.join(' ')}${colors.reset}`);
     for (const root of repoRoots) console.log(`${colors.dim}[dry-run] (en ${root}) npx ${base.join(' ')} --with-init${colors.reset}`);
@@ -518,6 +519,20 @@ ${colors.bold}${colors.cyan}Caveman:${colors.reset} instalando el plugin para lo
 const EXTERNAL_SKILLS = [
   { repo: 'cloudflare/security-audit-skill', skills: ['security-audit'] },
   {
+    repo: 'mukul975/Anthropic-Cybersecurity-Skills',
+    // El repo trae 818 skills: todas juntas suman ~40k tokens de descripciones en cada sesión.
+    // Solo las de AppSec web, APIs y supply chain de npm, que aplican a Angular + .NET.
+    skills: [
+      'testing-for-xss-vulnerabilities', 'testing-cors-misconfiguration', 'performing-csrf-attack-simulation',
+      'exploiting-prototype-pollution-in-javascript', 'testing-for-json-web-token-vulnerabilities',
+      'implementing-jwt-signing-and-verification', 'configuring-oauth2-authorization-flow',
+      'performing-oauth-scope-minimization-review', 'testing-api-security-with-owasp-top-10',
+      'performing-web-application-vulnerability-triage', 'detecting-malicious-npm-packages',
+      'detecting-typosquatting-packages-in-npm-pypi', 'generating-and-analyzing-sboms',
+      'implementing-secret-scanning-with-gitleaks',
+    ],
+  },
+  {
     repo: 'emilkowalski/skills',
     // Solo las de web sin React: se excluyen write-swift, animate-expo, mobile-native, apple-design y ask-sonner
     skills: [
@@ -540,8 +555,13 @@ const EXTERNAL_SKILLS = [
       'using-agent-skills',
     ],
   },
-  // Observa la sesión y registra mejoras para skills; se activa con el bloque global de instrucciones
-  { repo: 'rebelytics/one-skill-to-rule-them-all', skills: ['task-observer'] },
+];
+
+// Se quitan en cada instalación (caveman las reinstala): suman descripciones en cada turno y no se usan.
+// task-observer: ~11k tokens por sesión. caveman-*: skills de Caveman Cloud, servicio que no se usa.
+const UNUSED_SKILLS = [
+  'task-observer', 'caveman-setup', 'caveman-discover', 'caveman-evidence-review',
+  'caveman-manage', 'caveman-optimize', 'caveman-learn',
 ];
 
 function installExternalSkills(homeDir) {
@@ -556,12 +576,17 @@ ${colors.bold}${colors.cyan}Skills externas:${colors.reset} instalando la últim
     if (runNpx(npxArgs, homeDir).ok) logOk(`${repo}: ${skills.join(', ')}`);
     else console.log(`  ${colors.yellow}⚠${colors.reset} ${repo} falló. Correr a mano: npx ${npxArgs.join(' ')}`);
   }
+  if (!isDryRun && runNpx(['-y', 'skills', 'remove', ...UNUSED_SKILLS, '--global', '--yes'], homeDir).ok) {
+    logOk(`sin skills que no se usan: ${UNUSED_SKILLS.join(', ')}`);
+  }
 }
 
 // Plugins solo de Claude Code (sin equivalente como skill suelta). `repo` null: marketplace oficial.
 // claude-mem quedó afuera: su memoria hosteada es paga y, sin suscripción, gasta tokens del plan.
 const CLAUDE_PLUGINS = [
   { id: 'claude-code-setup@claude-plugins-official', repo: null },
+  // Escaneo profundo de vulnerabilidades del código propio, con verificación de cada hallazgo
+  { id: 'claude-security@claude-plugins-official', repo: null },
 ];
 
 // Herramientas de eficiencia: Headroom (PyPI) comprime el contexto (§14.8 de la skill).
@@ -572,7 +597,7 @@ ${colors.bold}${colors.cyan}Herramientas del agente:${colors.reset} Headroom y c
   if (isDryRun) {
     console.log(`${colors.dim}[dry-run] pip install --upgrade "headroom-ai[all]"${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: activar ${CLAUDE_PLUGINS.map(({ id }) => id).join(', ')}${colors.reset}`);
-    console.log(`${colors.dim}[dry-run] Claude Code: hook SessionStart + ANTHROPIC_BASE_URL=${HEADROOM_URL}${colors.reset}`);
+    console.log(`${colors.dim}[dry-run] Claude Code: hook SessionStart + ANTHROPIC_BASE_URL=${HEADROOM_URL} + CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=${AUTOCOMPACT_PCT}${colors.reset}`);
     return;
   }
 
@@ -617,7 +642,9 @@ function installClaudePlugins(homeDir) {
     .some((key) => enabled[key] === true && key !== id && key.split('@')[0] === id.split('@')[0]);
   for (const { id, repo } of CLAUDE_PLUGINS.filter((plugin) => !fromOtherMarketplace(plugin.id))) {
     if (repo) runShell(`claude plugin marketplace add ${repo}`, homeDir);
-    const { ok, output } = runShell(`claude plugin install ${id} --scope user`, homeDir);
+    let { ok, output } = runShell(`claude plugin install ${id} --scope user`, homeDir);
+    // Versiones nuevas de Claude Code renombraron el marketplace oficial
+    if (!ok && !repo) ({ ok, output } = runShell(`claude plugin install ${id.split('@')[0]}@anthropic-plugin-directory --scope user`, homeDir));
     if (ok) logOk(`Claude Code: plugin ${id}`);
     else console.log(`  ${colors.yellow}⚠${colors.reset} ${id} falló: ${output.trim().split(/\r?\n/).pop()}`);
   }
@@ -683,9 +710,10 @@ function initHeadroom(homeDir) {
 
 const HEADROOM_URL = 'http://127.0.0.1:8787';
 const HOOK_MARKER = 'skills-frontend-mrydex';
+const AUTOCOMPACT_PCT = 40;
 
-// Hook SessionStart: levanta Headroom si hace falta y fuerza task-observer en cada sesión.
-// Claude Code pasa por Headroom solo si `headroom` funciona y no hay otra ANTHROPIC_BASE_URL.
+// Hook SessionStart: levanta Headroom si hace falta. Claude Code pasa por Headroom solo si `headroom`
+// funciona y no hay otra ANTHROPIC_BASE_URL; compacta al 40% del contexto.
 function installSessionStartHook(homeDir) {
   const claudeDir = path.join(homeDir, '.claude');
   if (!fs.existsSync(claudeDir)) return;
@@ -713,16 +741,27 @@ function installSessionStartHook(homeDir) {
   const command = `node "${hookPath.replaceAll('\\', '/')}"`;
   settings.hooks.SessionStart = [...others, { hooks: [{ type: 'command', command, timeout: 30 }] }];
 
+  // Hooks de caveman sueltos que versiones anteriores dejaban junto al plugin (cada evento se
+  // inyectaba dos veces). El de subagentes se queda: el plugin no lo trae.
+  const cavemanPlugin = settings.enabledPlugins?.['caveman@caveman'] === true;
+  const stale = (hook) => (cavemanPlugin && /\.claude\/hooks\/caveman-(activate|mode-tracker)\.js"?$/.test(hook.command ?? ''));
+  for (const event of Object.keys(settings.hooks)) {
+    settings.hooks[event] = settings.hooks[event].filter((entry) => !entry.hooks?.some(stale));
+    if (settings.hooks[event].length === 0) delete settings.hooks[event];
+  }
+
   const headroomOk = runCommand('headroom', ['--help']).ok;
   settings.env ??= {};
   const currentUrl = settings.env.ANTHROPIC_BASE_URL;
   if (headroomOk && !currentUrl) settings.env.ANTHROPIC_BASE_URL = HEADROOM_URL;
+  settings.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE ??= String(AUTOCOMPACT_PCT);
 
   fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}
 `);
-  logOk('Claude Code: hook SessionStart (Headroom, task-observer)');
+  logOk('Claude Code: hook SessionStart (Headroom)');
   if (settings.env.ANTHROPIC_BASE_URL === HEADROOM_URL) logOk(`Claude Code: modelo vía Headroom (${HEADROOM_URL})`);
   else if (currentUrl) console.log(`  ${colors.dim}ANTHROPIC_BASE_URL ya era ${currentUrl}: no se cambió${colors.reset}`);
+  logOk(`Claude Code: autocompactación al ${settings.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE}% del contexto`);
 }
 
 function finish() {

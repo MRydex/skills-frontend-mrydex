@@ -310,7 +310,9 @@ automáticamente al llenarse la ventana (ahí compacta tarde y sin foco).
 - Antes de arrancar una tarea nueva sin relación con la anterior. Si no comparte nada, preferir limpiar
   el contexto (`/clear` en Claude Code) en vez de compactar.
 - Después de leer salidas grandes (logs, builds, archivos largos) cuyo contenido ya se procesó.
-- Cuando la conversación supera ~60% de la ventana y queda trabajo por delante.
+- Cuando la conversación supera ~40% de la ventana y queda trabajo por delante. En Claude Code el
+  instalador fija `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=40` en `~/.claude/settings.json`: si el agente no
+  compactó antes, la herramienta compacta sola al 40%.
 
 **Nunca compactar:**
 - En medio de un cambio a medio aplicar (archivos editados sin verificar).
@@ -497,38 +499,37 @@ estas reglas para que rijan en todas las sesiones.
 
 | Herramienta | Qué hace | Instalación (si falta) | Uso obligatorio |
 | :--- | :--- | :--- | :--- |
-| [task-observer](https://github.com/rebelytics/one-skill-to-rule-them-all) | Observa la sesión y registra patrones y correcciones para crear o mejorar skills | `npx skills add rebelytics/one-skill-to-rule-them-all --skill task-observer -g` | Invocarla antes de la primera tool call de cada sesión |
 | [ponytail](https://github.com/DietrichGebert/ponytail) | Reglas de código mínimo: menos líneas, plataforma antes que dependencias | `npx skills add DietrichGebert/ponytail --skill '*' -g` | Escribir solo el código necesario; `ponytail-review` sobre el diff antes del reporte final |
 | [agent-skills](https://github.com/addyosmani/agent-skills) | Skills de ingeniería por fase (spec, plan, build, review, ship) | `npx skills add addyosmani/agent-skills -g --skill <todas menos test-driven-development y browser-testing-with-devtools>` (lista en `bin/cli.js`) | Usar la skill de la fase en curso. Las de tests no se instalan (§8) |
 | [claude-code-setup](https://github.com/anthropics/claude-plugins-official) | Recomienda hooks, subagentes, skills y MCP para el repo (Claude Code) | `/plugin install claude-code-setup@claude-plugins-official` | En un repo sin setup de Claude Code: correr `claude-automation-recommender` una vez y proponer el resultado |
 | [Headroom](https://github.com/chopratejas/headroom) | Proxy local que comprime el contexto de entrada | `uv tool install --python 3.13 "headroom-ai[all]"` (o `pip install "headroom-ai[all]"`) | Automático por agente (tabla de abajo). Si un agente quedó sin integrar: `headroom init -g <agente>` o `headroom wrap <agente>` |
 
-- **Claude Code**: el instalador instala claude-code-setup con `claude plugin install` (si no hay CLI,
+- **Claude Code**: el instalador instala claude-code-setup y claude-security (escaneo de vulnerabilidades
+  del código propio, oficial de Anthropic) con `claude plugin install` (si no hay CLI,
   lo activa en `enabledPlugins`). No se usa claude-mem: su memoria hosteada es paga y, sin
-  suscripción, resume las sesiones con el plan de Anthropic (gasta tokens). Las skills (ponytail, agent-skills,
-  task-observer) quedan en todos los agentes detectados por `npx skills`.
+  suscripción, resume las sesiones con el plan de Anthropic (gasta tokens). Las skills (ponytail, agent-skills) quedan en todos los agentes detectados por `npx skills`.
 - **Headroom en cada agente.** El instalador usa la integración durable oficial (`headroom init -g
   --port 8787 <agente>`): apunta el agente al proxy y agrega hooks que lo levantan solo al iniciar
   sesión y antes de cada comando (supervisor `none`: sin servicio ni tarea de Windows).
 
   | Agente | Integración | Proxy arranca solo |
   | :--- | :--- | :--- |
-  | Claude Code (CLI y extensión de VS Code) | `headroom init -g claude`: `env.ANTHROPIC_BASE_URL`, hooks `SessionStart` / `PreToolUse`, plugin y MCP `headroom` | Sí |
+  | Claude Code (CLI y extensión de VS Code) | `headroom init -g claude`: `env.ANTHROPIC_BASE_URL`, hooks `SessionStart` / `PreToolUse`, plugin y MCP `headroom`. Remote Control no anda así: exige `api.anthropic.com` | Sí |
   | Copilot CLI | `headroom init -g copilot` | Sí |
   | Codex (macOS / Linux) | `headroom init -g codex`: `model_provider = "headroom"` en `~/.codex/config.toml` | Sí |
   | Codex (Windows) | `headroom wrap codex` al lanzarlo. Codex no corre hooks en Windows: con `init` fallaría si el proxy está caído | Con `wrap` |
   | Cursor / VS Code Copilot | `headroom wrap cursor` / `headroom wrap vscode` (instrucciones y settings) | No |
   | Gemini CLI / Antigravity | Headroom no los soporta | — |
 
-  Si `claude` no está en el `PATH` (solo la extensión de VS Code), el instalador usa el binario de la
-  extensión para `headroom init`. Deshacer: `headroom unwrap <agente>`.
+  En Windows el proxy corre como tarea programada oculta (`headroom-init-user-health`), así ningún hook
+  abre consolas. Deshacer: `headroom unwrap <agente>`.
 - **Arranque automático en Claude Code (hook `SessionStart`).** El instalador copia
   `bin/hooks/session-start.js` a `~/.claude/hooks/skills-frontend-mrydex/` y lo registra en
   `~/.claude/settings.json`. En cada sesión:
-  - Respaldo de Headroom: si `ANTHROPIC_BASE_URL` apunta al puerto 8787 y el proxy no corre, lo
-    levanta (6 s en frío, 0,1 s si ya está arriba). Si no levanta en 20 s, avisa al usuario con el
+  - Respaldo de Headroom: si `ANTHROPIC_BASE_URL` apunta al puerto 8787 y el proxy no
+    corre, lo levanta (en Windows con la tarea programada oculta) (6 s en frío, 0,1 s si ya está arriba). Si no levanta en 20 s, avisa al usuario con el
     comando para arreglarlo: sin proxy cada llamada al modelo reintenta ~3 min y falla (`ECONNREFUSED`).
-  - Inyecta la orden de invocar `task-observer` antes de la primera tool call.
+  - No inyecta texto al modelo: si el proxy anda (o no se usa), no escribe nada.
 - Medido (Claude Code + Headroom, suscripción): la autenticación pasa sin API key; en una tarea
   chica que leyó 2 archivos, Headroom ahorró 63.204 tokens (casi todo en schemas de tools) y 24,4%
   del costo.
