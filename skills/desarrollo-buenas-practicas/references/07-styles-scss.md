@@ -167,6 +167,27 @@ h1 { color: light-dark(green, #09f); } // primer valor = claro, segundo = oscuro
 - Estados (`:hover`, `:focus-visible`, `:disabled`, `:focus-within`) y modificadores van **dentro**
   de la misma declaración.
 - Nada de selectores sueltos fuera del bloque raíz.
+- **Nunca reescribir la clase completa.** Elementos con `&__` y modificadores con `&--`, siempre
+  anidados: el modificador de un elemento va dentro del elemento (`&__titulo { &--grande {} }`), no
+  como `&__titulo--grande` ni como `.bloque__titulo--grande` aparte. Así renombrar el bloque toca una
+  sola línea y el elemento junta todas sus variantes.
+
+```scss
+// ❌ MAL — clase completa reescrita / elemento y modificador juntos
+.tarjeta { ... }
+.tarjeta__titulo { ... }
+.tarjeta__titulo--grande { ... }
+.tarjeta {
+  &__titulo--grande { ... }
+}
+
+// ✅ BIEN — todo anidado desde el bloque
+.tarjeta {
+  &__titulo {
+    &--grande { ... }
+  }
+}
+```
 - **Preferir `:focus-visible` sobre `:focus`** para foco accesible sin ruido al click.
 - **Profundidad máxima: 3 niveles** (bloque → elemento → modificador/estado). Encadenar más
   niveles (`&__a &__b &__c`) es señal de que ese fragmento es en realidad un subcomponente propio
@@ -496,8 +517,10 @@ assets/styles/
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 224px), 1fr));
     gap: 16px 24px;
 
-    &__campo--completo {
-      grid-column: 1 / -1;
+    &__campo {
+      &--completo {
+        grid-column: 1 / -1;
+      }
     }
   }
   ```

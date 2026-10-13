@@ -623,7 +623,12 @@ export class FormContacto {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 224px), 1fr));
   gap: 16px 24px;
 
-  &__campo--completo,
+  &__campo {
+    &--completo {
+      grid-column: 1 / -1;
+    }
+  }
+
   &__empresa {
     grid-column: 1 / -1;
   }

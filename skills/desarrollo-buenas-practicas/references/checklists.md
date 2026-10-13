@@ -92,6 +92,7 @@ Proceso del agente.
 - [ ] ¿`@use` / `@forward`, nunca `@import`? ¿`@use` sin ruta relativa (`@use 'modulo/modulo-parte' as x`, vía `includePaths`)? ¿Partials en `assets/styles/<modulo>/`? (§7.1)
 - [ ] ¿Colores, breakpoints y tamaños desde tokens globales? ¿Tipografía fluida con `clamp()`? (§7.2)
 - [ ] ¿Estilos anidados bajo el bloque BEM, máximo 3 niveles? (§7.3)
+- [ ] ¿Elementos y modificadores con `&__` / `&--`, sin reescribir la clase completa ni juntar `&__elemento--modificador`? (§7.3)
 - [ ] ¿Sin `::ng-deep` ni `:host-context()`? ¿NG-ZORRO personalizado por theming o clases globales con prefijo? (§7.4, §7.5)
 - [ ] ¿`:focus-visible` para foco accesible? ¿`prefers-reduced-motion` contemplado? (§7.7)
 - [ ] ¿Sin SCSS duplicado? Lo repetido extraído a su capa ITCSS (token, `@mixin`, `.o-*`, `.u-*`); sin `@extend`; el componente solo hace `@use` de settings/tools. (§7.10)

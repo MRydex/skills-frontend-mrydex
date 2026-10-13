@@ -80,6 +80,7 @@ usuario nombró el archivo y la línea exactos.
 6. **Nunca archivos monolíticos.** Máximo: componente `.ts` 200 líneas, template `.html` 200, servicio 250, `.scss` 150. Si se pasa, dividir por responsabilidad: subcomponentes presentacionales (`input()` / `output()`) y sub-servicios (lógica / HTTP). **Dentro del límite no se divide**: nada de componentizar bloques chicos usados una sola vez (§1.4 "Cuándo dividir"). Ver [01-project-structure.md](./references/01-project-structure.md).
 7. **Nunca carpeta `components/` para subcomponentes.** Cada hijo se anida dentro de la carpeta del padre que lo usa: `detalle/subdetalle/subdetalle-cabecera/`. El árbol de carpetas refleja el árbol de componentes. Única excepción: `shared/components/`, para componentes reutilizados por varias features. UI repetida (selector de usuario, tabla, buscador) = **un solo componente reutilizable**, nunca copias adaptadas. Ver [01-project-structure.md](./references/01-project-structure.md) §1.5.
 8. **Nunca sufijos `.component` / `.service` / `Component` / `Service`.** Archivo `user-list.ts` exporta `UserList`. Ver [01-project-structure.md](./references/01-project-structure.md).
+9. **Nunca reescribir la clase BEM completa en SCSS.** Elementos y modificadores siempre anidados con `&__` / `&--` dentro del bloque: `.card { &__title { &--big {} } }`, nunca `.card__title` ni `.card__title--big` como selector propio, ni `&__title--big` juntando elemento y modificador. Ver [07-styles-scss.md](./references/07-styles-scss.md) §7.3.
 
 ---
 
