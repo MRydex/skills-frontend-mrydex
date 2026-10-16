@@ -95,7 +95,9 @@ agente siga las instrucciones:
 7. Instala globalmente, siempre en su última versión, las skills `security-audit`
    ([cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill)), 14 de AppSec web, APIs y
    supply chain de npm de [mukul975/Anthropic-Cybersecurity-Skills](https://github.com/mukul975/Anthropic-Cybersecurity-Skills)
-   (no las 818: sumarían ~40k tokens por sesión) y las de web de
+   (no las 818: sumarían ~40k tokens por sesión), 20 `offensive-*` de web, API, auth y supply chain de
+   [SnailSploit/claude-red](https://github.com/SnailSploit/claude-red) (no la librería ofensiva entera:
+   sin exploit binario, evasión ni post-explotación; solo para endurecer el código propio, §15.2) y las de web de
    [emilkowalski/skills](https://github.com/emilkowalski/skills) (animaciones, diseño de UI, prototipos;
    sin Swift, Expo, mobile, Apple ni Sonner, que es de React), más
    [ponytail](https://github.com/DietrichGebert/ponytail),
@@ -143,7 +145,7 @@ Opciones:
 
 ```text
 skills/desarrollo-buenas-practicas/
-├── SKILL.md                          # Entrada principal, 8 reglas de oro, modo de operación y stack v22
+├── SKILL.md                          # Entrada principal, reglas de oro, modo de operación y stack v22
 └── references/
     ├── 01-project-structure.md       # Estructura protected/private/interceptors/shared, alias @/, naming sin sufijos
     ├── 02-typescript-signals.md      # TS 6, Signals reactivos, inject(), componentes, inputs/outputs

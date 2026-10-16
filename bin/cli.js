@@ -533,6 +533,20 @@ const EXTERNAL_SKILLS = [
     ],
   },
   {
+    repo: 'SnailSploit/claude-red',
+    // Librería ofensiva entera (exploit-dev, shellcode, EDR-evasion, C2, AD, k8s, wireless...).
+    // Solo la superficie de ataque de una web app Angular + .NET: web, API, auth y supply chain.
+    // Se usan como Red Team para endurecer el código propio contra esos ataques (§15.2), nunca
+    // contra sistemas de terceros. Fuera: exploit binario, evasión, persistencia, post-explotación.
+    skills: [
+      'offensive-sqli', 'offensive-xss', 'offensive-ssrf', 'offensive-ssti', 'offensive-idor',
+      'offensive-xxe', 'offensive-deserialization', 'offensive-file-upload', 'offensive-business-logic',
+      'offensive-open-redirect', 'offensive-parameter-pollution', 'offensive-race-condition',
+      'offensive-request-smuggling', 'offensive-graphql', 'offensive-api-security', 'offensive-jwt',
+      'offensive-oauth', 'offensive-dependency-confusion', 'offensive-supply-chain', 'offensive-reporting',
+    ],
+  },
+  {
     repo: 'emilkowalski/skills',
     // Solo las de web sin React: se excluyen write-swift, animate-expo, mobile-native, apple-design y ask-sonner
     skills: [

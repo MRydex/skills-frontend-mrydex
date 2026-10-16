@@ -15,6 +15,7 @@
 - 15.11 Blue Team: detección, logging y respuesta
 - 15.12 Verificación manual de seguridad
 - 15.13 Mapa OWASP Top 10 (2025)
+- 15.14 Pedido explícito de seguridad (auditoría completa red + blue)
 
 ### 15.1 Regla general y modo de trabajo
 
@@ -54,6 +55,37 @@ Antes de entregar, responder cada pregunta sobre el código tocado:
 | Regex y parseo | ¿Una regex construida con texto del usuario permite inyección o ReDoS? |
 
 Si alguna respuesta es "sí", corregir antes de entregar.
+
+**Metodología ofensiva por superficie (skills `offensive-*` de [SnailSploit/claude-red](https://github.com/SnailSploit/claude-red)).**
+Solo para endurecer el código propio contra esos ataques, nunca contra sistemas de terceros. Invocarlas
+cuando el cambio toca la superficie que cubren:
+
+| Superficie del cambio | Skill `offensive-*` |
+| :--- | :--- |
+| Entradas que llegan a SQL/ORM | `offensive-sqli` |
+| Dato controlable en el DOM | `offensive-xss` |
+| Backend que pide una URL (`returnUrl`, webhook, proxy) | `offensive-ssrf` |
+| Plantillas server-side | `offensive-ssti` |
+| `id` en URL/body, acceso a datos de otro usuario | `offensive-idor` |
+| Parseo de XML | `offensive-xxe` |
+| Deserialización de datos del cliente | `offensive-deserialization` |
+| Subida de archivos | `offensive-file-upload` |
+| Flujo de negocio (cupones, pagos, pasos saltables) | `offensive-business-logic` |
+| Redirect a dominio externo | `offensive-open-redirect` |
+| Parámetros duplicados | `offensive-parameter-pollution` |
+| Operaciones concurrentes (doble submit, saldo) | `offensive-race-condition` |
+| Proxy / cabeceras `Content-Length` / `Transfer-Encoding` | `offensive-request-smuggling` |
+| API GraphQL | `offensive-graphql` |
+| API REST/gRPC/WebSocket (OWASP API Top 10) | `offensive-api-security` |
+| JWT (`alg`, firma, expiración) | `offensive-jwt` |
+| OAuth2 / OIDC (scopes, redirect_uri, PKCE) | `offensive-oauth` |
+| Nombres de paquetes internos vs públicos | `offensive-dependency-confusion` |
+| Cadena de build y dependencias | `offensive-supply-chain` |
+| Escribir el hallazgo | `offensive-reporting` |
+
+Estas complementan el escaneo del plugin `claude-security` (código propio) y las skills de AppSec de
+`cloudflare/security-audit-skill` y `mukul975/Anthropic-Cybersecurity-Skills`. Qué herramienta
+profundiza cada área: tabla de §15.14.
 
 ### 15.3 XSS: sanitización de Angular, `innerHTML` y `DomSanitizer`
 
@@ -286,5 +318,70 @@ Sin archivos de test (§8). Antes de entregar, probar a mano en la app:
 | A08 Software or Data Integrity Failures | §15.10 (lockfile, SRI) |
 | A09 Logging & Alerting Failures | §15.11 |
 | A10 Mishandling of Exceptional Conditions | §15.8 (errores genéricos), §15.5 (401/403) |
+
+### 15.14 Pedido explícito de seguridad (auditoría completa red + blue)
+
+§15.1–15.2 cubren **cada cambio**. Cuando el usuario pide seguridad a secas ("revisá la seguridad",
+"auditá esto", "¿es seguro?"), el alcance es **todo el código tocado o el que se indique**, no solo el
+último diff. Para el equipo la seguridad es prioridad: se revisan **todas las áreas**, ninguna se
+saltea en silencio, y la profundidad de cada una la decide el agente según lo que encuentra.
+
+1. **Delimitar el alcance.** Preguntar qué auditar si no está claro: el diff actual, una feature, un
+   módulo o todo el repo.
+2. **Orientar con graphify** (`graphify query`) para ubicar entradas, interceptores, render de datos
+   externos, auth, uploads, llamadas a terceros y límites de confianza. Una sola pasada alimenta a
+   todas las herramientas.
+3. **Revisión base de todas las áreas.** Recorrer la tabla de abajo completa. Cada área termina en
+   uno de tres estados: **OK** (con la evidencia, `archivo:línea`), **hallazgo** o **N/A** (con el
+   motivo: "no hay uploads en el alcance"). Incluye la tabla de §15.2 (Red Team), las defensas de
+   §15.3–15.11 (Blue Team) y `npm audit --omit=dev` + `npm audit` (§15.10; en .NET, `dotnet list
+   package --vulnerable`).
+4. **Profundizar donde haga falta.** Por cada área, invocar su herramienta profunda (tabla) cuando se
+   da **cualquiera** de estas condiciones:
+   - la revisión base encontró un hallazgo o una señal dudosa;
+   - el área es sensible: auth, tokens, pagos, datos personales, uploads, permisos por usuario;
+   - el alcance es una feature completa o todo el repo.
+
+   Un área N/A no se profundiza. Solo sobre el código propio o entornos autorizados (§15.1).
+5. **Auditoría general** (alcance feature o repo): correr además la skill `security-audit`
+   (Cloudflare) y el plugin `claude-security` (Anthropic), que buscan lo que la tabla no anticipa.
+   Ambos verifican cada hallazgo antes de reportarlo. En un diff chico no: alcanza con los pasos 3–4.
+6. **Priorizar** por riesgo (crítico → bajo), mapeado a OWASP (§15.13). Una línea por hallazgo:
+   archivo, línea, riesgo, fix propuesto. Triage de hallazgos dudosos o de scanners:
+   `performing-web-application-vulnerability-triage`. Redacción: `offensive-reporting`.
+7. **Corregir.** Lo que está dentro del alcance se corrige; `high`/`critical` bloquean la entrega. Lo
+   que queda fuera del alcance se reporta y se pregunta antes de tocarlo (§15.1). Nunca desactivar una
+   protección para "arreglar".
+8. **Reverificar.** Tras cada fix, build + prueba manual (§15.12). Documentar la lección en
+   `tasks/lessons.md` (§11.8).
+9. **Reporte de cobertura.** Además de los hallazgos, una tabla con cada área, su estado
+   (OK / hallazgo / N/A) y la herramienta usada. Así se ve qué se revisó y qué no aplicaba.
+
+| Área | Revisión base | Herramienta profunda |
+| :--- | :--- | :--- |
+| XSS y render de datos | §15.2, §15.3 | `offensive-xss`, `testing-for-xss-vulnerabilities` |
+| Prototype pollution (merge/clone de JSON externo) | §15.2 | `exploiting-prototype-pollution-in-javascript` |
+| CSP y Trusted Types | §15.4 | `security-audit` |
+| Auth, tokens y JWT | §15.5 | `offensive-jwt`, `testing-for-json-web-token-vulnerabilities`, `implementing-jwt-signing-and-verification` |
+| OAuth2 / OIDC | §15.5 | `offensive-oauth`, `configuring-oauth2-authorization-flow`, `performing-oauth-scope-minimization-review` |
+| Autorización / IDOR | §15.2, §15.5 | `offensive-idor`, `offensive-business-logic` |
+| CSRF / XSRF | §15.6 | `performing-csrf-attack-simulation` |
+| CORS | §15.9 | `testing-cors-misconfiguration` |
+| Redirects y navegación | §15.7 | `offensive-open-redirect` |
+| Secretos y PII | §15.8 | `implementing-secret-scanning-with-gitleaks` |
+| Cabeceras (IIS) | §15.9 | `security-audit` |
+| API (REST, GraphQL, WebSocket) | §15.2 | `offensive-api-security`, `testing-api-security-with-owasp-top-10`, `offensive-graphql` |
+| Inyección en backend (SQL, SSRF, SSTI, XXE, deserialización) | §15.2 | `offensive-sqli`, `offensive-ssrf`, `offensive-ssti`, `offensive-xxe`, `offensive-deserialization` |
+| Uploads | §15.2 | `offensive-file-upload` |
+| Concurrencia y parámetros | §15.2 | `offensive-race-condition`, `offensive-parameter-pollution`, `offensive-request-smuggling` |
+| Dependencias y supply chain | §15.10 | `detecting-malicious-npm-packages`, `detecting-typosquatting-packages-in-npm-pypi`, `offensive-dependency-confusion`, `offensive-supply-chain`, `generating-and-analyzing-sboms` |
+| Logging y respuesta (Blue Team) | §15.11 | `security-audit` |
+
+**Eficiencia sin perder cobertura:** la revisión base de todas las áreas es obligatoria; lo que se
+dosifica es la profundidad. No releer lo mismo para cada skill: pasarles los `archivo:línea` que ya
+ubicó graphify. Si el alcance es grande, delegar el barrido por área a subagentes en paralelo (§14.3);
+la priorización, la corrección y la decisión final quedan en el modelo principal. Si falta una skill
+de la tabla, instalarla (`npx skills-frontend-mrydex`) y avisar en una línea; si no se puede, hacer
+esa área con la revisión base y decirlo en el reporte de cobertura.
 
 ---

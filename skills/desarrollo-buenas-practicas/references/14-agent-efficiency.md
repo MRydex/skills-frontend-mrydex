@@ -142,7 +142,7 @@ instalada (consultar primero a otro agente abierto o al MCP de docs, §14.2).
 ejecutores del equipo en la carpeta del agente (`.claude/agents/`, `.codex/agents/`,
 `.agents/agents/`, `.cursor/agents/`, `.github/agents/`, `.gemini/agents/`):
 
-- `investigador` (nivel rápido): localiza código, devuelve `archivo:línea`. Solo lectura.
+- `investigador` (nivel ejecutor): localiza código, devuelve `archivo:línea`. Solo lectura.
 - `ejecutor` (nivel ejecutor): implementa un brief y devuelve el diff.
 - `revisor-checklist` (nivel rápido): revisa un diff contra [checklists.md](./checklists.md).
 
@@ -401,8 +401,8 @@ asistente (build completo: código con AST, docs e imágenes con LLM). Sin asist
 `graphify update .` arma el grafo solo de código, sin LLM.
 
 **4. Consultar siempre primero.** Ante cualquier pregunta sobre el código (dónde está X, quién usa Y,
-cómo fluye Z), antes de `grep` o de leer archivos. `grep`, `Glob` o `Read` de exploración sin una
-consulta previa al grafo es una **violación de la skill**. Única excepción: el usuario nombró el
+cómo fluye Z), antes de `grep` o de leer archivos. `grep`, `Glob` o `Read` de exploración van después
+de la consulta: el grafo dice dónde mirar con muchos menos tokens. Excepción: el usuario nombró el
 archivo y la línea exactos. En Claude Code, el hook `PreToolUse` que deja `graphify claude install`
 (`hook-guard`) lo recuerda en cada búsqueda:
 
@@ -438,7 +438,7 @@ graphify update .      # re-extrae solo el código cambiado, sin LLM: no gasta t
 
 ### 14.6 Regla de oro
 
-Menos tokens en la conversación principal = más contexto útil para decidir bien. Si algo lo puede hacer un modelo más barato sin perder calidad, delegarlo. Si algo lo sabe otro agente, preguntarle. Si algo se puede decir en menos palabras, decirlo así. Si el contexto ya no aporta, compactarlo. Si el grafo lo sabe, no leer el archivo entero.
+Menos tokens en la conversación principal = más contexto útil para decidir bien. Si delegar baja el total de tokens (§14.3.4), delegarlo. Si algo lo sabe otro agente, preguntarle. Si algo se puede decir en menos palabras, decirlo así. Si el contexto ya no aporta, compactarlo. Si el grafo lo sabe, no leer el archivo entero.
 
 ---
 
@@ -510,7 +510,7 @@ estas reglas para que rijan en todas las sesiones.
   suscripción, resume las sesiones con el plan de Anthropic (gasta tokens). Las skills (ponytail, agent-skills) quedan en todos los agentes detectados por `npx skills`.
 - **Headroom en cada agente.** El instalador usa la integración durable oficial (`headroom init -g
   --port 8787 <agente>`): apunta el agente al proxy y agrega hooks que lo levantan solo al iniciar
-  sesión y antes de cada comando (supervisor `none`: sin servicio ni tarea de Windows).
+  sesión y antes de cada comando.
 
   | Agente | Integración | Proxy arranca solo |
   | :--- | :--- | :--- |
