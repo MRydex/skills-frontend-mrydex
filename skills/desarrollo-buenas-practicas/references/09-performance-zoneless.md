@@ -115,13 +115,13 @@ Para servicios pesados (no componentes), usar `injectAsync()` en vez de `@defer`
 ```html
 <!-- ❌ MAL — track por índice: al insertar/eliminar en el medio, Angular re-usa las filas mal
      y re-renderiza de más (o arrastra estado de fila equivocado, ej. un input con foco) -->
-@for (juicio of juicios(); track $index) {
-  <app-juicio-row [juicio]="juicio" />
+@for (item of items(); track $index) {
+  <app-item-row [item]="item" />
 }
 
 <!-- ✅ BIEN — track por identidad estable: Angular reordena el DOM existente en vez de recrearlo -->
-@for (juicio of juicios(); track juicio.id) {
-  <app-juicio-row [juicio]="juicio" />
+@for (item of items(); track item.id) {
+  <app-item-row [item]="item" />
 }
 ```
 
@@ -167,8 +167,8 @@ import { NgOptimizedImage } from '@angular/common';
 // app.routes.ts
 export const routes: Routes = [
   {
-    path: 'juicios',
-    loadComponent: () => import('./juicios/juicios').then((m) => m.Juicios),
+    path: 'items',
+    loadComponent: () => import('./items/items').then((m) => m.Items),
   },
   {
     path: 'admin',
@@ -186,7 +186,7 @@ export const routes: Routes = [
 #### 9.6.1 Recrear componente y servicios al navegar a la misma ruta
 
 Por defecto el router **reutiliza** la instancia del componente si la configuración de ruta no
-cambia (ej. `/juicios/1` → `/juicios/2`, o un link que apunta a la ruta actual). El estado anterior
+cambia (ej. `/items/1` → `/items/2`, o un link que apunta a la ruta actual). El estado anterior
 queda vivo: signals, formularios, servicios del componente. **No limpiar ese estado a mano**
 (resets, `linkedSignal` de reinicio, flags). Forzar a Angular a destruir y recrear todo:
 
@@ -195,11 +195,11 @@ import { Component, DestroyRef, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 @Component({
-  selector: 'app-detalle-juicio',
-  templateUrl: './detalle-juicio.html',
-  providers: [DetalleJuicioStore], // se recrea junto con el componente
+  selector: 'app-detalle-item',
+  templateUrl: './detalle-item.html',
+  providers: [DetalleItemStore], // se recrea junto con el componente
 })
-export class DetalleJuicio {
+export class DetalleItem {
   private readonly _router = inject(Router);
 
   constructor() {
@@ -250,7 +250,7 @@ export class RecrearRutaStrategy extends BaseRouteReuseStrategy {
 { provide: RouteReuseStrategy, useClass: RecrearRutaStrategy }
 
 // feature.routes.ts
-{ path: ':id', loadComponent: () => import('./detalle-juicio/detalle-juicio').then((m) => m.DetalleJuicio), data: { recrear: true } }
+{ path: ':id', loadComponent: () => import('./detalle-item/detalle-item').then((m) => m.DetalleItem), data: { recrear: true } }
 ```
 
 ### 9.7 Hydration incremental y `withEventReplay`
@@ -339,7 +339,7 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
 
 ```html
 <nz-table
-  [nzData]="juicios()"
+  [nzData]="items()"
   [nzVirtualScroll]="true"
   [nzVirtualItemSize]="54"
   [nzVirtualMaxBufferPx]="200"
@@ -368,10 +368,10 @@ del viewport).
 
 ```html
 <!-- ❌ MAL — formatearMonto() corre en cada CD, sin memoizar -->
-<td>{{ formatearMonto(juicio.monto) }}</td>
+<td>{{ formatearMonto(item.monto) }}</td>
 
 <!-- ✅ BIEN — computed derivado, se recalcula solo si cambia la fuente -->
-<td>{{ juicio.montoFormateado }}</td>
+<td>{{ item.montoFormateado }}</td>
 <!-- montoFormateado viene de un computed()/mapper aplicado una vez sobre el resource (§4.6) -->
 ```
 

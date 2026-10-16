@@ -79,7 +79,7 @@ Toda clase CSS sigue **BEM**: `bloque__elemento--modificador`.
 <section class="lista" aria-labelledby="lista-titulo">
   <header class="lista__header">
     <h1 id="lista-titulo" class="lista__header-title">Mi Cartera</h1>
-    <p class="lista__header-subtitle">Listado de juicios</p>
+    <p class="lista__header-subtitle">Listado de items</p>
   </header>
 
   <!-- Elemento anidado con partición -->
@@ -251,7 +251,7 @@ Si hay que aplicar `flex` u otros estilos de bloque a celdas `<td>`, hacerlo en 
       <p class="lista__content-table-column--numero-reservado-title">Reservado</p>
     }
     <p class="lista__content-table-column--numero-text"
-       [innerHTML]="data?.idJuicio | highlightSearch : busquedatext.value">
+       [innerHTML]="data?.idItem | highlightSearch : busquedatext.value">
     </p>
   </div>
 </td>

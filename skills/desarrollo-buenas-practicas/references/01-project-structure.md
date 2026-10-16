@@ -55,7 +55,7 @@ src/
 │   │
 │   ├── private/               # Las pantallas de la app (detrás de authGuard)
 │   │   ├── private.routes.ts
-│   │   └── [modulo]/                  # Ejemplo: juicios/
+│   │   └── [modulo]/                  # Ejemplo: items/
 │   │       ├── [modulo].routes.ts
 │   │       ├── [modulo]-lista/        # Componente de ruta (smart), directo en el módulo
 │   │       │   ├── [modulo]-lista.ts
@@ -85,7 +85,7 @@ src/
 │   │       │   ├── [modulo].ts             # Lógica/orquestación, signals derivados
 │   │       │   └── [modulo]-http.ts        # Acceso HTTP puro
 │   │       ├── models/                # compartidos por todo el módulo
-│   │       │   └── dtos/              # DTOs por operación (ver §2.11)
+│   │       │   └── dtos/              # Request / Response del back, uno por operación (§2.11)
 │   │       ├── guards/
 │   │       ├── pipes/
 │   │       └── utils/
@@ -150,7 +150,7 @@ igual a `services/`, `models/`, `pipes/`, `validators/` y `guards/`:
 ### 1.2 Reglas clave de estructura
 
 - **Modelos** siempre en una carpeta `models/`. **Nunca** declarados dentro de un componente.
-- **DTOs** en `models/dtos/`, **uno por operación** (Create / Update / Query / Delete). Ver §2.11.
+- **Contrato con el back** en `models/dtos/`: `<Accion><Entidad>Request` lo que se envía y `<Entidad>Response` lo que vuelve, uno por operación. Ver §2.11.
 - **Servicios divididos por responsabilidad**:
   - `[modulo].ts` → lógica de negocio, orquestación, signals derivados, validaciones.
   - `concrete-[tema].ts` → implementación de un servicio abstracto de la librería,
@@ -173,8 +173,8 @@ igual a `services/`, `models/`, `pipes/`, `validators/` y `guards/`:
   componente (ver §5).
 - **Componentes de ruta vs shared components**:
   - Componentes de ruta (smart, inyectan servicios) → directo en la carpeta del módulo
-    (`private/juicios/detalle/`). Si un componente de ruta tiene rutas hijas (pestañas), los
-    componentes de esas rutas van en su `pages/` (`private/juicios/detalle/pages/fojas/`).
+    (`private/items/detalle/`). Si un componente de ruta tiene rutas hijas (pestañas), los
+    componentes de esas rutas van en su `pages/` (`private/items/detalle/pages/fojas/`).
   - `shared/components/` → la **única** carpeta `components/` de todo el proyecto: componentes
     presentacionales reutilizados por **varios** módulos (reciben `input()`, emiten `output()`).
   - Un componente presentacional usado por **un solo** módulo **no** va a `shared/components/`: se
@@ -336,7 +336,7 @@ private/usuarios/
 
 Si un servicio acumula cientos de líneas porque gestiona endpoints HTTP, mapeos de datos complejos, validaciones y estado en memoria, **dividirlo en 3 capas**:
 1. **HTTP / Resource puro (`[feature]-http.ts`)**: únicamente definición de endpoints, queries y mutations. Sin lógica de UI.
-2. **Mappers y funciones puras (`[feature]-mappers.ts`)**: funciones utilitarias puras que transforman DTOs del backend al modelo del front.
+2. **Mappers y funciones puras (`[feature]-mappers.ts`)**: `to<Destino>()` puras que pasan un `Response` al modelo del front, o un form a su `Request`. Solo cuando la forma cambia (§2.11).
 3. **Estado y Lógica de Negocio (`[feature].ts`)**: fachada inyectable con `signal()`, `computed()` y `linkedSignal()` que consumen los componentes.
 
 ### 1.5 Reutilización: un solo componente para lo repetido
@@ -364,8 +364,8 @@ sus consumidores.
 
 ```text
 ❌ MAL — 4 componentes que hacen lo mismo
-private/juicios/alta/alta-selector-usuario/
-private/juicios/editar/editar-selector-usuario/
+private/items/alta/alta-selector-usuario/
+private/items/editar/editar-selector-usuario/
 private/agenda/evento/evento-usuario-select/
 private/admin/permisos/permisos-usuario-picker/
 

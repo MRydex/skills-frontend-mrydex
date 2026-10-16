@@ -82,7 +82,7 @@ protected readonly avatar = httpResource.blob(() => `${environment.API_URL}usuar
 
 | Opción        | Para qué                                                                              |
 |---------------|-----------------------------------------------------------------------------------------|
-| `parse`       | Transforma/valida el `raw` antes de exponerlo (Zod/Valibot, o mapear DTO→modelo).        |
+| `parse`       | Transforma/valida el `raw` antes de exponerlo (Zod/Valibot, o mapear `Response`→modelo).        |
 | `defaultValue`| Valor mientras está `idle`/`loading`, en vez de `undefined`.                             |
 | `equal`       | Función de igualdad custom: evita recomputar `computed()`/re-renderizar si el nuevo valor es "igual" al anterior (útil con arrays/objetos grandes). |
 | `injector`    | Injector explícito si el resource se crea fuera de un contexto de inyección.             |
@@ -104,30 +104,30 @@ cancela el request anterior y dispara uno nuevo. **Reemplaza al patrón `Subject
 
 ```ts
 @Service()
-export class HomeService {
+export class Items {
   private readonly _http = inject(HttpClient);
-  private readonly _GET_JUICIOS = `${environment.API_URL}juicios`;
+  private readonly _GET_ITEMS = `${environment.API_URL}items`;
 
   // Entrada reactiva: la "bandeja" / filtro seleccionado.
   private readonly _dato = signal<string | undefined>(undefined);
 
-  readonly juiciosResource = rxResource({
+  readonly itemsResource = rxResource({
     params: () => ({ dato: 0 }),
     stream: ({ params }) =>
       this._http
-        .get<ApiResponse<Juicio[]>>(`${this._GET_JUICIOS}/${params.dato}`)
+        .get<ApiResponse<ItemResponse[]>>(`${this._GET_ITEMS}/${params.dato}`)
         .pipe(map((res) => res.data ?? [])),
   });
 
   // Fetch CONDICIONAL: si no hay dato, params devuelve undefined ⇒ el loader NO corre (idle).
-  readonly juiciosResourceBusqueda = rxResource({
+  readonly itemsResourceBusqueda = rxResource({
     params: () => {
       const dato = this._dato();
       return dato ? { dato } : undefined;      // undefined => idle
     },
     stream: ({ params }) =>
       this._http
-        .get<ApiResponse<Juicio[]>>(`${this._GET_JUICIOS}/${params.dato}`)
+        .get<ApiResponse<ItemResponse[]>>(`${this._GET_ITEMS}/${params.dato}`)
         .pipe(map((res) => res.data ?? [])),
   });
 
@@ -154,23 +154,24 @@ Si el `params` (o el callback de `httpResource`) devuelve `undefined`, el loader
 resource queda en `idle`. Es el patrón estándar para "no pedir hasta que haya un valor válido".
 
 ```ts
-readonly etapasEstados = httpResource<ApiResponse<EtapasEstados[]>>(() => {
+readonly estados = httpResource(() => {
   const perfilId = this.mainSidebarService.perfilSeleccionado().id;
   if (perfilId === 0) return undefined;        // sin perfil ⇒ idle (no pega)
-  return `${environment.API_URL}Juicios/GetEtapasEstados/${perfilId}`;
+  return `${environment.API_URL}Items/GetEstados/${perfilId}`;
+}, {
+  parse: (raw) => (raw as ApiResponse<EstadoResponse[]>).data ?? [],   // envelope ⇒ se desenvuelve acá (§2.11)
 });
 ```
 
 ### 4.6 Derivar / mapear el `value()` con `computed`
 
-Para transformar la respuesta (mapear DTO→modelo, filtrar, ordenar) se usa un `computed` que lee
-`value()` con `?.` y un fallback. **Nunca un `effect`.**
+Para transformar la respuesta (mapear `Response`→modelo, filtrar, ordenar) se usa un `computed` que
+lee `value()` con `?.` y un fallback, en el servicio de la feature. **Nunca un `effect`.** Cuándo
+mapear y con qué nombres: §2.11.
 
 ```ts
-// ✅ BIEN — mapeo derivado del resource (una sola fuente de verdad)
-readonly juicios = computed<JuicioVm[]>(
-  () => this._homeService.juiciosResource.value()?.map((elem) => this._mapJuicio(elem)) ?? []
-);
+// ✅ BIEN — mapeo derivado del resource (una sola fuente de verdad); toItem vive en items-mappers.ts
+readonly items = computed<Item[]>(() => this.itemsResource.value()?.map(toItem) ?? []);
 ```
 
 ### 4.7 En el template
@@ -188,8 +189,8 @@ readonly juicios = computed<JuicioVm[]>(
 Sobre un `value()` ya mapeado con `computed` (§4.6) se itera directo:
 
 ```html
-@for (j of juicios(); track j.id) {
-  <app-card [data]="j" />
+@for (item of items(); track item.id) {
+  <app-card [data]="item" />
 } @empty {
   <p>Sin resultados.</p>
 }

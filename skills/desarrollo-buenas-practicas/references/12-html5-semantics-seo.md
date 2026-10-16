@@ -226,18 +226,18 @@ ruta.
   import { Title } from '@angular/platform-browser';
 
   const title = inject(Title);
-  title.setTitle('Juicio #1234 — Mi Cartera');
+  title.setTitle('Item #1234 — Mi Cartera');
   ```
 - **Preferir `title` en la ruta antes que `Title.setTitle()` a mano en cada componente** — es
   declarativo y no depende de que el componente se acuerde de llamarlo en el momento correcto:
   ```ts
   // app.routes.ts
   export const routes: Routes = [
-    { path: 'juicios/:id', title: 'Detalle de juicio', loadComponent: () => import('./juicio-detalle/juicio-detalle') },
+    { path: 'items/:id', title: 'Detalle de item', loadComponent: () => import('./item-detalle/item-detalle') },
   ];
   ```
-  Para un título **dinámico** (que dependa de datos cargados, ej. el número de juicio), Angular Router
-  acepta una clase que resuelve el título (`title: JuicioTitleResolver`) o, para un prefijo/sufijo
+  Para un título **dinámico** (que dependa de datos cargados, ej. el número de item), Angular Router
+  acepta una clase que resuelve el título (`title: ItemTitleResolver`) o, para un prefijo/sufijo
   consistente en toda la app (ej. agregar siempre `" | Mi Cartera"`), extender `TitleStrategy` una
   sola vez en `app.config.ts` en vez de repetir el sufijo ruta por ruta.
 - **`Meta`** (`@angular/platform-browser`) — lee/escribe `<meta>` tags, incluyendo Open Graph para
@@ -247,8 +247,8 @@ ruta.
   import { Meta } from '@angular/platform-browser';
 
   const meta = inject(Meta);
-  meta.updateTag({ name: 'description', content: 'Detalle del juicio #1234.' });
-  meta.updateTag({ property: 'og:title', content: 'Juicio #1234' });
+  meta.updateTag({ name: 'description', content: 'Detalle del item #1234.' });
+  meta.updateTag({ property: 'og:title', content: 'Item #1234' });
   ```
   `updateTag` actualiza el tag si ya existe (por su `name`/`property`) o lo crea si no — es el método
   a usar casi siempre en vez de `addTag` (que duplica el tag si ya estaba).

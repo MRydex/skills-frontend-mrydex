@@ -163,9 +163,11 @@ página), comprimir la respuesta y cachear agresivamente solo los archivos con h
   fechas del proyecto sobre el string ISO tal cual llega.
 - **Nunca devolver `null`** en campos que el front va a mostrar o calcular: siempre el valor por
   defecto del tipo (§2.11).
-- **Un DTO por operación** (agregar / modificar / consultar / eliminar), nunca uno compartido.
-- Las respuestas vienen envueltas en el contrato del equipo (`ResponseApi<T>` / `ApiResponse<T>`), con
-  los datos en el campo `data`; el front las mapea en el servicio HTTP o en un `computed` (§4.6).
+- **Un tipo por operación, con el mismo nombre en C# y en TypeScript**: `<Accion><Entidad>Request`
+  lo que envía el front, `<Entidad>Response` lo que devuelve el back (§2.11).
+- Las respuestas llegan de dos formas: el `Response` directo, o envueltas en el contrato del equipo
+  (`ResponseApi<T>` / `ApiResponse<T>`, datos en `data`). El servicio HTTP del front soporta las dos y
+  desenvuelve ahí, así el resto de la app siempre recibe el `Response` (§2.11).
 
 ### 10.4 Configuración en runtime vs. `environment.ts`
 

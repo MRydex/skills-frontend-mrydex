@@ -30,8 +30,8 @@ resourceErrorHandler(service) {
   });
 }
 constructor() {
-  this.utils.resourceErrorHandler(this.juiciosResource);
-  this.utils.resourceErrorHandler(this.juiciosResourceBusqueda);   // hay que acordarse SIEMPRE
+  this.utils.resourceErrorHandler(this.itemsResource);
+  this.utils.resourceErrorHandler(this.itemsResourceBusqueda);   // hay que acordarse SIEMPRE
 }
 ```
 

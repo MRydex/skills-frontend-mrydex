@@ -8,8 +8,8 @@ Anti-monolitos) · [2.3](#23-visibilidad-y-naming) Visibilidad y naming ·
 [2.6](#26-orden-de-declaraciones-y-de-imports) Orden de declaraciones e imports ·
 [2.7](#27-effects--prohibidos) Effects prohibidos · [2.8](#28-constructor-vs-ngoninit-vs-afternextrender)
 Constructor vs `ngOnInit` vs `afterNextRender` · [2.9](#29-rxjs--fuera-del-código-de-aplicación) RxJS
-fuera de la app · [2.10](#210-servicios) Servicios · [2.11](#211-null-safety-y-contratos-con-el-backend-dtos-por-operación)
-Null safety y DTOs · [2.12](#212-comunicación-entre-componentes-hermanos--servicio-con-signals)
+fuera de la app · [2.10](#210-servicios) Servicios · [2.11](#211-null-safety-contrato-con-el-backend-y-mapeo)
+Null safety, contrato con el back y mapeo · [2.12](#212-comunicación-entre-componentes-hermanos--servicio-con-signals)
 Comunicación entre hermanos · [2.13](#213-apis-del-navegador-en-servicios-ejemplo-notifications)
 APIs del navegador en servicios.
 
@@ -178,7 +178,7 @@ private _agregarElemento(): void { /* ... */ }
 > **Divergencia consciente con el style guide oficial**: angular.dev sugiere nombrar el handler por
 > lo que hace (`saveUserData()`) y no por el evento. El equipo prioriza poder distinguir de un
 > vistazo qué métodos son entrada del usuario. **El sufijo descriptivo sigue siendo obligatorio**:
-> `onClickGuardarJuicio()`, no `onClick()`.
+> `onClickGuardarItem()`, no `onClick()`.
 
 ### 2.4 Inyección de dependencias
 
@@ -195,10 +195,10 @@ private _agregarElemento(): void { /* ... */ }
 
 ```ts
 // ❌ MAL
-constructor(private juiciosService: JuiciosService, private router: Router) {}
+constructor(private itemsService: ItemsService, private router: Router) {}
 
 // ✅ BIEN
-private readonly _juiciosService = inject(JuiciosService);
+private readonly _itemsService = inject(ItemsService);
 private readonly _router = inject(Router);
 protected readonly mainSidebarService = inject(MainSidebarService);  // el template la usa
 ```
@@ -208,7 +208,7 @@ protected readonly mainSidebarService = inject(MainSidebarService);  // el templ
 import { Service } from '@angular/core';
 
 @Service()
-export class JuiciosHttp { /* ... */ }
+export class ItemsHttp { /* ... */ }
 ```
 
 ```ts
@@ -220,7 +220,7 @@ private readonly _exportadorPdf = injectAsync(
 
 async onClickExportar(): Promise<void> {
   const exportador = await this._exportadorPdf();
-  exportador.exportar(this.juicios());
+  exportador.exportar(this.items());
 }
 ```
 
@@ -237,10 +237,10 @@ private readonly _viewContainerRef = inject(ViewContainerRef);
 
 onClickAbrirModal(): void {
   this._modalService.create({
-    nzTitle: 'Editar juicio',
-    nzContent: EditarJuicio,
+    nzTitle: 'Editar item',
+    nzContent: EditarItem,
     nzViewContainerRef: this._viewContainerRef,   // ← comparte el injector / los providers
-    nzData: { idJuicio: this.idJuicio() },
+    nzData: { idItem: this.idItem() },
   });
 }
 ```
@@ -327,8 +327,8 @@ import { NzTableModule } from 'ng-zorro-antd/table';
 // 3. Código propio con alias @/ (de lo más general a lo más local): environments → shared → módulo
 import { environment } from '@/environments/environment';
 import { SpinnerService } from '@/app/shared/services/spinner';
-import { JuiciosHttp } from './services/juicios-http';
-import { Juicio } from './models/juicio';
+import { ItemsHttp } from './services/items-http';
+import { Item } from './models/item';
 ```
 
 Con `"source.organizeImports": "explicit"` en VS Code (ver §10.4) el orden alfabético dentro de cada
@@ -370,14 +370,14 @@ constructor() {
 renderDataTableEffect = effect(() => { /* ... */ });
 
 // ✅ BIEN — derivación pura
-filteredJuicios = computed(() =>
-  this._juicios().filter(j => j.perfilId === this.mainSidebarService.perfilSeleccionado()?.id)
+filteredItems = computed(() =>
+  this._items().filter(j => j.perfilId === this.mainSidebarService.perfilSeleccionado()?.id)
 );
 
 // ✅ BIEN — carga reactiva declarativa (se re-dispara y cancela sola)
-juiciosResource = httpResource<Juicio[]>(() => {
+itemsResource = httpResource<Item[]>(() => {
   const perfilId = this.mainSidebarService.perfilSeleccionado()?.id;
-  return perfilId ? `${environment.API_URL}juicios/${perfilId}` : undefined;
+  return perfilId ? `${environment.API_URL}items/${perfilId}` : undefined;
 });
 ```
 
@@ -442,7 +442,7 @@ perfil$ = this._perfil$.asObservable();
 
 // ❌ MAL — subscripción manual guardada
 public getPerfilesSub: Subscription;
-this.getPerfilesSub = this._juiciosService.getPerfiles().subscribe(...);
+this.getPerfilesSub = this._itemsService.getPerfiles().subscribe(...);
 ngOnDestroy() { this.getPerfilesSub.unsubscribe(); }
 
 // ❌ MAL — Subject + switchMap para buscar
@@ -466,15 +466,15 @@ ver [04-resource-api.md](./04-resource-api.md) §4.9).
 ```ts
 // ✅ BIEN — mutación puntual
 onClickGuardar(): void {
-  this._juiciosHttp.actualizar(this.form().value()).subscribe({
-    next: () => this.juiciosResource.reload(),
+  this._itemsHttp.actualizar(this.form().value()).subscribe({
+    next: () => this.itemsResource.reload(),
   });
 }
 
 // ✅ BIEN — alternativa async/await, sin RxJS a la vista
 async onClickGuardar(): Promise<void> {
-  await firstValueFrom(this._juiciosHttp.actualizar(this.form().value()));
-  this.juiciosResource.reload();
+  await firstValueFrom(this._itemsHttp.actualizar(this.form().value()));
+  this.itemsResource.reload();
 }
 ```
 
@@ -495,12 +495,16 @@ export class UsersHttp {
   private readonly _http = inject(HttpClient);
   private readonly _URL = `${environment.API_URL}users`;
 
-  list(): Observable<ApiResponse<User[]>> {
-    return this._http.get<ApiResponse<User[]>>(this._URL);
+  // con envelope: se desenvuelve acá (§2.11)
+  list(): Observable<UserResponse[]> {
+    return this._http
+      .get<ApiResponse<UserResponse[]>>(this._URL)
+      .pipe(map((response) => response.data ?? []));
   }
 
-  create(user: CreateUserDto): Observable<ApiResponse<User>> {
-    return this._http.post<ApiResponse<User>>(this._URL, user);
+  // directo
+  create(request: CreateUserRequest): Observable<UserResponse> {
+    return this._http.post<UserResponse>(this._URL, request);
   }
 }
 
@@ -511,7 +515,7 @@ export class Users {
   readonly selectedId = this._selectedId.asReadonly();
 
   // Resource reactivo: re-fetch automático cuando cambia _selectedId
-  readonly selectedUser = httpResource<User>(() => {
+  readonly selectedUser = httpResource<UserResponse>(() => {
     const id = this._selectedId();
     return id ? `${environment.API_URL}users/${id}` : undefined;   // undefined => idle
   });
@@ -528,50 +532,115 @@ Los parámetros de query se arman con `HttpParams` (nunca concatenando strings a
 **exactamente** el casing que espera el backend:
 
 ```ts
-getEvaluacionCompetencia(
-  idUser: string,
-  idDestinatario: string,
-  rolIdDestinatario: number,
-  rolIdUser: number,
-): Observable<ApiResponse<GetEvaluationCompetencies>> {
+getItems(request: GetItemsRequest): Observable<ItemResponse[]> {
   const parameters = new HttpParams()
-    .set('IdUser', idUser)
-    .set('IdDestinatario', idDestinatario)
-    .set('RolIdDestinatario', rolIdDestinatario)
-    .set('RolIdUser', rolIdUser);
+    .set('Texto', request.texto)
+    .set('Page', request.page)
+    .set('PageSize', request.pageSize);
 
-  return this._http.get<ApiResponse<GetEvaluationCompetencies>>(this._URL, { params: parameters });
+  return this._http
+    .get<ApiResponse<ItemResponse[]>>(this._URL, { params: parameters })
+    .pipe(map((response) => response.data ?? []));
 }
 ```
 
 Con `httpResource` en su forma de objeto, los params van declarativos y reactivos:
 
 ```ts
-readonly evaluacion = httpResource<GetEvaluationCompetencies>(() => ({
+readonly items = httpResource<ItemResponse[]>(() => ({
   url: this._URL,
-  params: { IdUser: this.idUser(), RolIdUser: this.rolIdUser() },
+  params: { Texto: this.texto(), Page: this.page() },
 }));
 ```
 
-### 2.11 Null safety y contratos con el backend (DTOs por operación)
+### 2.11 Null safety, contrato con el backend y mapeo
 
 - **El backend devuelve valores por defecto, nunca `null`.** Si una variable se puede elegir desde el
   back, debe llegar con su valor por defecto (`0`, `''`, `false`, `[]`). Así el front siempre conoce
   los valores posibles del objeto.
-- **Un DTO por operación.** Nunca reutilizar el mismo DTO para varias operaciones: uno para
-  **agregar** (`CreateXDto`), otro para **modificar** (`UpdateXDto`), otro para **consultar**
-  (`XQueryDto` / `XResponse`) y otro para **eliminar** (`DeleteXDto`). Da certeza sobre qué campos
-  están presentes y son obligatorios en cada caso.
+- **Contrato con el back: `Request` lo que se envía, `Response` lo que vuelve**, con el mismo nombre
+  que el record de C# (skill de backend §1.2), así un mismo `grep` encuentra el tipo en los dos lados.
+  - Lo que se envía (body o params): `<Accion><Entidad>Request` → `CreateItemRequest`,
+    `UpdateItemRequest`, `DeleteItemRequest`, `GetItemsRequest` (filtros de un GET).
+  - Lo que vuelve: `<Entidad>Response` → `ItemResponse`. Si una operación devuelve otra forma, le
+    pone su acción: `CreateItemResponse`.
+  - Un tipo por operación: así cada uno dice qué campos viajan y cuáles son obligatorios.
+  - El genérico de `HttpClient` / `httpResource` es el contrato real del endpoint, y el `T` de ese
+    contrato es siempre el `Response`.
+- **El back responde de dos formas, y el front soporta las dos**: el `Response` directo
+  (`ItemResponse`) o envuelto en el contrato del equipo (`ApiResponse<ItemResponse>`, datos en
+  `data`). El servicio HTTP tipa lo que manda ese endpoint y, si viene envuelto, desenvuelve ahí
+  mismo: hacia afuera devuelve siempre `Observable<ItemResponse>`. Así servicios y componentes no
+  saben si hubo envelope, y si un endpoint cambia de forma se toca un solo método.
 - **Decimales que pueden ser `null`:** controlarlos en el front **antes de cualquier cálculo**. Un
   cálculo con `null` propaga `NaN` o rompe en silencio.
 
 ```ts
-// models/dtos/ — un DTO por operación
-export interface CreateJuicioDto { caratula: string; monto: number; }
-export interface UpdateJuicioDto { id: number; caratula: string; monto: number; }
-export interface DeleteJuicioDto { id: number; }
-export interface JuicioResponse  { id: number; caratula: string; monto: number; saldo: number; }
+// models/dtos/ — contrato con el back, un tipo por operación
+export interface CreateItemRequest { nombre: string; monto: number; }
+export interface UpdateItemRequest { id: number; nombre: string; monto: number; }
+export interface DeleteItemRequest { id: number; }
+export interface GetItemsRequest   { texto: string; page: number; pageSize: number; }
+export interface ItemResponse      { id: number; nombre: string; monto: number; fechaAlta: string; }
 
+// items-http.ts — hacia afuera, siempre el Response
+// Endpoint que responde directo
+create(request: CreateItemRequest): Observable<ItemResponse> {
+  return this._http.post<ItemResponse>(this._URL, request);
+}
+
+// Endpoint que responde con envelope: se desenvuelve acá
+list(): Observable<ItemResponse[]> {
+  return this._http
+    .get<ApiResponse<ItemResponse[]>>(this._URL)
+    .pipe(map((response) => response.data ?? []));
+}
+
+// httpResource con envelope: `parse` desenvuelve
+readonly items = httpResource(() => this._URL, {
+  parse: (raw) => (raw as ApiResponse<ItemResponse[]>).data ?? [],
+});
+```
+
+#### Mapear o no: el `Response` llega a la vista solo si su forma sirve
+
+Si la vista puede usar el `Response` tal cual, se usa directo: un modelo idéntico al `Response` es
+código que hay que mantener sin ganar nada. Se mapea a un modelo del front cuando la vista necesita
+otra forma:
+
+- tipos que el JSON no trae (`fechaAlta: string` ISO → `Date`);
+- campos calculados o etiquetas (`saldo`, `estadoTexto`);
+- datos de varios `Response` juntos;
+- nombres del back que en el front no se entienden.
+
+Cómo, para que un cambio del back se arregle en un solo lugar:
+
+- **Modelo del front** en `models/`, sin sufijo (§1.3): `Item`.
+- **Mapper** = función pura en `[feature]-mappers.ts`, con nombre `to<Destino>`: `toItem(response)`
+  para lo que vuelve, `toCreateItemRequest(formValue)` cuando el form no tiene la forma del request.
+- **Lo aplica el servicio de la feature** con un `computed` sobre el resource (§4.6). El componente
+  recibe el modelo ya mapeado y no conoce el `Response`.
+
+```ts
+// models/item.ts — forma que necesita la vista
+export interface Item { id: number; nombre: string; monto: number; fechaAlta: Date; }
+
+// items-mappers.ts — funciones puras
+export const toItem = (response: ItemResponse): Item => ({
+  ...response,
+  fechaAlta: new Date(response.fechaAlta),
+});
+
+export const toCreateItemRequest = (form: ItemForm): CreateItemRequest => ({
+  nombre: form.nombre.trim(),
+  monto: form.monto ?? 0,
+});
+
+// items.ts — servicio de la feature
+readonly items = computed(() => this._itemsResource.value()?.map(toItem) ?? []);
+```
+
+```ts
 // ✅ BIEN — guarda de null antes de operar con decimales
 readonly total = computed(() => {
   const monto = this._monto() ?? 0;     // null => 0 antes del cálculo
@@ -637,7 +706,7 @@ private readonly _adminArea = inject(AdminArea);
 
 private _setUsuarioIdArea(user: User, idArea: number): void {
   this._areasHttp.setUsuarioIdArea(user, idArea, user.idUsuario).subscribe({
-    next: (response) => this._adminArea.notificarCambioArea(response.data),  // notifica; no conoce al hermano
+    next: (user) => this._adminArea.notificarCambioArea(user),  // notifica; no conoce al hermano
   });
 }
 

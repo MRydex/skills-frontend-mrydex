@@ -30,7 +30,7 @@ Proceso del agente.
 - [ ] ¿Debounce con `debounced()` (leído con `.value()`), no con `debounceTime` a mano?
 - [ ] ¿Orden de declaraciones: injects → inputs/outputs → variables → signals → constructor → ngOnInit → públicas (onXxx primero) → privadas? (§2.6)
 - [ ] ¿Imports ordenados: Angular → terceros → propios (core → shared → feature)?
-- [ ] ¿DTOs **uno por operación** en `models/dtos/`? ¿Nulos del backend controlados antes de calcular? (§2.11)
+- [ ] ¿Contrato con el back en `models/dtos/`: `<Accion><Entidad>Request` lo enviado, `<Entidad>Response` lo recibido, uno por operación y con el mismo nombre que en C#? ¿Se mapea a un modelo del front solo si la vista necesita otra forma, con `to<Destino>()` en `[feature]-mappers.ts`? ¿El servicio HTTP desenvuelve `ApiResponse<T>` cuando viene y devuelve siempre el `Response`? ¿Nulos del backend controlados antes de calcular? (§2.11)
 
 ### Estructura y tamaño ([01](./01-project-structure.md))
 - [ ] ¿Servicios y modelos ubicados según su **alcance** (§1.1)? ¿Modelos fuera del componente?
