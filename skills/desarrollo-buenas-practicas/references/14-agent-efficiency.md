@@ -418,8 +418,8 @@ graphify explain "HttpErrorInterceptor"                             # un nodo y 
   (`source_location`).
 - Si el grafo no tiene la respuesta o parece desactualizado, recién ahí usar búsqueda normal.
 
-**5. Actualizar después de una tarea grande.** Al cerrar una tarea que tocó 3 o más archivos, o antes
-de compactar el contexto (§14.4):
+**5. Actualizar después de editar.** Antes de la respuesta final de toda tarea que editó archivos, y
+antes de compactar el contexto (§14.4):
 
 ```bash
 graphify update .      # re-extrae solo el código cambiado, sin LLM: no gasta tokens

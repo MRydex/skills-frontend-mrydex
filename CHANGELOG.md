@@ -3,21 +3,43 @@
 Cambios de la skill `desarrollo-buenas-practicas` y del instalador `skills-frontend-mrydex`.
 Para actualizar en un proyecto: `npx skills-frontend-mrydex@latest`.
 
-## [Unreleased]
+## [1.23.0] - 2026-10-15
+
+### Agregado
+- **Auditoría de seguridad por áreas** (`references/15-security.md` §15.14): al pedir seguridad, el
+  agente revisa las 17 áreas (cada una OK / hallazgo / N/A con evidencia) y profundiza con la skill de
+  cada área (`offensive-*`, Anthropic-Cybersecurity-Skills) cuando hay hallazgo, el área es sensible o
+  el alcance es grande. En features o repo suma `security-audit` (Cloudflare) y `claude-security`.
+  Cierra con un reporte de cobertura. SKILL.md regla 8 y los templates apuntan a este flujo.
+
+### Cambiado
+- Delegación unificada en todos los archivos: delegar a subagentes solo si baja el total de tokens
+  (`templates/AGENTS.md`, `templates/.cursorrules`, §14.6).
+- `graphify update .` después de editar archivos (antes de la respuesta final) y antes de compactar,
+  igual en SKILL.md, §14.5 y templates.
+- La regla "graphify primero" explica el motivo (ahorra tokens) y la excepción (archivo y línea
+  nombrados) en vez de "violates the skill".
+
+### Corregido
+- SKILL.md y README: "8 reglas" → la lista tiene 9; se quitó el número.
+- §14.3.2: `investigador` es nivel ejecutor (`cheap: false` en `bin/subagents.js`).
+- §14.8: se quitó "sin tarea de Windows"; el instalador crea `headroom-init-user-health`.
+- §11.5: viñeta duplicada.
+
+## [1.22.0] - 2026-10-12
 
 ### Agregado
 - **Herramientas del agente, instaladas y de uso obligatorio** (`references/14-agent-efficiency.md` §14.8):
-  - Skills globales con `npx skills add`: [ponytail](https://github.com/DietrichGebert/ponytail),
-    [agent-skills](https://github.com/addyosmani/agent-skills) y `task-observer`
-    ([rebelytics/one-skill-to-rule-them-all](https://github.com/rebelytics/one-skill-to-rule-them-all)).
+  - Skills globales con `npx skills add`: [ponytail](https://github.com/DietrichGebert/ponytail) y
+    [agent-skills](https://github.com/addyosmani/agent-skills).
   - [Headroom](https://github.com/chopratejas/headroom) (`headroom-ai[all]`).
   - Plugin de Claude Code `claude-code-setup@claude-plugins-official`,
     activados en `~/.claude/settings.json`.
   - El bloque global de `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` pide usarlas en cada sesión.
   - Headroom durable con `headroom init -g` en Claude Code, Copilot CLI y Codex (macOS/Linux): el
-    proxy arranca solo por hooks, sin servicio. Codex en Windows, Cursor y VS Code Copilot: `headroom wrap`.
-  - Hook `SessionStart` en Claude Code (`bin/hooks/session-start.js`): respaldo de Headroom
-    y task-observer en cada sesión.
+    proxy arranca solo por hooks. En Windows, tarea programada oculta `headroom-init-user-health`.
+    Codex en Windows, Cursor y VS Code Copilot: `headroom wrap`.
+  - Hook `SessionStart` en Claude Code (`bin/hooks/session-start.js`): respaldo de Headroom.
   - `agent-skills` sin `test-driven-development` ni `browser-testing-with-devtools`.
   - `--no-agent-tools` saltea Headroom, los plugins y el hook.
 
