@@ -1,8 +1,38 @@
 ---
 name: desarrollo-buenas-practicas
-version: 1.23.3
 description: >
-  Convenciones oficiales del equipo para proyectos Angular 22+ (2026) y Frontend Moderno, con seguridad por defecto (Red Team / Blue Team, OWASP Top 10): standalone components, signals como único modelo de reactividad, zoneless, OnPush por defecto, control flow nativo (@if/@for/@switch/@let), Signal Forms, Resource API (httpResource/rxResource/resource), interceptores funcionales (spinner/errores), TypeScript 6 estricto, HTML5 semántico y accesible (WCAG AA / @angular/aria), BEM, SCSS anidado, layouts fluidos (Flexbox/Grid), animaciones modernas, sin archivos de test, performance y despliegue en IIS/.NET. Usar siempre, antes de la primera herramienta, ante cualquier pedido en un proyecto frontend (preguntas, explicaciones, revisión, depuración o cambios): crear, modificar, revisar, depurar, explicar o refactorizar código Angular, TypeScript de proyectos Angular, HTML o SCSS/CSS, aunque el usuario no mencione Angular explícitamente. Define además cómo trabaja el agente en cualquier herramienta (Claude Code, Codex, Antigravity, Cursor, Copilot): modo caveman, modelo fuerte que orquesta y revisa con subagentes baratos, graphify, autocompactación y preguntas previas.
+  Convenciones del equipo para frontend Angular 22+ (signals, zoneless, Signal Forms, Resource API, SCSS con BEM, HTML semántico y WCAG AA, seguridad Red/Blue Team, sin archivos de test) y forma de trabajar del agente (caveman, graphify, subagentes). Usar siempre, antes de la primera herramienta, en cualquier repo con angular.json o con código .ts, .html, .scss o .css, para cualquier pedido: preguntas, explicaciones, revisión, depuración, refactor o cambios, aunque no mencione Angular. Incluye pedidos sobre pantallas, componentes, formularios, tablas, modales, estilos, layout o texto que rompe la UI; llamadas al backend (Request / Response, mapeo, httpResource, interceptores); rendimiento, accesibilidad, SEO o despliegue en IIS; y seguridad del front ("auditá", "¿es seguro?").
+metadata:
+  version: 1.23.3
+  triggers:
+    files:
+      - angular.json
+      - "**/*.ts"
+      - "**/*.html"
+      - "**/*.scss"
+      - "**/*.css"
+    keywords:
+      - angular
+      - componente
+      - pantalla
+      - formulario
+      - tabla
+      - modal
+      - estilos
+      - scss
+      - layout
+      - signals
+      - httpResource
+      - interceptor
+      - request
+      - response
+      - mapeo
+      - accesibilidad
+      - performance
+      - seo
+      - iis
+      - seguridad
+      - auditá
 ---
 
 # Desarrollo Frontend — Buenas Prácticas del Equipo (Angular 22+)

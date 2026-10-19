@@ -6,7 +6,7 @@ const skillPath = path.join(__dirname, '..', 'skills', 'desarrollo-buenas-practi
 
 if (fs.existsSync(skillPath)) {
   let content = fs.readFileSync(skillPath, 'utf8');
-  content = content.replace(/^version: .*/m, `version: ${pkg.version}`);
+  content = content.replace(/^  version: .*/m, `  version: ${pkg.version}`);
   fs.writeFileSync(skillPath, content, 'utf8');
   console.log(`Sincronizada la versión de SKILL.md a v${pkg.version}`);
 }
