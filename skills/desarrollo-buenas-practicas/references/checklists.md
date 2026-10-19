@@ -131,6 +131,7 @@ Proceso del agente.
 - [ ] ¿`box-sizing: border-box` global?
 - [ ] ¿Sin `!important` (salvo excepción justificada) ni IDs como selectores de estilo?
 - [ ] ¿`gap` en vez de márgenes para separar hijos de flex/grid?
+- [ ] ¿Texto del back o del usuario con `overflow-wrap: anywhere` (no `word-break: break-word` ni `break-all`) y `min-width: 0` en hijos de flex/grid, para que un texto largo no rompa la UI? (§13.5)
 - [ ] ¿Contenedor con padding lateral fijo + contenido en `%` / `vw` / `vh` antes de media queries? (§13.11)
 - [ ] ¿Layouts responsive con `auto-fill` / `auto-fit` + `minmax()` o `@container` antes que media queries?
 - [ ] ¿`z-index` aplicado sobre un stacking context real?

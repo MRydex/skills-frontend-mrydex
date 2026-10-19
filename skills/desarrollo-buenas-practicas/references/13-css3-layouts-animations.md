@@ -93,6 +93,27 @@
   - `scroll` → barras **permanentes**, haya o no desbordamiento.
   - `auto` → barras **solo** si hace falta.
 - `text-overflow: ellipsis;` → corta texto de una línea (con `overflow: hidden`) y agrega `…`.
+- **Texto que no entra no rompe la UI.** Un email, URL, CUIT, código o nombre largo sin espacios
+  estira la columna, desborda la card o genera scroll horizontal. Todo texto que viene del back o
+  del usuario (celdas de tabla, cards, títulos, chips, mensajes) se corta dentro de su caja:
+
+  ```scss
+  .item-card {
+    min-width: 0;                // hijo de flex/grid: sin esto no se achica por debajo del texto
+
+    &__title {
+      overflow-wrap: anywhere;   // corta palabras largas solo si no entran
+    }
+  }
+  ```
+
+  - `overflow-wrap: anywhere` reemplaza a `word-break: break-word`, que está deprecado: hace lo
+    mismo y además deja achicar la caja en flex, grid y tablas. Nunca `word-break: break-all`:
+    corta todas las palabras aunque entren.
+  - En hijos de flex o grid, sumar `min-width: 0` (o `minmax(0, 1fr)` en la columna). Por defecto
+    no se achican por debajo de su contenido y el corte no llega a aplicarse.
+  - Si el diseño pide una sola línea, usar `text-overflow: ellipsis` y el tooltip de §3.8 en vez de
+    cortar.
 - `content-visibility: auto;` → optimización tipo *lazy load del DOM*: el navegador omite render y
   pintado de nodos complejos fuera del viewport.
 
