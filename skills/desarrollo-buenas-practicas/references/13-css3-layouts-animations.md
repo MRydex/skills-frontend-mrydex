@@ -107,9 +107,21 @@
   }
   ```
 
-  - `overflow-wrap: anywhere` reemplaza a `word-break: break-word`, que está deprecado: hace lo
-    mismo y además deja achicar la caja en flex, grid y tablas. Nunca `word-break: break-all`:
-    corta todas las palabras aunque entren.
+  - `overflow-wrap: anywhere` reemplaza a `word-break: break-word`: hace lo mismo y además deja
+    achicar la caja en flex, grid y tablas. Se cambia la **propiedad**, no solo el valor:
+
+    ```scss
+    // ❌
+    word-break: break-word;   // deprecado (Sonar css:S1874)
+    word-break: break-all;    // corta todas las palabras aunque entren
+    word-break: word-break;   // inválido: no es un valor de word-break
+
+    // ✅
+    overflow-wrap: anywhere;
+    ```
+
+    Fallback para navegadores viejos: `overflow-wrap: break-word` (corta igual, pero no deja
+    achicar la caja en flex ni en tablas).
   - En hijos de flex o grid, sumar `min-width: 0` (o `minmax(0, 1fr)` en la columna). Por defecto
     no se achican por debajo de su contenido y el corte no llega a aplicarse.
   - Si el diseño pide una sola línea, usar `text-overflow: ellipsis` y el tooltip de §3.8 en vez de
