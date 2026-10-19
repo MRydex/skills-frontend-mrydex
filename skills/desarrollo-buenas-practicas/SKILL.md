@@ -3,7 +3,7 @@ name: desarrollo-buenas-practicas
 description: >
   Convenciones del equipo para frontend Angular 22+ (signals, zoneless, Signal Forms, Resource API, SCSS con BEM, HTML semántico y WCAG AA, seguridad Red/Blue Team, sin archivos de test) y forma de trabajar del agente (caveman, graphify, subagentes). Usar siempre, antes de la primera herramienta, en cualquier repo con angular.json o con código .ts, .html, .scss o .css, para cualquier pedido: preguntas, explicaciones, revisión, depuración, refactor o cambios, aunque no mencione Angular. Incluye pedidos sobre pantallas, componentes, formularios, tablas, modales, estilos, layout o texto que rompe la UI; llamadas al backend (Request / Response, mapeo, httpResource, interceptores); rendimiento, accesibilidad, SEO o despliegue en IIS; y seguridad del front ("auditá", "¿es seguro?").
 metadata:
-  version: 1.23.3
+  version: 1.23.4
   triggers:
     files:
       - angular.json
