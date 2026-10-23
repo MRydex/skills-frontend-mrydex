@@ -67,7 +67,19 @@ src/
 │   │       │   ├── detalle.html
 │   │       │   ├── detalle.scss
 │   │       │   ├── detalle.routes.ts  # solo si tiene rutas hijas (pestañas)
-│   │       │   ├── pages/             # componentes de esas rutas hijas
+│   │       │   ├── pages/             # una carpeta por ruta hija (ver §1.2)
+│   │       │   │   ├── [pagina]/      # página simple: un componente con lo suyo
+│   │       │   │   │   ├── [pagina].ts
+│   │       │   │   │   ├── [pagina].html
+│   │       │   │   │   ├── [pagina].scss
+│   │       │   │   │   ├── services/  # opcional: solo los usa esta página
+│   │       │   │   │   └── models/    # opcional: solo los usa esta página
+│   │       │   │   └── [submodulo]/   # página que es un módulo completo
+│   │       │   │       ├── [submodulo].routes.ts # si tiene rutas propias (si no: [submodulo].ts/.html/.scss)
+│   │       │   │       ├── [submodulo]-lista/
+│   │       │   │       ├── [submodulo]-alta/
+│   │       │   │       ├── services/
+│   │       │   │       └── models/
 │   │       │   ├── services/          # SOLO si los usa este componente (ver §1.1)
 │   │       │   ├── models/            # SOLO si los usa este componente (ver §1.1)
 │   │       │   │
@@ -173,8 +185,18 @@ igual a `services/`, `models/`, `pipes/`, `validators/` y `guards/`:
   componente (ver §5).
 - **Componentes de ruta vs shared components**:
   - Componentes de ruta (smart, inyectan servicios) → directo en la carpeta del módulo
-    (`private/items/detalle/`). Si un componente de ruta tiene rutas hijas (pestañas), los
-    componentes de esas rutas van en su `pages/` (`private/items/detalle/pages/fojas/`).
+    (`private/[modulo]/detalle/`). Si un componente de ruta tiene rutas hijas (pestañas), los
+    componentes de esas rutas van en su `pages/`, una carpeta por ruta hija. Cada carpeta de
+    `pages/` es una de dos formas:
+    - **Página simple**: un componente (`[pagina].ts`, `.html`, `.scss`) con sus `services/` y
+      `models/` propios si los necesita (`private/[modulo]/detalle/pages/[pagina]/`).
+    - **Módulo completo**: varias pantallas con sus `services/` y `models/` compartidos, igual que un
+      módulo de `private/` (`private/[modulo]/detalle/pages/[submodulo]/`). Lleva `[submodulo].routes.ts`
+      solo si tiene rutas propias. Si no tiene rutas propias, un componente raíz
+      (`[submodulo].ts`, `.html`, `.scss`) muestra sus pantallas.
+
+    Dentro de `pages/` valen las mismas reglas que en un módulo: §1.1 para ubicar servicios y
+    modelos, y anidación directa de subcomponentes, sin carpeta `components/`.
   - `shared/components/` → la **única** carpeta `components/` de todo el proyecto: componentes
     presentacionales reutilizados por **varios** módulos (reciben `input()`, emiten `output()`).
   - Un componente presentacional usado por **un solo** módulo **no** va a `shared/components/`: se
