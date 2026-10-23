@@ -21,8 +21,8 @@ Todas las respuestas al usuario se escriben en **modo caveman**: frases cortas, 
 
 **Eliminar:**
 - Artículos cuando no cambian el sentido, muletillas ("básicamente", "simplemente", "realmente"), cortesías ("¡Claro!", "Con gusto"), rodeos y disculpas.
-- Preámbulos ("Voy a revisar...") y resúmenes finales que repiten lo ya dicho.
-- Narración de cada tool call. Sí: una línea de estado al empezar una fase o antes de un paso largo.
+- Resúmenes finales que repiten lo ya dicho y narración de cada tool call.
+- Sí va texto para el usuario: una línea de qué se va a hacer al empezar cada fase o antes de un paso largo.
 - Tablas o emojis decorativos. Volcados largos de logs (citar solo la línea decisiva).
 
 **Conservar siempre:**
@@ -33,7 +33,7 @@ Todas las respuestas al usuario se escriben en **modo caveman**: frases cortas, 
 
 **No inventar abreviaturas** (`cfg`, `impl`, `fn`): no ahorran tokens y se leen peor.
 
-**Largo máximo (todo lo que emite la skill):**
+**Largo (todo lo que emite la skill):**
 - **Reporte final**: solo qué cambió (con link al archivo), qué falló y qué decide
   el usuario. Nunca un resumen sección por sección ni tablas que ya están en los archivos.
 - **Avisos de estado**: una línea (`graphify OK: v0.9.71, 336 nodos`).
@@ -90,10 +90,10 @@ Antes de investigar la API o el código de una librería (NG-ZORRO, Angular, RxJ
 
 ### 14.3 Orquestador + subagentes baratos (estrategia advisor)
 
-El modelo **fuerte** (el más capaz y más caro disponible) **orquesta y revisa**: entiende el pedido,
-decide, planifica, reparte el trabajo y revisa siempre el resultado. La ejecución se delega a
-**modelos de menor potencia**. Resultado: calidad cercana a la del modelo fuerte a una fracción del
-costo, porque el modelo fuerte solo gasta tokens en decidir, destrabar y revisar.
+El modelo **seleccionado** (el que corre la sesión) **orquesta, decide y siempre revisa**: entiende el
+pedido, planifica, reparte el trabajo y revisa siempre el resultado. Delega en **modelos de menor
+potencia** solo lo que baja el total de tokens (§14.3.4). Si el agente no puede lanzar subagentes, el
+modelo seleccionado hace todo él mismo (§14.3.3).
 
 La regla vale para **cualquier agente y cualquier proveedor**: Claude Code, Codex, Antigravity,
 Cursor, Copilot, Gemini CLI, OpenCode o el que use la persona. Lo que cambia es la sintaxis (§14.3.2).
@@ -104,31 +104,29 @@ Elegir por **nivel**, no por versión: los nombres de versión cambian cada poco
 
 | Nivel | Rol | Anthropic | OpenAI | Google |
 | :--- | :--- | :--- | :--- | :--- |
-| **Fuerte** | Orquestar, decidir arquitectura, destrabar, revisar siempre | Opus (o Fable) | GPT de mayor nivel con `model_reasoning_effort` alto | Gemini Pro |
+| **Orquestador** | El modelo seleccionado: orquestar, decidir, destrabar, revisar siempre | El de la sesión (ej. Opus o Fable) | El de la sesión (ej. GPT con `model_reasoning_effort` alto) | El de la sesión (ej. Gemini Pro) |
 | **Ejecutor** | Implementar con criterio acotado, migrar | Sonnet | GPT con effort medio, o variante `codex` | Gemini Pro con menos razonamiento, o Flash |
 | **Rápido** | Buscar, leer, resumir, ediciones mecánicas, revisar contra checklist | Haiku | Variante `mini`, o effort bajo | Gemini Flash |
 
 - Usar el modelo más barato que resuelva la subtarea sin perder calidad.
 - Si la herramienta solo tiene modelos de un proveedor, usar los niveles de ese proveedor.
-- Si solo hay un modelo disponible, graduar el esfuerzo de razonamiento cuando la herramienta lo
-  permita (alto para planificar y revisar, bajo para ejecutar).
+- Si solo hay un modelo disponible, ese modelo hace todo (§14.3.3).
 
 #### 14.3.2 Cómo aplicarlo en cada agente
 
 **Paso 0: detectar qué soporta el agente que está corriendo.** ¿Puede lanzar subagentes? ¿Puede
-elegir el modelo de cada uno? ¿Puede cambiar de modelo a mitad de sesión? Según la respuesta, usar
-la fila de la tabla o el fallback de §14.3.3.
+elegir el modelo de cada uno? Según la respuesta, usar la fila de la tabla o el fallback de §14.3.3.
 
-| Agente | Subagentes en paralelo | Modelo por subagente | Cambiar modelo en la sesión | Plan fuerte / ejecución barata nativo |
-| :--- | :--- | :--- | :--- | :--- |
-| **Claude Code** | Tool `Agent`, o archivos en `.claude/agents/*.md` | Parámetro `model` del tool, o frontmatter `model: opus\|sonnet\|haiku\|inherit`; env `CLAUDE_CODE_SUBAGENT_MODEL` | `/model <alias>`, `claude --model` | Sí: `/model opusplan` (Opus planifica, Sonnet ejecuta) |
-| **Codex (CLI / IDE)** | Sección `[agents]` en `config.toml`, o pedirlo explícito ("un agente por punto"); `/agent` para ver hilos | Archivos en `.codex/agents/` o `~/.codex/agents/` con `model` y `model_reasoning_effort`; `agents.default_subagent_model` | `/model` (conserva el contexto); `-m` / `--profile` al iniciar | No nativo: perfiles o agentes con distinto modelo/effort |
-| **Antigravity** | Agent Manager (conversaciones en paralelo); subagentes en `.agents/agents/<nombre>.md` o `~/.gemini/config/agents/` | Frontmatter `model: pro\|flash\|inherit` | Selector de modelo en la UI | No nativo: subagentes `pro` / `flash` |
-| **Cursor** | `.cursor/agents/*.md`; varias tareas en un turno corren en simultáneo | Frontmatter `model: inherit\|<model-id>` | Selector en la UI | No nativo |
-| **Copilot** | Custom agents en `.github/agents/*.agent.md` | Frontmatter `model:` | Selector en la UI | No nativo |
-| **Gemini CLI** | `.gemini/agents/*.md`, invocación con `@agente` | Frontmatter `model: <model-id>`; override en `settings.json` | `/model`, `--model` al iniciar | Sí, por complejidad: modelo `auto` (default) manda cada pedido a Flash o Pro. Pro solo con plan pago |
-| **OpenCode** | Agente `general`, `@general` | `model: "proveedor/model-id"` en la config del agente | Ver doc de la versión instalada | No nativo |
-| **Otro agente** | Buscar en su doc: "subagents", "agents", "tasks" | Buscar "model" en la config del agente | Buscar "switch model" | Si no hay nada: fallback §14.3.3 |
+| Agente | Subagentes en paralelo | Modelo por subagente |
+| :--- | :--- | :--- |
+| **Claude Code** | Tool `Agent`, o archivos en `.claude/agents/*.md` | Parámetro `model` del tool, o frontmatter `model: opus\|sonnet\|haiku\|inherit`; env `CLAUDE_CODE_SUBAGENT_MODEL` |
+| **Codex (CLI / IDE)** | Sección `[agents]` en `config.toml`, o pedirlo explícito ("un agente por punto"); `/agent` para ver hilos | Archivos en `.codex/agents/` o `~/.codex/agents/` con `model` y `model_reasoning_effort`; `agents.default_subagent_model` |
+| **Antigravity** | Agent Manager (conversaciones en paralelo); subagentes en `.agents/agents/<nombre>.md` o `~/.gemini/config/agents/` | Frontmatter `model: pro\|flash\|inherit` |
+| **Cursor** | `.cursor/agents/*.md`; varias tareas en un turno corren en simultáneo | Frontmatter `model: inherit\|<model-id>` |
+| **Copilot** | Custom agents en `.github/agents/*.agent.md` | Frontmatter `model:` |
+| **Gemini CLI** | `.gemini/agents/*.md`, invocación con `@agente` | Frontmatter `model: <model-id>`; override en `settings.json` |
+| **OpenCode** | Agente `general`, `@general` | `model: "proveedor/model-id"` en la config del agente |
+| **Otro agente** | Buscar en su doc: "subagents", "agents", "tasks" | Buscar "model" en la config del agente; si no hay nada: fallback §14.3.3 |
 
 Fuentes: [Claude Code](https://code.claude.com/docs/en/sub-agents),
 [Codex](https://learn.chatgpt.com/docs/agent-configuration/subagents),
@@ -146,7 +144,7 @@ ejecutores del equipo en la carpeta del agente (`.claude/agents/`, `.codex/agent
 - `ejecutor` (nivel ejecutor): implementa un brief y devuelve el diff.
 - `revisor-checklist` (nivel rápido): revisa un diff contra [checklists.md](./checklists.md).
 
-La revisión final no se delega: la hace siempre el modelo fuerte (§14.3.5).
+La revisión final no se delega: la hace siempre el modelo seleccionado (§14.3.5).
 
 **El instalador los crea en todos los agentes.** La opción global genera `investigador` (modelo
 intermedio, solo lectura: en una prueba real el modelo barato se perdía en búsquedas amplias),
@@ -172,18 +170,10 @@ intermedio, solo lectura: en una prueba real el modelo barato se perdía en bús
 - En Claude Code también agrega `Bash(graphify:*)` y `PowerShell(graphify:*)` a `permissions.allow`
   de `~/.claude/settings.json`, para que graphify no pida aprobación en cada sesión.
 
-#### 14.3.3 Fallback: el agente no puede lanzar subagentes con otro modelo
+#### 14.3.3 Fallback: el agente no puede lanzar subagentes
 
-Cambiar de modelo **por fase** en la misma sesión:
-
-1. **Fuerte:** explorar lo mínimo, planificar y escribir el brief en `tasks/brief-<tarea>.md`.
-2. **Cambiar al modelo ejecutor o rápido** con el selector o comando del agente. Ejecutar el brief
-   paso a paso. Marcar el avance en `tasks/todo.md`.
-3. **Volver al fuerte:** revisar el diff, el build y el checklist. Corregir o devolver al paso 2.
-
-El brief y `tasks/todo.md` en disco son el contexto compartido: el cambio de modelo no pierde nada.
-Si el agente tampoco permite cambiar de modelo, un solo modelo hace todo, pero en pasos chicos y
-verificables, con el plan y la revisión como fases separadas.
+El modelo seleccionado hace todo él mismo, sin cambiar de modelo por fase: plan en `tasks/todo.md`,
+ejecución en pasos chicos y verificables, y revisión del diff, el build y el checklist antes de entregar.
 
 #### 14.3.4 Qué delegar y cómo
 
@@ -215,7 +205,7 @@ verificables, con el plan y la revisión como fases separadas.
 | Sonnet principal + Opus advisor | $7.99 | 861 s | Amplió el alcance a 28 archivos |
 
 - En tareas chicas, delegar cuesta más: el brief y la revisión suman más de lo que ahorra el modelo barato.
-- No usar un modelo más barato como agente principal con el fuerte de advisor: amplía el alcance y
+- No usar un modelo más barato como agente principal con otro más caro de advisor: amplía el alcance y
   multiplica los turnos. El modelo seleccionado orquesta.
 
 Si el agente no puede lanzar subagentes con un modelo más barato, delegar solo lo que ahorra
@@ -236,7 +226,7 @@ lint, nunca con tests nuevos (§8). Para un patrón mecánico en una sola sesió
 - Generar boilerplate a partir de una especificación exacta (componente, servicio). Nunca tests (§8).
 - Revisar un diff contra el checklist ([checklists.md](./checklists.md)).
 
-**No delegar (lo hace el modelo fuerte):**
+**No delegar (lo hace el modelo seleccionado):**
 - Decisiones de arquitectura, diseño de APIs, trade-offs.
 - Diagnóstico de bugs con causa desconocida.
 - Cualquier tarea donde delegar no baja el total de tokens (tabla de arriba).
@@ -253,18 +243,18 @@ lint, nunca con tests nuevos (§8). Para un patrón mecánico en una sola sesió
    agentes genéricos.
 
 ```text
-Modelo fuerte (orquestador + revisor)
+Modelo seleccionado (orquestador + revisor)
 ├── plan + brief en tasks/brief-migracion.md
 ├── subagente rápido    → localizar usos de `ngModel` en src/          → tabla archivo:línea
 ├── subagente ejecutor  → migrar form X a Signal Forms (06-signal-forms.md) → diff
 ├── subagente rápido    → revisar diff contra checklists.md             → hallazgos
-└── revisión final del modelo fuerte + respuesta al usuario
+└── revisión final del modelo seleccionado + respuesta al usuario
 ```
 
-#### 14.3.5 Estrategia advisor emulada: el modelo fuerte revisa siempre
+#### 14.3.5 Estrategia advisor emulada: el modelo seleccionado revisa siempre
 
-Anthropic propone la *advisor strategy*: un ejecutor barato corre el trabajo y consulta al modelo
-fuerte bajo demanda, compartiendo el mismo contexto. Los agentes de código no la traen nativa (en
+Anthropic propone la *advisor strategy*: un ejecutor barato corre el trabajo y consulta a un modelo
+más capaz bajo demanda, compartiendo el mismo contexto. Los agentes de código no la traen nativa (en
 Anthropic solo existe como advisor tool beta en la API), así que se **emula** sobre el esquema
 orquestador → ejecutores, con cualquier agente:
 
@@ -279,19 +269,15 @@ orquestador → ejecutores, con cualquier agente:
    El orquestador responde y **continúa el mismo subagente** si el agente lo permite (Claude Code:
    `SendMessage`; Codex: retomar el hilo desde `/agent`). Si no lo permite, relanza el ejecutor con el
    brief actualizado con la respuesta.
-3. **Momentos fijos de consulta al modelo fuerte** (los que recomienda Anthropic para el advisor):
+3. **Momentos fijos de consulta al orquestador** (los que recomienda Anthropic para el advisor):
    - **Después de la orientación, antes del trabajo sustantivo.** El ejecutor explora y devuelve lo
-     que encontró. El modelo fuerte fija el enfoque antes de que se escriba nada.
+     que encontró. El orquestador fija el enfoque antes de que se escriba nada.
    - **Cuando el ejecutor se traba o quiere cambiar de enfoque** (punto 2).
    - **Antes de dar por terminado.** El ejecutor deja el resultado en disco (archivos escritos, build
-     corrido). Después el modelo fuerte revisa el diff y la salida del build.
-4. **El modelo fuerte revisa siempre.** Ningún resultado de un ejecutor llega al usuario sin esa
+     corrido). Después el orquestador revisa el diff y la salida del build.
+4. **El modelo seleccionado revisa siempre.** Ningún resultado de un ejecutor llega al usuario sin esa
    revisión: diff completo, consistencia con esta skill y con [checklists.md](./checklists.md). Si
    algo falla, vuelve al mismo ejecutor con la corrección concreta.
-
-**Si la sesión principal no corre en el modelo fuerte** (costo, límites de plan): usar el modo nativo
-si existe (Claude Code: `/model opusplan`), lanzar la revisión como subagente de nivel fuerte con el
-brief y el diff, o aplicar el cambio de modelo por fase de §14.3.3.
 
 **Apps del equipo que llaman a la API de Claude:** ahí sí existe el advisor tool nativo (beta,
 header `advisor-tool-2026-03-01`, tool `advisor_20260301`). Ver la
@@ -357,7 +343,7 @@ instalado, porque cubre los tres fallos reales:
 - **Grafo desactualizado** o repo sin integrar → `graphify update .` en cada arranque (solo código,
   sin LLM) y pasos 2–3.
 
-El instalador de la skill (`npx skills-frontend-mrydex` en el proyecto) ya ejecuta los pasos 1–3 para
+El instalador de la skill (`npx github:MRydex/skills-frontend-mrydex` en el proyecto) ya ejecuta los pasos 1–3 para
 todos los agentes, deja Claude Code en modo estricto (`graphify install --project --strict --platform
 claude`) y arma el grafo. Los pasos siguen documentados para repos configurados sin el instalador.
 
@@ -454,26 +440,24 @@ comando se aplica **traducida al agente y a los modelos que usa la persona**.
   indican). Si duda, mirar qué tools tiene disponibles y qué archivos de configuración existen en el
   repo (`.claude/`, `.codex/`, `.agents/`, `.cursor/`, `.github/agents/`, `.gemini/`).
 - **Modelos:** qué modelo corre la sesión principal y cuáles puede elegir para subagentes o cambiar
-  en la sesión. Clasificarlos en los niveles de §14.3.1 (fuerte, ejecutor, rápido).
+  en la sesión. Clasificarlos en los niveles de §14.3.1 (orquestador, ejecutor, rápido).
 - No preguntarle al usuario lo que se puede detectar solo.
 
 **2. Traducir cada capacidad al equivalente del agente.**
 
 | Capacidad que pide la skill | Ejemplo en Claude Code | En otro agente |
 | :--- | :--- | :--- |
-| Modelo fuerte / ejecutor / rápido | Opus / Sonnet / Haiku | Niveles de su proveedor (§14.3.1) |
+| Modelo orquestador / ejecutor / rápido | El seleccionado / Sonnet / Haiku | Niveles de su proveedor (§14.3.1) |
 | Lanzar subagente con modelo propio | `Agent(model: ...)`, `.claude/agents/*.md` | Tabla de §14.3.2 |
 | Cambio grande en paralelo, un worktree por unidad | `/batch <instrucción>` | Varios subagentes en paralelo con el mismo brief por unidad; si no hay, unidades en secuencia |
 | Continuar un subagente con su contexto | `SendMessage` | Retomar el hilo si existe; si no, relanzar con el brief actualizado |
 | Consultar a otra sesión abierta | `ListAgents` + `SendMessage` | Medio nativo del agente; si no hay, saltar al paso siguiente de §14.2 |
 | Preguntar con opciones | `AskUserQuestion` | Tool de preguntas del agente; si no hay, una lista numerada en un solo mensaje, con la opción recomendada marcada |
-| Cambiar de modelo en la sesión | `/model <alias>` | Selector o comando del agente; si no hay, fallback §14.3.3 |
-| Plan con modelo fuerte, ejecución con barato | `/model opusplan` | Cambio de modelo por fase (§14.3.3) |
 | Compactar / limpiar contexto | `/compact <foco>`, `/clear` | Comando de resumen del agente, o chat nuevo con el resumen de `tasks/todo.md` |
 | Integrar graphify | `graphify claude install` | `graphify <agente> install` (§14.5) |
 
 **3. Adaptar sin romper las reglas.** Lo que cambia es la sintaxis, nunca la regla:
-- El modelo fuerte disponible orquesta y revisa **siempre**, aunque no sea Opus (§14.3.5).
+- El modelo seleccionado orquesta, decide y revisa **siempre**, aunque no sea Opus (§14.3.5).
 - La delegación sigue yendo al modelo **más barato** que resuelva la subtarea.
 - Caveman, preguntar todo antes de empezar, autocompactar y graphify primero siguen vigentes.
 - Si el agente no tiene ninguna forma de aplicar una regla (ej. no permite otro modelo ni
@@ -491,9 +475,8 @@ concretos ("que lo revise Opus", "usá Haiku para buscar", "corré `/compact`"):
 
 ### 14.8 Herramientas del agente: instalar y usar siempre
 
-Cinco herramientas complementan a caveman y graphify. El instalador de la skill las instala en su
-última versión (`--no-external-skills` saltea las skills; `--no-agent-tools` saltea el resto). El
-agente las **usa siempre**: si falta una, la instala y avisa en una línea (con el error exacto si
+Cinco herramientas complementan a caveman y graphify. El instalador de la skill las instala siempre
+en su última versión. El agente las **usa siempre**: si falta una, la instala y avisa en una línea (con el error exacto si
 falla). El bloque global (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`) repite
 estas reglas para que rijan en todas las sesiones.
 

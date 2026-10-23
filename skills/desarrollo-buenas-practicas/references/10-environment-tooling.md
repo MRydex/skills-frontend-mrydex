@@ -350,7 +350,7 @@ tasks/brief-*.md
 
 - Si aparece otra herramienta de IA con su propia carpeta o archivo de configuración, sumarlo al
   bloque.
-- El instalador (`npx skills-frontend-mrydex`) agrega este bloque solo cuando instala en el proyecto.
+- El instalador (`npx github:MRydex/skills-frontend-mrydex`) agrega este bloque solo cuando instala en el proyecto.
   Si graphify crea un `.gitattributes` nuevo (merge driver del grafo), también lo ignora. Un
   `.gitattributes` que ya existía no se toca.
   Solo suma las entradas que faltan; correrlo de nuevo no duplica nada.

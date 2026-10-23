@@ -42,7 +42,7 @@ ${colors.bold}${colors.cyan}skills-frontend-mrydex v${pkgVersion}${colors.reset}
 ${colors.dim}Universal Angular 22+ & Frontend Best Practices Skill for AI Coding Assistants${colors.reset}
 
 ${colors.bold}USO:${colors.reset}
-  npx skills-frontend-mrydex [opciones]
+  npx github:MRydex/skills-frontend-mrydex [opciones]
   skills-frontend [opciones]
 
 ${colors.bold}OPCIONES:${colors.reset}
@@ -57,29 +57,22 @@ ${colors.bold}OPCIONES:${colors.reset}
   ${colors.green}-t, --target <ruta>${colors.reset}     Ruta personalizada (tiene prioridad sobre --agent)
   ${colors.green}-b, --bridge${colors.reset}            Genera archivos puente (AGENTS.md, CLAUDE.md, .cursorrules).
                           cursor, universal y all los generan siempre.
-  ${colors.green}--no-caveman${colors.reset}            No instala el plugin caveman (por defecto: global + reglas en el repo)
-  ${colors.green}--no-external-skills${colors.reset}    No instala las skills externas: security-audit, emilkowalski/skills,
-                          ponytail y agent-skills (por defecto: global, última versión)
-  ${colors.green}--no-graphify${colors.reset}           No instala ni configura graphify (por defecto: instala/actualiza
-                          el CLI y, en el proyecto, integra todos los agentes y arma el grafo)
-  ${colors.green}--no-agent-tools${colors.reset}        No instala Headroom ni claude-code-setup
-                          (por defecto: global, última versión)
   ${colors.green}--dry-run${colors.reset}               Muestra los archivos y destinos sin escribir cambios
   ${colors.green}-v, --version${colors.reset}           Muestra la versión del paquete
   ${colors.green}-h, --help${colors.reset}              Muestra esta ayuda
 
 ${colors.bold}EJEMPLOS:${colors.reset}
   # Instalación interactiva (pregunta destino)
-  ${colors.dim}npx skills-frontend-mrydex${colors.reset}
+  ${colors.dim}npx github:MRydex/skills-frontend-mrydex${colors.reset}
 
   # Instalar globalmente para Antigravity
-  ${colors.dim}npx skills-frontend-mrydex --agent antigravity --global${colors.reset}
+  ${colors.dim}npx github:MRydex/skills-frontend-mrydex --agent antigravity --global${colors.reset}
 
   # Instalar para Claude Code
-  ${colors.dim}npx skills-frontend-mrydex --agent claude --global${colors.reset}
+  ${colors.dim}npx github:MRydex/skills-frontend-mrydex --agent claude --global${colors.reset}
 
   # Configurar proyecto actual para cualquier agente (universal)
-  ${colors.dim}npx skills-frontend-mrydex --agent all --workspace --bridge${colors.reset}
+  ${colors.dim}npx github:MRydex/skills-frontend-mrydex --agent all --workspace --bridge${colors.reset}
 `);
 }
 
@@ -97,10 +90,6 @@ const isDryRun = args.includes('--dry-run');
 const isGlobal = args.includes('-g') || args.includes('--global');
 const isWorkspace = args.includes('-w') || args.includes('--workspace');
 const includeBridge = args.includes('-b') || args.includes('--bridge');
-const skipGraphify = args.includes('--no-graphify');
-const skipCaveman = args.includes('--no-caveman');
-const skipExternalSkills = args.includes('--no-external-skills');
-const skipAgentTools = args.includes('--no-agent-tools');
 
 function getArgValue(flags) {
   for (const flag of flags) {
@@ -451,6 +440,7 @@ function enableClaudePlugins(homeDir, plugins) {
   if (fs.existsSync(settingsPath)) {
     try {
       settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw new Error();
     } catch {
       console.log(`  ${colors.yellow}⚠${colors.reset} ~/.claude/settings.json no es JSON válido: no se activaron plugins`);
       return;
@@ -590,9 +580,9 @@ ${colors.bold}${colors.cyan}Skills externas:${colors.reset} instalando la últim
     if (runNpx(npxArgs, homeDir).ok) logOk(`${repo}: ${skills.join(', ')}`);
     else console.log(`  ${colors.yellow}⚠${colors.reset} ${repo} falló. Correr a mano: npx ${npxArgs.join(' ')}`);
   }
-  if (!isDryRun && runNpx(['-y', 'skills', 'remove', ...UNUSED_SKILLS, '--global', '--yes'], homeDir).ok) {
-    logOk(`sin skills que no se usan: ${UNUSED_SKILLS.join(', ')}`);
-  }
+  const removeArgs = ['-y', 'skills', 'remove', ...UNUSED_SKILLS, '--global', '--yes'];
+  if (isDryRun) console.log(`${colors.dim}[dry-run] npx ${removeArgs.join(' ')}${colors.reset}`);
+  else if (runNpx(removeArgs, homeDir).ok) logOk(`sin skills que no se usan: ${UNUSED_SKILLS.join(', ')}`);
 }
 
 // Plugins solo de Claude Code (sin equivalente como skill suelta). `repo` null: marketplace oficial.
@@ -604,7 +594,7 @@ const CLAUDE_PLUGINS = [
 ];
 
 // Herramientas de eficiencia: Headroom (PyPI) comprime el contexto (§14.8 de la skill).
-// Solo se instala: el uso se arranca con `headroom wrap <agente>` (§14.8 de la skill).
+// Integración durable con `headroom init -g` donde el agente lo soporta; si no, `headroom wrap <agente>` (§14.8 de la skill).
 function installAgentTools(homeDir) {
   console.log(`
 ${colors.bold}${colors.cyan}Herramientas del agente:${colors.reset} Headroom y claude-code-setup...`);
@@ -667,7 +657,8 @@ function installClaudePlugins(homeDir) {
 
 // `claude` suele no estar en el PATH cuando solo se usa la extensión de VS Code: se usa su binario
 function claudeBinDir(homeDir) {
-  if (runCommand('claude', ['--version']).ok) return null;
+  // Con shell: instalado por npm en Windows es `claude.cmd`, que spawn sin shell no encuentra
+  if (runShell('claude --version').ok) return null;
   const extensionsDir = path.join(homeDir, '.vscode', 'extensions');
   if (!fs.existsSync(extensionsDir)) return null;
   const latest = fs.readdirSync(extensionsDir)
@@ -690,7 +681,7 @@ function initHeadroom(homeDir) {
 
   const targets = [
     { agent: 'claude', label: 'Claude Code', present: fs.existsSync(path.join(homeDir, '.claude')) },
-    { agent: 'copilot', label: 'Copilot CLI', present: runCommand('copilot', ['--version']).ok },
+    { agent: 'copilot', label: 'Copilot CLI', present: runShell('copilot --version').ok },
     { agent: 'codex', label: 'Codex', present: process.platform !== 'win32' && runCommand('codex', ['--version']).ok },
   ];
   for (const { agent, label } of targets.filter((target) => target.present)) {
@@ -729,6 +720,7 @@ function initHeadroom(homeDir) {
 
 const HEADROOM_URL = 'http://127.0.0.1:8787';
 const HOOK_MARKER = 'skills-frontend-mrydex';
+const SIBLING_HOOK_MARKERS = ['skills-frontend-mrydex', 'skills-backend-mrydex'];
 const AUTOCOMPACT_PCT = 40;
 
 // Hook SessionStart: levanta Headroom si hace falta. Claude Code pasa por Headroom solo si `headroom`
@@ -741,6 +733,7 @@ function installSessionStartHook(homeDir) {
   if (fs.existsSync(settingsPath)) {
     try {
       settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw new Error();
     } catch {
       console.log(`  ${colors.yellow}⚠${colors.reset} ~/.claude/settings.json no es JSON válido: no se instaló el hook SessionStart`);
       return;
@@ -755,7 +748,8 @@ function installSessionStartHook(homeDir) {
   // Reinstalar reemplaza solo la entrada propia; el resto de los hooks no se toca
   settings.hooks ??= {};
   const others = (settings.hooks.SessionStart ?? []).filter(
-    (entry) => !entry.hooks?.some((hook) => hook.command?.includes(HOOK_MARKER)),
+    // También el de la skill hermana: hacen lo mismo y dos hooks lanzarían dos proxies
+    (entry) => !entry.hooks?.some((hook) => SIBLING_HOOK_MARKERS.some((marker) => hook.command?.includes(marker))),
   );
   const command = `node "${hookPath.replaceAll('\\', '/')}"`;
   settings.hooks.SessionStart = [...others, { hooks: [{ type: 'command', command, timeout: 30 }] }];
@@ -763,35 +757,36 @@ function installSessionStartHook(homeDir) {
   // Hooks de caveman sueltos que versiones anteriores dejaban junto al plugin (cada evento se
   // inyectaba dos veces). El de subagentes se queda: el plugin no lo trae.
   const cavemanPlugin = settings.enabledPlugins?.['caveman@caveman'] === true;
-  const stale = (hook) => (cavemanPlugin && /\.claude\/hooks\/caveman-(activate|mode-tracker)\.js"?$/.test(hook.command ?? ''));
+  const stale = (hook) => (cavemanPlugin && /\.claude[\\/]+hooks[\\/]+caveman-(activate|mode-tracker)\.js"?$/.test(hook.command ?? ''));
   for (const event of Object.keys(settings.hooks)) {
+    if (!Array.isArray(settings.hooks[event])) continue;
     settings.hooks[event] = settings.hooks[event].filter((entry) => !entry.hooks?.some(stale));
     if (settings.hooks[event].length === 0) delete settings.hooks[event];
   }
 
   const headroomOk = runCommand('headroom', ['--help']).ok;
   settings.env ??= {};
-  const currentUrl = settings.env.ANTHROPIC_BASE_URL;
-  if (headroomOk && !currentUrl) settings.env.ANTHROPIC_BASE_URL = HEADROOM_URL;
+  // No pisar un gateway o proveedor propio (variable del sistema, Bedrock o Vertex)
+  const ownRoute = ['ANTHROPIC_BASE_URL', 'CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX']
+    .some((key) => settings.env[key] || process.env[key]);
+  if (headroomOk && !ownRoute) settings.env.ANTHROPIC_BASE_URL = HEADROOM_URL;
   settings.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE ??= String(AUTOCOMPACT_PCT);
 
   fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}
 `);
   logOk('Claude Code: hook SessionStart (Headroom)');
   if (settings.env.ANTHROPIC_BASE_URL === HEADROOM_URL) logOk(`Claude Code: modelo vía Headroom (${HEADROOM_URL})`);
-  else if (currentUrl) console.log(`  ${colors.dim}ANTHROPIC_BASE_URL ya era ${currentUrl}: no se cambió${colors.reset}`);
+  else if (ownRoute) console.log(`  ${colors.dim}Ya hay otra ruta al modelo (ANTHROPIC_BASE_URL, Bedrock o Vertex): no se cambió${colors.reset}`);
   logOk(`Claude Code: autocompactación al ${settings.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE}% del contexto`);
 }
 
 function finish() {
   for (const root of projectRoots) ensureAiGitignore(root);
-  if (!skipGraphify) {
-    if (projectRoots.size === 0) ensureGraphifyCli();
-    for (const root of projectRoots) setupGraphifyProject(root);
-  }
-  if (!skipCaveman) installCaveman(os.homedir(), [...projectRoots]);
-  if (!skipExternalSkills) installExternalSkills(os.homedir());
-  if (!skipAgentTools) installAgentTools(os.homedir());
+  if (projectRoots.size === 0) ensureGraphifyCli();
+  for (const root of projectRoots) setupGraphifyProject(root);
+  installCaveman(os.homedir(), [...projectRoots]);
+  installExternalSkills(os.homedir());
+  installAgentTools(os.homedir());
   if (pendingSubagents) installSubagents({ ...pendingSubagents, isDryRun, log: logOk });
 
   console.log(`

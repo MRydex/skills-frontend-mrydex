@@ -153,7 +153,7 @@ In any repo with \`angular.json\` or frontend code (TypeScript, HTML, SCSS/CSS),
 
 ## Graphify first (always, any repo)
 
-Before the first search or file read in a git repo: run \`graphify update .\` (no LLM, no cost), then \`graphify query "<question>"\`. The graph shows where to look for far fewer tokens than Grep/Glob/Read; skip it only when I name the exact file and line. If graphify is missing: \`pip install --upgrade graphifyy\`. If it creates \`.gitattributes\` or \`graphify-out/\`, add them to \`.gitignore\`. **After editing any file, run \`graphify update .\` before your final answer.** If something fails, tell me the exact error.
+Before the first search or file read in a git repo: run \`graphify update .\` (no LLM, no cost), then \`graphify query "<question>"\`. The graph shows where to look for far fewer tokens than Grep/Glob/Read; skip it only when I name the exact file and line. If graphify is missing: \`pip install graphifyy && graphify install\`. If it creates \`.gitattributes\` or \`graphify-out/\`, add them to \`.gitignore\`. **After editing any file, run \`graphify update .\` before your final answer.** If something fails, tell me the exact error.
 
 ## Agent tools (always)
 

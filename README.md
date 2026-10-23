@@ -66,7 +66,7 @@ skills-frontend
 | Agente de IA | Ubicación de Instalación | Comando Rápido |
 | :--- | :--- | :--- |
 | **Google Antigravity** | `~/.gemini/config/skills/desarrollo-buenas-practicas` o `.agents/skills/` | `npx github:MRydex/skills-frontend-mrydex -a antigravity -g` |
-| **Claude Code** | `~/.claude/skills/desarrollo-buenas-practicas` o `.claude/skills/` | `npx github:MRydex/skills-frontend-mrydex -a claude -g` |
+| **Claude Code** | `~/.claude/skills/desarrollo-buenas-practicas` (+ `skills/` y `.agents/skills/` en el repo) | `npx github:MRydex/skills-frontend-mrydex -a claude -g` |
 | **Cursor / Windsurf** | `skills/` + `.cursorrules` en la raíz del proyecto | `npx github:MRydex/skills-frontend-mrydex -a cursor -b` |
 | **GitHub Copilot / Codex** | `skills/` + `AGENTS.md` en la raíz del proyecto | `npx github:MRydex/skills-frontend-mrydex -a universal -b` |
 | **Todos los agentes** | Configura entornos globales y puentes locales a la vez | `npx github:MRydex/skills-frontend-mrydex -a all -w -b` |
@@ -91,7 +91,7 @@ agente siga las instrucciones:
 6. Instala el plugin **caveman** con su instalador oficial en los agentes detectados y, dentro de un
    repo, sus reglas siempre activas (`--with-init`: Cursor, Windsurf, Cline, Copilot, `AGENTS.md`). En
    Claude Code lo activa en `~/.claude/settings.json`. Medido: sin el plugin las respuestas salen 33%
-   más largas. `--no-caveman` lo saltea.
+   más largas.
 7. Instala globalmente, siempre en su última versión, las skills `security-audit`
    ([cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill)), 14 de AppSec web, APIs y
    supply chain de npm de [mukul975/Anthropic-Cybersecurity-Skills](https://github.com/mukul975/Anthropic-Cybersecurity-Skills)
@@ -102,21 +102,19 @@ agente siga las instrucciones:
    sin Swift, Expo, mobile, Apple ni Sonner, que es de React), más
    [ponytail](https://github.com/DietrichGebert/ponytail),
    [agent-skills](https://github.com/addyosmani/agent-skills).
-   `--no-external-skills` lo saltea.
 8. Instala [Headroom](https://github.com/chopratejas/headroom) (`headroom-ai[all]` con pip/uv) y activa en
    Claude Code los plugins oficiales `claude-code-setup` y `claude-security`.
    Integra Headroom en cada agente soportado con `headroom init -g` (Claude Code, Copilot CLI, Codex
    en macOS/Linux): el proxy arranca solo. Remote Control de Claude Code no anda con Headroom (exige
    `api.anthropic.com`). En Claude Code registra además un hook `SessionStart` que asegura el proxy y `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=40` (compacta al 40% del
    contexto). El bloque global
-   pide usar las cuatro herramientas en todas las sesiones (§14.8 de la skill).
-   `--no-agent-tools` lo saltea.
+   pide usar las cinco herramientas en todas las sesiones (§14.8 de la skill).
 9. Arma el grafo con `graphify update .` (solo código, sin LLM, sin costo de tokens).
 
 Fuera de un repo git se instala **solo global** (skill + CLI de graphify), sin tocar la carpeta actual.
 Dentro de un repo (o una subcarpeta) instala además en la raíz del repo. En el menú interactivo, la
-opción 1 (default) es "Todos los agentes". Para saltear todo esto:
-`--no-graphify`. Si no hay Python, avisa y sigue con el resto de la instalación.
+opción 1 (default) es "Todos los agentes". Siempre instala todo; no hay flags para saltear partes.
+Si no hay Python, avisa y sigue con el resto de la instalación.
 
 ---
 
@@ -128,10 +126,9 @@ skills-frontend [opciones]
 Opciones:
   -a, --agent <nombre>    antigravity | claude | cursor | universal | all
   -g, --global            Instalación global en el directorio home del usuario
-  -w, --workspace         Instalación en la raíz del proyecto actual
+  -w, --workspace         También instala en la raíz del repo git actual
   -t, --target <ruta>     Ruta personalizada donde copiar los archivos del skill
   -b, --bridge            Copia archivos puente (AGENTS.md, CLAUDE.md, .cursorrules)
-  --no-graphify           No instala ni configura graphify
   --dry-run               Muestra qué se instalaría sin escribir cambios en disco
   -v, --version           Muestra la versión instalada
   -h, --help              Muestra la ayuda
@@ -141,7 +138,7 @@ Opciones:
 
 ## 📂 Estructura Modular del Skill
 
-- **Diseño Modular con Progressive Disclosure**: El skill se compone de un archivo maestro [`SKILL.md`](./skills/desarrollo-buenas-practicas/SKILL.md) y 14 manuales especializados en `references/`. La IA solo lee en su contexto lo que necesita para la tarea activa, ahorrando miles de tokens:
+- **Diseño Modular con Progressive Disclosure**: El skill se compone de un archivo maestro [`SKILL.md`](./skills/desarrollo-buenas-practicas/SKILL.md) y 15 manuales especializados más `checklists.md` en `references/`. La IA solo lee en su contexto lo que necesita para la tarea activa, ahorrando miles de tokens:
 
 ```text
 skills/desarrollo-buenas-practicas/

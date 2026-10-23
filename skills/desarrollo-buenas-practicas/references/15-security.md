@@ -381,7 +381,7 @@ saltea en silencio, y la profundidad de cada una la decide el agente según lo q
 dosifica es la profundidad. No releer lo mismo para cada skill: pasarles los `archivo:línea` que ya
 ubicó graphify. Si el alcance es grande, delegar el barrido por área a subagentes en paralelo (§14.3);
 la priorización, la corrección y la decisión final quedan en el modelo principal. Si falta una skill
-de la tabla, instalarla (`npx skills-frontend-mrydex`) y avisar en una línea; si no se puede, hacer
+de la tabla, instalarla (`npx github:MRydex/skills-frontend-mrydex`) y avisar en una línea; si no se puede, hacer
 esa área con la revisión base y decirlo en el reporte de cobertura.
 
 ---
