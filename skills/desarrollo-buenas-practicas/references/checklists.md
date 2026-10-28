@@ -135,13 +135,17 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Adopción justificada con ADR (equipos o deploys independientes), no para reusar componentes? (§17.1)
 - [ ] ¿Native Federation v4 con el mismo major que Angular, y versión exacta de todo lo compartido en shell y remotes? (§17.2, §17.10)
 - [ ] ¿`federation.config.mjs` con `singleton` + `strictVersion`, `ignoreUnusedDeps`, `exposes` solo rutas o un componente de entrada? (§17.4)
+- [ ] ¿Shell y remotes con la misma estrategia de `shared`, la cadena completa de libs con DI en el `remoteEntry.json` del shell, y versiones **instaladas** idénticas? (§17.4, §17.10)
 - [ ] ¿`loadRemoteModule` del resultado de `initFederation` (por DI), no el importado del paquete? (§17.3)
 - [ ] ¿URLs de remotes solo en `federation.manifest.json` por entorno? (§17.5, §17.12)
 - [ ] ¿`loadRemoteModule` con fallback y guard `canMatch` en el shell? (§17.6)
 - [ ] ¿Estado de negocio dentro de cada microfrontend? ¿Lo compartido es URL, inputs/outputs, servicio singleton de la librería o eventos tipados? (§17.7)
 - [ ] ¿Remote sin `provideHttpClient` ni login propio, sin importar código de otro remote? (§17.8)
+- [ ] ¿El Bearer llega al API del remote (su prefijo como destino propio en el interceptor de auth del shell) y un 401 del remote no cierra la sesión del shell? (§17.8)
 - [ ] ¿Tema global solo en el shell? ¿Estilos del remote encapsulados, `ViewEncapsulation.None` solo en el componente expuesto y bajo su clase? (§17.9)
-- [ ] ¿Widget expuesto cargado con `resource` + `loadRemoteModule`, contrato por inputs/outputs, modo embebido que no toca título, favicon ni tema del shell? (§17.6.1)
+- [ ] ¿Estilos globales del remote dentro del componente expuesto: partial propio con `@use` y la librería con `meta.load-css` acotado? (§17.9)
+- [ ] ¿Clase de overlay en todo overlay del remote? ¿Íconos nuevos en la librería, no en una copia del remote? (§17.9)
+- [ ] ¿Widget expuesto cargado con `resource` + `loadRemoteModule`, contrato por inputs/outputs, modo embebido que no toca título, favicon, tema ni sesión del shell? (§17.6.1)
 - [ ] ¿`remoteEntry.json` y manifest sin cache, CORS con origen exacto? (§17.11)
 
 ---

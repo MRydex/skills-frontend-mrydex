@@ -327,6 +327,10 @@ protected readonly mensajes = resource({
 - **Identidad solo del token.** `accessTokenFactory` devuelve el token en memoria
   ([15](./15-security.md) §15.5). Se llama en cada conexión y reconexión: devolver siempre el token
   vigente, nunca uno capturado al construir.
+- Hub de un remote embebido: el token sale del servicio de auth de la librería compartida (singleton en
+  `shared`), el mismo que usa el interceptor del shell. Sin librería compartida, de un input
+  `obtenerToken` que le pasa el shell ([17](./17-microfrontends.md) §17.8). Con la librería de auth duplicada, el widget
+  falla al crearse (`NG0201`) o conecta sin token ([17](./17-microfrontends.md) §17.13).
 - **Nunca `?username=` / `?userId=` como identidad.** Cualquiera abre la consola y se conecta como
   otro. Si un hub existente lo hace, no copiarlo en código nuevo y reportarlo.
 - El navegador no permite headers en WebSocket: SignalR manda el token en `?access_token=`. El back

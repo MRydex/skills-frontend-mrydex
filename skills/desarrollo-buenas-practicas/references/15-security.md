@@ -154,7 +154,7 @@ this.html = this._sanitizer.bypassSecurityTrustHtml(respuesta.descripcion);
 - Si se usa bearer token (OIDC/OAuth con PKCE), guardarlo **en memoria** (signal de un servicio),
   nunca en `localStorage`/`sessionStorage`. Refresh token solo en cookie `HttpOnly`.
 - El `authInterceptor` agrega el header **solo** si la request va al origen de la API propia.
-  Comparar orígenes con `URL`, nunca con `startsWith` (`https://api.x.com.evil.com` pasaría):
+  Comparar orígenes con `URL`, nunca con `startsWith` (`https://api.example.com.evil.com` pasaría):
 
 ```ts
 export const authInterceptor: HttpInterceptorFn = (req, next) => {

@@ -166,7 +166,7 @@ página), comprimir la respuesta y cachear agresivamente solo los archivos con h
 - **Un tipo por operación, con el mismo nombre en C# y en TypeScript**: `<Accion><Entidad>Request`
   lo que envía el front, `<Entidad>Response` lo que devuelve el back (§2.11).
 - Las respuestas llegan de dos formas: el `Response` directo, o envueltas en el contrato del equipo
-  (`ResponseApi<T>` / `ApiResponse<T>`, datos en `data`). El servicio HTTP del front soporta las dos y
+  (ej. `ApiResponse<T>`, datos en `data`). El servicio HTTP del front soporta las dos y
   desenvuelve ahí, así el resto de la app siempre recibe el `Response` (§2.11).
 
 ### 10.4 Configuración en runtime vs. `environment.ts`
