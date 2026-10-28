@@ -1,0 +1,393 @@
+## 15. Seguridad — Red Team y Blue Team
+
+### Índice
+
+- 15.1 Regla general y modo de trabajo
+- 15.2 Revisión Red Team de cada cambio (pensar como atacante)
+- 15.3 XSS: sanitización de Angular, `innerHTML` y `DomSanitizer`
+- 15.4 CSP y Trusted Types
+- 15.5 Autenticación, tokens y autorización
+- 15.6 CSRF / XSRF
+- 15.7 Navegación, redirects y links externos
+- 15.8 Datos sensibles y secretos en el front
+- 15.9 Cabeceras de seguridad en IIS
+- 15.10 Supply chain: dependencias y build
+- 15.11 Blue Team: detección, logging y respuesta
+- 15.12 Verificación manual de seguridad
+- 15.13 Mapa OWASP Top 10 (2025)
+- 15.14 Pedido explícito de seguridad (auditoría completa red + blue)
+
+### 15.1 Regla general y modo de trabajo
+
+La seguridad es un requisito de **todo** cambio, no una tarea aparte. El agente aplica dos
+miradas en cada tarea:
+
+- **Red Team (ofensiva)**: antes de dar por terminado, buscar cómo se abusa del código nuevo
+  (§15.2).
+- **Blue Team (defensiva)**: el código nace con defensas por defecto, deja rastro de eventos de
+  seguridad y no desactiva protecciones del framework (§15.3–§15.11).
+
+Reglas para el agente:
+
+- **Nunca desactivar una protección** (sanitizador, CSP, XSRF, `strictTemplates`, validación del
+  backend) para "hacer que funcione". Si parece necesario, frenar y preguntar.
+- **Toda vulnerabilidad encontrada se reporta**, aunque esté fuera del alcance de la tarea. Si está
+  dentro del alcance, corregirla. Si está fuera, reportarla con archivo, línea, riesgo y
+  corrección propuesta, y preguntar antes de tocarla (§11.5).
+- **El front nunca es la frontera de seguridad.** Guards, validaciones y botones ocultos son UX. La
+  autorización y la validación reales viven en el backend.
+- Las pruebas ofensivas se hacen **solo** sobre aplicaciones propias o entornos autorizados.
+
+### 15.2 Revisión Red Team de cada cambio (pensar como atacante)
+
+Antes de entregar, responder cada pregunta sobre el código tocado:
+
+| Superficie | Pregunta del atacante |
+| :--- | :--- |
+| Entradas (forms, query params, route params, `input()`) | ¿Puedo meter HTML, script, URL o un valor fuera de rango y que llegue sin validar al DOM o al backend? |
+| Renderizado | ¿Algún dato controlable termina en `[innerHTML]`, `bypassSecurityTrust*`, `nativeElement.innerHTML` o un atributo `href`/`src`? |
+| URLs y navegación | ¿Puedo forzar un redirect a un dominio externo (`returnUrl`, `next`)? |
+| Tokens y sesión | ¿El token viaja a un origen que no es la API propia? ¿Queda en `localStorage`? |
+| Autorización | ¿Si cambio un `id` en la URL o en el body, veo datos de otro usuario? (verificar que el backend lo rechace) |
+| Storage y logs | ¿Quedan PII, tokens o datos sensibles en `localStorage`, `console`, source maps o mensajes de error? |
+| Mensajería | ¿Un `postMessage`, WebSocket o evento de terceros se procesa sin validar el origen y la forma? ¿Un hub identifica al usuario por query string en vez del token ([16](./16-websocket-signalr.md) §16.9)? ¿Un remote se carga desde una URL que no sale del manifest ([17](./17-microfrontends.md) §17.12)? |
+| Dependencias | ¿La librería nueva es mantenida, tiene vulnerabilidades conocidas o pide permisos de más? |
+| Regex y parseo | ¿Una regex construida con texto del usuario permite inyección o ReDoS? |
+
+Si alguna respuesta es "sí", corregir antes de entregar.
+
+**Metodología ofensiva por superficie (skills `offensive-*` de [SnailSploit/claude-red](https://github.com/SnailSploit/claude-red)).**
+Solo para endurecer el código propio contra esos ataques, nunca contra sistemas de terceros. Invocarlas
+en cambios de riesgo alto (§11.3) o en la auditoría de §15.14, según la superficie que toca el cambio:
+
+| Superficie del cambio | Skill `offensive-*` |
+| :--- | :--- |
+| Entradas que llegan a SQL/ORM | `offensive-sqli` |
+| Dato controlable en el DOM | `offensive-xss` |
+| Backend que pide una URL (`returnUrl`, webhook, proxy) | `offensive-ssrf` |
+| Plantillas server-side | `offensive-ssti` |
+| `id` en URL/body, acceso a datos de otro usuario | `offensive-idor` |
+| Parseo de XML | `offensive-xxe` |
+| Deserialización de datos del cliente | `offensive-deserialization` |
+| Subida de archivos | `offensive-file-upload` |
+| Flujo de negocio (cupones, pagos, pasos saltables) | `offensive-business-logic` |
+| Redirect a dominio externo | `offensive-open-redirect` |
+| Parámetros duplicados | `offensive-parameter-pollution` |
+| Operaciones concurrentes (doble submit, saldo) | `offensive-race-condition` |
+| Proxy / cabeceras `Content-Length` / `Transfer-Encoding` | `offensive-request-smuggling` |
+| API GraphQL | `offensive-graphql` |
+| API REST/gRPC/WebSocket (OWASP API Top 10) | `offensive-api-security` |
+| JWT (`alg`, firma, expiración) | `offensive-jwt` |
+| OAuth2 / OIDC (scopes, redirect_uri, PKCE) | `offensive-oauth` |
+| Nombres de paquetes internos vs públicos | `offensive-dependency-confusion` |
+| Cadena de build y dependencias | `offensive-supply-chain` |
+| Escribir el hallazgo | `offensive-reporting` |
+
+Estas complementan el escaneo del plugin `claude-security` (código propio) y las skills de AppSec de
+`cloudflare/security-audit-skill` y `mukul975/Anthropic-Cybersecurity-Skills`. Qué herramienta
+profundiza cada área: tabla de §15.14.
+
+### 15.3 XSS: sanitización de Angular, `innerHTML` y `DomSanitizer`
+
+Angular escapa la interpolación (`{{ }}`) y sanitiza `[innerHTML]`, `[href]`, `[src]` y `[style]`.
+Esa protección se pierde cuando se esquiva el framework.
+
+- **Siempre interpolación** para texto. `[innerHTML]` solo cuando hace falta marcado, y con datos
+  ya escapados.
+- **Nunca `bypassSecurityTrustHtml` / `Url` / `ResourceUrl` / `Script` / `Style` con datos del
+  usuario o del backend.** Solo con constantes del propio código, con comentario que justifique.
+- **Nunca** `ElementRef.nativeElement.innerHTML`, `document.write`, `insertAdjacentHTML`,
+  `eval`, `new Function` ni `setTimeout('string')`. Usar `Renderer2` o el template.
+- **Nunca construir templates en runtime** con texto del usuario (compilación JIT dinámica).
+- Pipes que devuelven HTML (ej. resaltar búsqueda) **escapan primero** el texto y la búsqueda:
+
+```ts
+// shared/pipes/highlight-search-pipe.ts
+const escaparHtml = (texto: string): string =>
+  texto.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+const escaparRegex = (texto: string): string => texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+@Pipe({ name: 'highlightSearch' })
+export class HighlightSearchPipe implements PipeTransform {
+  transform(texto: string | null | undefined, busqueda: string): string {
+    const seguro = escaparHtml(texto ?? '');
+    if (!busqueda) return seguro;
+    const patron = new RegExp(escaparRegex(escaparHtml(busqueda)), 'gi');
+    return seguro.replace(patron, (m) => `<mark>${m}</mark>`);
+  }
+}
+```
+
+```ts
+// ❌ MAL — XSS directo: el backend o el usuario controlan el HTML
+this.html = this._sanitizer.bypassSecurityTrustHtml(respuesta.descripcion);
+```
+
+### 15.4 CSP y Trusted Types
+
+- Activar **`autoCsp`** en `angular.json` (build de producción). Angular genera una CSP con hashes
+  para sus scripts inline:
+
+```json
+"configurations": {
+  "production": {
+    "security": { "autoCsp": true }
+  }
+}
+```
+
+- Si el servidor genera un nonce por request, pasarlo con `ngCspNonce` en el root o con el token
+  `CSP_NONCE`. Así los `<style>` de los componentes cumplen la política.
+- Cerrar los vectores que el meta tag no cubre desde cabeceras del servidor (§15.9):
+  `frame-ancestors`, `object-src`, `base-uri`, `form-action`.
+- **Trusted Types**: Angular es compatible. Activarlos en proyectos nuevos:
+  `require-trusted-types-for 'script'; trusted-types angular angular#bundler;`
+- Toda CSP nueva o endurecida se despliega primero como **`Content-Security-Policy-Report-Only`**,
+  se revisan los reportes y después se pasa a modo bloqueo.
+- **Nunca** `'unsafe-eval'`. `'unsafe-inline'` en `script-src` tampoco.
+
+### 15.5 Autenticación, tokens y autorización
+
+- **Preferir cookies de sesión `HttpOnly; Secure; SameSite=Strict|Lax`** emitidas por el backend
+  (patrón BFF). JavaScript no puede leerlas, así que un XSS no las roba.
+- Si se usa bearer token (OIDC/OAuth con PKCE), guardarlo **en memoria** (signal de un servicio),
+  nunca en `localStorage`/`sessionStorage`. Refresh token solo en cookie `HttpOnly`.
+- El `authInterceptor` agrega el header **solo** si la request va al origen de la API propia.
+  Comparar orígenes con `URL`, nunca con `startsWith` (`https://api.x.com.evil.com` pasaría):
+
+```ts
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const token = inject(Auth).accessToken();
+  const apiOrigin = new URL(environment.API_URL).origin;
+  const destino = new URL(req.url, location.origin).origin;
+
+  if (!token || destino !== apiOrigin) return next(req);
+  return next(req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }));
+};
+```
+
+- Guards (`canMatch`, `canActivate`) ocultan rutas; **no protegen datos**. Cada endpoint valida
+  permisos en el backend. Preferir `canMatch` para no descargar el chunk de una ruta sin permiso.
+- En logout: limpiar signals de sesión, stores con datos del usuario y cualquier storage propio.
+- 401 → sesión vencida: redirigir a login. 403 → sin permiso: mostrar mensaje. Nunca reintentar
+  automáticamente con otras credenciales.
+
+### 15.6 CSRF / XSRF
+
+- Con sesión por cookie, activar la protección de `HttpClient`. Adjunta el header solo en métodos
+  que mutan y en URLs relativas o del mismo origen:
+
+```ts
+provideHttpClient(
+  withXsrfConfiguration({ cookieName: 'XSRF-TOKEN', headerName: 'X-XSRF-TOKEN' }),
+  withInterceptors([...]),
+);
+```
+
+- El backend .NET valida el token (antiforgery) y usa `SameSite` en la cookie de sesión.
+- **Nunca** mutar estado con `GET`.
+
+### 15.7 Navegación, redirects y links externos
+
+- **Open redirect**: `returnUrl` / `next` se aceptan solo si son rutas internas.
+
+```ts
+const esRutaInterna = (url: string): boolean =>
+  url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/\\');
+
+const destino = esRutaInterna(returnUrl) ? returnUrl : '/inicio';
+this._router.navigateByUrl(destino);
+```
+
+- **Nunca** `window.location.href = valorDelUsuario`.
+- Links externos: `target="_blank" rel="noopener noreferrer"`.
+- URLs dinámicas en `[href]`: validar esquema `https:` (o `mailto:`/`tel:` si aplica). Angular
+  marca `javascript:` como `unsafe:`, pero no validar el dominio.
+- `postMessage`: validar siempre `event.origin` contra una lista blanca y la forma del `data`.
+
+### 15.8 Datos sensibles y secretos en el front
+
+- **Todo lo que está en el bundle es público**: `environment.ts`, `appsettings.json` (§10.4),
+  constantes, source maps. **Nunca** claves de API privadas, connection strings ni secretos. Si una
+  integración necesita secreto, pasa por el backend.
+- Source maps desactivados en producción (`"sourceMap": false`, default) o subidos solo a la
+  herramienta de monitoreo, nunca públicos.
+- **Nunca** PII, tokens ni respuestas completas en `console.*`. El build de producción no debe
+  dejar `console.log` de depuración.
+- `localStorage` solo para preferencias no sensibles (tema, tamaño de página).
+- Mensajes de error al usuario: genéricos. Nunca stack traces, SQL ni detalles internos del
+  `ProblemDetails` (§10.3).
+- Descargas: `URL.revokeObjectURL()` después de usar un blob. Nombres de archivo del backend
+  sanitizados antes de usarlos.
+- Uploads: validar tipo y tamaño en el front (UX) **y** en el backend (seguridad). Nunca renderizar
+  un SVG subido por el usuario con `[innerHTML]`.
+- **El agente no lee secretos.** En Claude Code el instalador agrega a `permissions.deny` (solo si el
+  usuario no tiene su propia lista): `~/.ssh/**`, `~/.aws/credentials`, `.env`, `.env.*`, `*.pem`,
+  `*.key`, `*.pfx` y `secrets/**`. Bloquea Read/Edit/Write, no `cat` por Bash: nunca leer esos
+  archivos por otra vía. Si una tarea necesita un valor, pedírselo al usuario o usar un placeholder.
+
+### 15.9 Cabeceras de seguridad en IIS
+
+Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
+
+```xml
+<httpProtocol>
+  <customHeaders>
+    <remove name="X-Powered-By" />
+    <add name="Strict-Transport-Security" value="max-age=31536000; includeSubDomains" />
+    <add name="X-Content-Type-Options" value="nosniff" />
+    <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
+    <add name="Permissions-Policy" value="camera=(), microphone=(), geolocation=()" />
+    <!-- script-src/style-src los define autoCsp (§15.4); acá solo lo que el meta tag no cubre -->
+    <add name="Content-Security-Policy" value="object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'" />
+  </customHeaders>
+</httpProtocol>
+<security>
+  <requestFiltering removeServerHeader="true" />
+</security>
+```
+
+- HSTS solo con HTTPS funcionando en todo el dominio (y subdominios si se incluye
+  `includeSubDomains`).
+- Ajustar `Permissions-Policy` a lo que la app usa de verdad.
+- Verificar el resultado con las DevTools (pestaña Network → Headers) después del deploy.
+
+### 15.10 Supply chain: dependencias y build
+
+- Instalar en CI con **`npm ci`** (respeta el `package-lock.json`). El lockfile siempre se commitea.
+- **`npm audit --omit=dev`** en CI. Vulnerabilidad `high`/`critical` en dependencias de runtime
+  bloquea el merge.
+- Antes de sumar una dependencia: mantenimiento activo, descargas, licencia, vulnerabilidades
+  conocidas y si la funcionalidad se resuelve con el framework. Menos dependencias, menos superficie.
+- Mantener Angular al día con `ng update` (los parches de seguridad salen para las versiones con
+  soporte).
+- Scripts externos (CDN) solo con **Subresource Integrity** (`integrity` + `crossorigin`).
+- Dependabot / Renovate activos en el repo.
+
+#### Auditoría de dependencias: siempre, no solo en CI
+
+El agente corre `npm audit` por su cuenta. No espera al CI ni a que se lo pidan.
+
+**Cuándo:**
+- Al empezar a trabajar en un proyecto, junto al Paso 0 (graphify).
+- Después de cualquier cambio en `package.json` o `package-lock.json`: `npm install`, `npm update`, `ng update` o una dependencia nueva.
+- Sin cambios de dependencias no se repite antes de entregar: el lockfile es el mismo y el CI lo vuelve a
+  correr con la base de vulnerabilidades del día.
+
+**Cómo:**
+```bash
+npm audit --omit=dev   # runtime: lo que llega al navegador del usuario
+npm audit              # completo: incluye el tooling de build (dev)
+```
+
+**Qué hacer con el resultado:**
+- **Reportar todo hallazgo**, también los del chequeo inicial aunque la tarea no toque dependencias. Una línea por hallazgo: severidad, paquete, de qué dependencia viene y si hay fix.
+- **`high` / `critical` en runtime**: avisar antes de entregar. Si los trajo el cambio, bloquean la entrega igual que en CI; si ya estaban, se reportan y decide el usuario.
+- **Corregir** con `npm audit fix`, solo si la tarea toca dependencias o el usuario lo pide. Después, build y prueba de la app.
+- **Nunca `npm audit fix --force` sin preguntar**: instala versiones mayores con cambios que rompen.
+- **Sin fix disponible**: reportarlo y proponer una salida, sin aplicarla sin aprobación. Opciones: `overrides` en `package.json`, reemplazar la dependencia o sacarla si se resuelve con el framework.
+- Vulnerabilidades solo en `dev`: reportar con menor prioridad. No llegan al usuario, pero sí corren en las máquinas de build.
+
+### 15.11 Blue Team: detección, logging y respuesta
+
+- El `errorInterceptor` (§5.3) reporta al backend los eventos de seguridad: 401 y 403 repetidos,
+  errores de CSP, fallos de validación de token. **Sin** datos sensibles en el payload.
+- CSP con `report-to` / `report-uri` hacia un endpoint del backend para detectar intentos de XSS y
+  scripts inyectados.
+- Monitoreo de errores del front (con PII filtrada) para ver picos anómalos.
+- Ante una vulnerabilidad confirmada: contener (feature flag o rollback), corregir, rotar lo
+  expuesto (tokens, claves), revisar los logs y documentar la lección en `tasks/lessons.md` (§11.8).
+
+### 15.12 Verificación manual de seguridad
+
+Sin archivos de test (§8). Antes de entregar, probar a mano en la app:
+
+- Todo componente o pipe que renderiza datos externos: cargar `<img src=x onerror="alert(1)">` como
+  dato. Debe verse como texto, sin `<img>` en el DOM (DevTools → Elements) y sin alerta.
+- `authInterceptor`: en DevTools → Network, el header `Authorization` **no** viaja a orígenes externos.
+- Validador de `returnUrl`: `//evil.com`, `/\evil.com`, `https://evil.com` y `javascript:alert(1)`
+  terminan en la ruta por defecto.
+
+### 15.13 Mapa OWASP Top 10 (2025)
+
+| OWASP | Dónde se cubre |
+| :--- | :--- |
+| A01 Broken Access Control | §15.5 (autorización en backend, guards como UX), §15.2 (IDOR) |
+| A02 Security Misconfiguration | §15.4, §15.9 |
+| A03 Software Supply Chain Failures | §15.10 |
+| A04 Cryptographic Failures | §15.5 (HTTPS, cookies `Secure`), §15.9 (HSTS) |
+| A05 Injection (XSS) | §15.3, §15.4 |
+| A06 Insecure Design | §15.2 |
+| A07 Authentication Failures | §15.5 |
+| A08 Software or Data Integrity Failures | §15.10 (lockfile, SRI) |
+| A09 Logging & Alerting Failures | §15.11 |
+| A10 Mishandling of Exceptional Conditions | §15.8 (errores genéricos), §15.5 (401/403) |
+
+### 15.14 Pedido explícito de seguridad (auditoría completa red + blue)
+
+§15.1–15.2 cubren **cada cambio**. Cuando el usuario pide seguridad a secas ("revisá la seguridad",
+"auditá esto", "¿es seguro?"), el alcance es **todo el código tocado o el que se indique**, no solo el
+último diff. Para el equipo la seguridad es prioridad: se revisan **todas las áreas**, ninguna se
+saltea en silencio, y la profundidad de cada una la decide el agente según lo que encuentra.
+
+1. **Delimitar el alcance.** Preguntar qué auditar si no está claro: el diff actual, una feature, un
+   módulo o todo el repo.
+2. **Orientar con graphify** (`graphify query`) para ubicar entradas, interceptores, render de datos
+   externos, auth, uploads, llamadas a terceros y límites de confianza. Una sola pasada alimenta a
+   todas las herramientas.
+3. **Revisión base de todas las áreas.** Recorrer la tabla de abajo completa. Cada área termina en
+   uno de tres estados: **OK** (con la evidencia, `archivo:línea`), **hallazgo** o **N/A** (con el
+   motivo: "no hay uploads en el alcance"). Incluye la tabla de §15.2 (Red Team), las defensas de
+   §15.3–15.11 (Blue Team) y `npm audit --omit=dev` + `npm audit` (§15.10; en .NET, `dotnet list
+   package --vulnerable`).
+4. **Profundizar donde haga falta.** Por cada área, invocar su herramienta profunda (tabla) cuando se
+   da **cualquiera** de estas condiciones:
+   - la revisión base encontró un hallazgo o una señal dudosa;
+   - el área es sensible: auth, tokens, pagos, datos personales, uploads, permisos por usuario;
+   - el alcance es una feature completa o todo el repo.
+
+   Un área N/A no se profundiza. Solo sobre el código propio o entornos autorizados (§15.1).
+5. **Auditoría general** (alcance feature o repo): correr además la skill `security-audit`
+   (Cloudflare) y el plugin `claude-security` (Anthropic), que buscan lo que la tabla no anticipa.
+   Ambos verifican cada hallazgo antes de reportarlo. En un diff chico no: alcanza con los pasos 3–4.
+6. **Priorizar** por riesgo (crítico → bajo), mapeado a OWASP (§15.13). Una línea por hallazgo:
+   archivo, línea, riesgo, fix propuesto. Triage de hallazgos dudosos o de scanners:
+   `performing-web-application-vulnerability-triage`. Redacción: `offensive-reporting`.
+7. **Corregir.** Lo que está dentro del alcance se corrige; `high`/`critical` bloquean la entrega. Lo
+   que queda fuera del alcance se reporta y se pregunta antes de tocarlo (§15.1). Nunca desactivar una
+   protección para "arreglar".
+8. **Reverificar.** Tras cada fix, build + prueba manual (§15.12). Documentar la lección en
+   `tasks/lessons.md` (§11.8).
+9. **Reporte de cobertura.** Además de los hallazgos, una tabla con cada área, su estado
+   (OK / hallazgo / N/A) y la herramienta usada. Así se ve qué se revisó y qué no aplicaba.
+
+| Área | Revisión base | Herramienta profunda |
+| :--- | :--- | :--- |
+| XSS y render de datos | §15.2, §15.3 | `offensive-xss`, `testing-for-xss-vulnerabilities` |
+| Prototype pollution (merge/clone de JSON externo) | §15.2 | `exploiting-prototype-pollution-in-javascript` |
+| CSP y Trusted Types | §15.4 | `security-audit` |
+| Auth, tokens y JWT | §15.5 | `offensive-jwt`, `testing-for-json-web-token-vulnerabilities`, `implementing-jwt-signing-and-verification` |
+| OAuth2 / OIDC | §15.5 | `offensive-oauth`, `configuring-oauth2-authorization-flow`, `performing-oauth-scope-minimization-review` |
+| Autorización / IDOR | §15.2, §15.5 | `offensive-idor`, `offensive-business-logic` |
+| CSRF / XSRF | §15.6 | `performing-csrf-attack-simulation` |
+| CORS | §15.9 | `testing-cors-misconfiguration` |
+| Redirects y navegación | §15.7 | `offensive-open-redirect` |
+| Secretos y PII | §15.8 | `implementing-secret-scanning-with-gitleaks` |
+| Cabeceras (IIS) | §15.9 | `security-audit` |
+| API (REST, GraphQL, WebSocket) | §15.2 | `offensive-api-security`, `testing-api-security-with-owasp-top-10`, `offensive-graphql` |
+| Inyección en backend (SQL, SSRF, SSTI, XXE, deserialización) | §15.2 | `offensive-sqli`, `offensive-ssrf`, `offensive-ssti`, `offensive-xxe`, `offensive-deserialization` |
+| Uploads | §15.2 | `offensive-file-upload` |
+| Concurrencia y parámetros | §15.2 | `offensive-race-condition`, `offensive-parameter-pollution`, `offensive-request-smuggling` |
+| Dependencias y supply chain | §15.10 | `detecting-malicious-npm-packages`, `detecting-typosquatting-packages-in-npm-pypi`, `offensive-dependency-confusion`, `offensive-supply-chain`, `generating-and-analyzing-sboms` |
+| Logging y respuesta (Blue Team) | §15.11 | `security-audit` |
+
+**Eficiencia sin perder cobertura:** la revisión base de todas las áreas es obligatoria; lo que se
+dosifica es la profundidad. No releer lo mismo para cada skill: pasarles los `archivo:línea` que ya
+ubicó graphify. Delegar el barrido por área a subagentes en paralelo cuando cumple la regla de §14.3.4
+(3+ archivos a leer, lo leído 3x o más que lo necesario);
+la priorización, la corrección y la decisión final quedan en el modelo principal. Si falta una skill
+de la tabla, instalarla (`npx github:MRydex/skills-frontend-mrydex`) y avisar en una línea; si no se puede, hacer
+esa área con la revisión base y decirlo en el reporte de cobertura.
+
+---
