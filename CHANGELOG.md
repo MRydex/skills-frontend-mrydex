@@ -5,6 +5,8 @@ Para actualizar en un proyecto: `npx skills-frontend-mrydex@latest`.
 
 ## [Unreleased]
 
+## [1.32.3] - 2026-10-29
+
 ### Instalador
 
 - `-t <ruta>` ya no borra una carpeta con contenido que no es una instalación de la skill (ej. `-t .`).
