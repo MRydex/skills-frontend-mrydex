@@ -221,6 +221,7 @@ motivo). Ninguna se saltea en silencio.
 | Calidad | Bugs de lógica, errores sin manejar, convenciones de la skill ([checklists.md](./checklists.md)), legibilidad, sobreingeniería (§11.7.1) | `code-review-and-quality`, `ponytail-audit`, `revisor-checklist` |
 | Eficiencia | Bundle fuera de budget (§9.8), rutas no lazy (§9.6), falta de `@defer` (§9.3), `@for` sin `track` estable (§9.4), `computed` caro o funciones en el template (§9.10), leaks (§9.11), imágenes sin `NgOptimizedImage` (§9.5), listas largas sin virtual scroll (§9.9), requests repetidas o en cascada | `performance-optimization`, `ng build --stats-json`, Lighthouse |
 | Código duplicado | Componentes, lógica, templates y estilos copiados | `npx jscpd src --min-tokens 50 --reporters console` |
+| Dependencias | Vulnerabilidades (runtime y dev), paquetes deprecados o sin uso | `npm audit --omit=dev`, `npm audit`, `npm outdated` (informativo), `npx knip` |
 | Código sin uso | Archivos, exports, componentes, servicios, dependencias, imports standalone, variables, parámetros, clases SCSS | `npx knip`, `ng build` (diagnóstico `unusedStandaloneImports`), `npx tsc --noEmit -p tsconfig.app.json --noUnusedLocals --noUnusedParameters`, `grep` de cada clase del `.scss` en su template |
 
 **Pasos:**
@@ -237,6 +238,10 @@ motivo). Ninguna se saltea en silencio.
    evidencia, acción y riesgo. Orden: bugs, dependencias sin uso (bundle y supply chain), eficiencia
    con impacto medible, lógica duplicada, el resto.
 5. **Corregir**, en tandas chicas (§11.4) y sin cambiar comportamiento:
+   - Vulnerabilidades: corregirlas siempre, primero las de runtime (§15.10). `npm audit fix`; lo que
+     pide versión mayor (`--force`), `overrides` o reemplazar el paquete se pregunta antes. Después:
+     `npm ci`, build, prueba manual de lo que usa el paquete y `npm audit` de nuevo hasta que no quede
+     nada corregible. Lo que no tiene fix se reporta con la salida propuesta.
    - Código sin uso verificado: borrarlo, no comentarlo. Dependencia sin uso: `npm uninstall` y
      `npm audit`.
    - Duplicados: unificar con la forma de §1.5 (componente, directiva, pipe, servicio o capa ITCSS),

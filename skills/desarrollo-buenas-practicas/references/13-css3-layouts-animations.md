@@ -27,6 +27,10 @@
 - 13.23 Accesibilidad y rendimiento
 - 13.24 Imágenes de fondo por densidad de pantalla (`image-set()`)
 - 13.25 Entrada/salida en Angular (`animate.enter` / `animate.leave`) con un solo `@keyframes`
+- 13.26 Medios sin layout shift (`aspect-ratio` + `object-fit`)
+- 13.27 Unidades de viewport dinámicas (`dvh`, `svh`, `lvh`)
+- 13.28 Gráficos simples con `conic-gradient()`
+- 13.29 Contadores animados sin JavaScript (`@property` + `counter()`)
 
 > Este archivo cubre CSS genérico (aplica a cualquier stack). Para convenciones SCSS del equipo en
 > Angular (`@use`/`@forward`, BEM, `:host`, encapsulación, theming de NG-ZORRO) ver
@@ -735,5 +739,107 @@ espera a que termine la animación CSS y recién ahí saca el elemento.
   se percibe más ágil.
 - Clases con BEM anidado (§7.3) y `prefers-reduced-motion` contemplado (§13.23).
 - Para `<dialog>` / popovers sin `@if`, alcanza con `@starting-style` (§13.19).
+
+### 13.26 Medios sin layout shift (`aspect-ratio` + `object-fit`)
+
+Una imagen sin espacio reservado empuja el contenido cuando carga (CLS). Con `NgOptimizedImage`,
+`width`/`height` ya lo reservan (§9.5). Cuando el alto depende del ancho (miniaturas de proporción
+fija, `ngSrc` con `fill`, `<video>`, `<iframe>`), reservar con `aspect-ratio`:
+
+```scss
+.miniatura {
+  display: block;               // sin el hueco de línea de base de un inline
+  inline-size: 100%;
+  aspect-ratio: 4 / 3;          // reserva el alto antes de que llegue la imagen
+  object-fit: cover;            // recorta sin deformar si la proporción real difiere
+  background: light-dark(var.$color-bg-light, var.$color-bg-dark); // placeholder mientras carga
+}
+```
+
+- `object-fit: cover` recorta; `contain` muestra la imagen entera con bandas. `object-position`
+  elige qué parte se conserva.
+- Con `fill`, el `aspect-ratio` va en el contenedor `position: relative`, no en la imagen.
+- Baseline desde 2021.
+
+### 13.27 Unidades de viewport dinámicas (`dvh`, `svh`, `lvh`)
+
+En mobile `100vh` mide el viewport con la barra del navegador oculta: el contenido queda tapado.
+`100dvh` sigue el alto visible real; `svh` es el mínimo (barras visibles) y `lvh` el máximo.
+
+```scss
+.layout {
+  display: grid;
+  grid-template-rows: auto 1fr;  // header a su alto, main el resto
+  min-block-size: 100dvh;
+}
+```
+
+- Preferir Grid a `calc(100dvh - 80px)`: el número mágico se rompe cuando el header cambia de alto.
+- `min-block-size`, no `height` fijo: el contenido más largo que la pantalla no se desborda.
+- `dvh` se recalcula al hacer scroll en mobile: para algo que no debe saltar, `svh`.
+- Baseline desde 2022.
+
+### 13.28 Gráficos simples con `conic-gradient()`
+
+Un indicador de porcentaje o una torta de pocas porciones no necesita librería de gráficos:
+
+```scss
+.torta {
+  inline-size: 8rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: conic-gradient(
+    var.$color-primary calc(var(--pct) * 1%),
+    light-dark(var.$color-bg-light, var.$color-bg-dark) 0
+  );
+}
+```
+
+```html
+<div class="torta" [style.--pct]="avance()" role="img" [attr.aria-label]="'Avance: ' + avance() + '%'"></div>
+```
+
+- `role="img"` + `aria-label` con el dato: el fondo no lo lee un lector de pantalla.
+- Colores con contraste AA entre porciones (§3.1) y el dato también en texto si es importante.
+- Más de 4–5 series, ejes, tooltips o interacción: librería de gráficos.
+- Baseline desde 2020.
+
+### 13.29 Contadores animados sin JavaScript (`@property` + `counter()`)
+
+Registrar la custom property con tipo deja que el navegador la interpole en `@keyframes`;
+`counter()` la muestra como texto.
+
+```scss
+@property --num {
+  syntax: "<integer>";   // counter-reset necesita entero
+  inherits: false;
+  initial-value: 0;      // obligatorio: sin él se ignora la regla entera
+}
+
+.contador {
+  counter-reset: num var(--num);
+  animation: contar 1.5s ease-out;
+
+  &::after { content: counter(num); }
+}
+
+@keyframes contar {
+  from { --num: 0; }     // solo from: el final es el valor real del elemento
+}
+```
+
+```html
+<span class="contador" [style.--num]="total()" role="img" [attr.aria-label]="total()"></span>
+```
+
+- El valor final va en el elemento y la animación solo arranca de 0: con el reset global de
+  `prefers-reduced-motion` (§13.23, `animation: none`) se ve el número final, no 0.
+- Sin soporte de `@property` la propiedad no se interpola: muestra 0 hasta la mitad de la animación y
+  salta al final. Aceptable para un KPI decorativo; si no lo es, no animar.
+- El texto de `::after` no siempre lo leen los lectores de pantalla: el número va también en
+  `aria-label` o en texto oculto visualmente.
+- Solo números enteros decorativos (KPIs). Montos con formato (moneda, separadores): pipe en el
+  template.
+- Baseline desde julio de 2024.
 
 ---

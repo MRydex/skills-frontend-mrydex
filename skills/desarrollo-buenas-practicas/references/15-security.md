@@ -215,7 +215,10 @@ this._router.navigateByUrl(destino);
   herramienta de monitoreo, nunca públicos.
 - **Nunca** PII, tokens ni respuestas completas en `console.*`. El build de producción no debe
   dejar `console.log` de depuración.
-- `localStorage` solo para preferencias no sensibles (tema, tamaño de página).
+- `localStorage` solo para preferencias no sensibles (tema, tamaño de página). No vence solo: si el
+  dato caduca, guardar `{ valor, venceEn: Date.now() + ttlMs }`, y al leer descartar y borrar lo
+  vencido o lo que no tenga esa forma (`JSON.parse` en `try/catch`: el storage lo edita cualquiera).
+  Un vencimiento en el cliente no es control de seguridad.
 - Mensajes de error al usuario: genéricos. Nunca stack traces, SQL ni detalles internos del
   `ProblemDetails` (§10.3).
 - Descargas: `URL.revokeObjectURL()` después de usar un blob. Nombres de archivo del backend
@@ -284,7 +287,7 @@ npm audit              # completo: incluye el tooling de build (dev)
 **Qué hacer con el resultado:**
 - **Reportar todo hallazgo**, también los del chequeo inicial aunque la tarea no toque dependencias. Una línea por hallazgo: severidad, paquete, de qué dependencia viene y si hay fix.
 - **`high` / `critical` en runtime**: avisar antes de entregar. Si los trajo el cambio, bloquean la entrega igual que en CI; si ya estaban, se reportan y decide el usuario.
-- **Corregir** con `npm audit fix`, solo si la tarea toca dependencias o el usuario lo pide. Después, build y prueba de la app.
+- **Corregir** con `npm audit fix`, solo si la tarea toca dependencias o el usuario lo pide (todo pedido de auditoría cuenta, §11.9). Después, `npm ci`, build, prueba de la app y `npm audit` de nuevo para confirmar que no quedó nada.
 - **Nunca `npm audit fix --force` sin preguntar**: instala versiones mayores con cambios que rompen.
 - **Sin fix disponible**: reportarlo y proponer una salida, sin aplicarla sin aprobación. Opciones: `overrides` en `package.json`, reemplazar la dependencia o sacarla si se resuelve con el framework.
 - Vulnerabilidades solo en `dev`: reportar con menor prioridad. No llegan al usuario, pero sí corren en las máquinas de build.
@@ -391,8 +394,10 @@ saltea en silencio, y la profundidad de cada una la decide el agente según lo q
 | Logging y respuesta (Blue Team) | §15.11 | `analyzing-web-server-logs-for-intrusion`, `security-audit` |
 
 **Pruebas en vivo (network).** Escaneo de puertos, evaluación TLS y cabeceras contra un host real son
-acciones hacia afuera. Solo contra hosts propios y autorizados: confirmar host y ambiente con el
-usuario antes de correrlas; producción solo con OK explícito. Sin URL disponible, revisar la
+acciones hacia afuera. Solo contra hosts propios y autorizados. Es lo único que la auditoría
+pregunta (el alcance no): host y ambiente, una sola vez y al empezar; producción solo con OK
+explícito. Mientras no hay respuesta, se avanza con la revisión de
+código. Sin URL disponible, revisar la
 configuración (`web.config`, bindings de IIS) y marcar el área como "sin prueba en vivo" en la
 cobertura.
 

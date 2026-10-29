@@ -436,6 +436,23 @@ del viewport).
 <!-- montoFormateado viene de un computed()/mapper aplicado una vez sobre el resource (§4.6) -->
 ```
 
+- Cruzar dos listas: `find` / `includes` / `some` dentro de un loop o `filter` es O(n²). Armar un
+  `Set` (existencia) o `Map` (por id) una vez y consultar con `has` / `get`, O(n) total. Dentro de un
+  `computed()`, así se recalcula barato.
+
+```ts
+// ❌ O(n²): recorre pedidos por cada usuario
+readonly conPedidos = computed(() =>
+  this.usuarios().filter((u) => this.pedidos().some((p) => p.usuarioId === u.id)),
+);
+
+// ✅ O(n): un Set, una pasada
+readonly conPedidos = computed(() => {
+  const ids = new Set(this.pedidos().map((p) => p.usuarioId));
+  return this.usuarios().filter((u) => ids.has(u.id));
+});
+```
+
 ### 9.11 Memory leaks: `DestroyRef` y `takeUntilDestroyed`
 
 El estado del equipo es signals (§2.5/§2.9), así que la superficie para leaks de suscripciones es

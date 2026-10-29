@@ -5,17 +5,29 @@ Para actualizar en un proyecto: `npx skills-frontend-mrydex@latest`.
 
 ## [Unreleased]
 
+## [1.32.1] - 2026-10-29
+
 ### Skill `desarrollo-buenas-practicas`
 
-- Auditoría de código sin usar, duplicado y optimizable (§11.9, regla 10): todo pedido de
-  auditoría la suma a la de seguridad. Herramientas, verificación de falsos positivos, reporte
-  priorizado y correcciones en tandas (borrar sin uso, unificar duplicados, optimizar).
-- Auditar = control de calidad completo (§11.9): calidad, eficiencia, duplicado y sin uso, con
-  tabla de cobertura por área.
-- Auditoría de seguridad (§15.14): corre con todo "auditá" a secas (junto con la de calidad) o pedido de
-  seguridad; suma modelo de
-  amenazas, network (TLS, superficie expuesta, cabeceras, WebSocket) y Blue Team, con pruebas en vivo
-  solo contra hosts autorizados. El instalador agrega las skills de network y Blue Team.
+- Auditar = control de calidad completo (§11.9, regla 10): calidad, eficiencia, dependencias,
+  código duplicado y sin uso, con tabla de cobertura por área, candidatos verificados contra uso
+  dinámico y correcciones en tandas (borrar sin uso, unificar duplicados, optimizar).
+- "Auditá" a secas corre además la auditoría de seguridad completa (§15.14); solo seguridad corre
+  solo §15.14; solo calidad suma la seguridad base.
+- Auditoría de seguridad red + blue + network (§15.14): modelo de amenazas, TLS, superficie expuesta,
+  cabeceras, clickjacking, WebSocket y logs; pruebas en vivo solo contra hosts autorizados.
+- `npm audit` en la auditoría: corrige vulnerabilidades, reverifica con `npm ci`, build y
+  `npm audit` de nuevo (§11.9, §15.10).
+- CSS: medios sin layout shift con `aspect-ratio` + `object-fit` (§13.26), `dvh`/`svh`/`lvh`
+  (§13.27), gráficos con `conic-gradient()` (§13.28), contadores con `@property` + `counter()`
+  (§13.29).
+- Rendimiento: cruce de listas con `Set`/`Map` en vez de `find`/`some` en loop (§9.10).
+- `localStorage` con vencimiento y lectura defensiva (§15.8).
+
+### Instalador
+
+- Skills de network y Blue Team (TLS, cabeceras, host header, cache poisoning, clickjacking,
+  WebSocket, nmap, logs, threat modeling) y `offensive-tls-attacks`, `offensive-network-attacks`.
 
 ## [1.32.0] - 2026-10-28
 
