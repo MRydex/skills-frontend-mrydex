@@ -5,6 +5,16 @@ Para actualizar en un proyecto: `npx skills-frontend-mrydex@latest`.
 
 ## [Unreleased]
 
+### Instalador
+
+- uv se instala desde el binario de la última versión publicada, verificado con el `sha256.sum`
+  del mismo release antes de copiarlo a `~/.local/bin`; ya no `irm | iex` ni `curl | sh`. Solo usa
+  Node (sin curl, wget ni tar del sistema) y cubre Windows, macOS y Linux en todas las
+  arquitecturas que publica uv (x64, arm64, 32 bits, ARM, riscv64, ppc64le, s390x).
+- `engines.node >= 18` en `package.json` (usa `fetch`).
+- `~/.claude/settings.json` y el bloque de `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` se escriben con
+  copia `.bak` y reemplazo atómico; un corte a mitad ya no deja el archivo roto.
+
 ## [1.32.3] - 2026-10-29
 
 ### Instalador

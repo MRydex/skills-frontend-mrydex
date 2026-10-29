@@ -39,6 +39,9 @@
     "url": "https://github.com/MRydex/skills-frontend-mrydex/issues"
   },
   "homepage": "https://github.com/MRydex/skills-frontend-mrydex#readme",
+  "engines": {
+    "node": ">=18"
+  },
   "files": [
     "bin",
     "skills",

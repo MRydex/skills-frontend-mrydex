@@ -11,7 +11,9 @@ const path = require('path');
 const os = require('os');
 const readline = require('readline');
 const { spawnSync } = require('child_process');
-const { installSubagents, readClaudeSettings } = require('./subagents');
+const crypto = require('crypto');
+const zlib = require('zlib');
+const { installSubagents, readClaudeSettings, writeFileSafe } = require('./subagents');
 
 // ANSI color helpers
 const colors = {
@@ -270,14 +272,104 @@ function addUvBinToPath() {
   if (!process.env.PATH.split(path.delimiter).includes(binDir)) process.env.PATH = `${binDir}${path.delimiter}${process.env.PATH}`;
 }
 
-// Sin Python ni uv: instala uv (binario único, sin admin), que trae su propio Python 3.13.
+// uv de la última versión publicada, verificado con el `sha256.sum` del mismo release: un archivo
+// corrupto o cambiado en el camino no se instala. Todo con Node (sin curl, wget ni tar del sistema),
+// binario estático (musl) en Linux y sin admin. Clave: `${process.platform}-${process.arch}`.
+const UV_RELEASE = 'https://github.com/astral-sh/uv/releases/latest/download';
+const UV_TARGETS = {
+  'win32-x64': 'x86_64-pc-windows-msvc', 'win32-arm64': 'aarch64-pc-windows-msvc', 'win32-ia32': 'i686-pc-windows-msvc',
+  'darwin-x64': 'x86_64-apple-darwin', 'darwin-arm64': 'aarch64-apple-darwin',
+  'linux-x64': 'x86_64-unknown-linux-musl', 'linux-arm64': 'aarch64-unknown-linux-musl',
+  'linux-ia32': 'i686-unknown-linux-musl', 'linux-arm': 'arm-unknown-linux-musleabihf',
+  'linux-riscv64': 'riscv64gc-unknown-linux-musl', 'linux-ppc64': 'powerpc64le-unknown-linux-gnu',
+  'linux-s390x': 's390x-unknown-linux-gnu',
+};
+
+// Comillas simples de PowerShell: una ruta con apóstrofo (usuario O'Brien) no corta el comando.
+const psQuote = (text) => `'${text.replaceAll("'", "''")}'`;
+
+// Descarga con el fetch de Node en un proceso hijo (el instalador es síncrono). Respeta HTTPS_PROXY
+// si Node lo soporta (NODE_USE_ENV_PROXY). Si falla (proxy del sistema que Node no ve), prueba
+// curl, wget y PowerShell: alcanza con que uno exista.
+function download(url, outFile) {
+  const script = `fetch(process.argv[1]).then(async (r) => {
+    if (!r.ok) throw new Error(r.status);
+    require('fs').writeFileSync(process.argv[2], Buffer.from(await r.arrayBuffer()));
+  }).catch(() => process.exit(1));`;
+  const env = { ...process.env, NODE_USE_ENV_PROXY: '1' };
+  if (spawnSync(process.execPath, ['-e', script, url, outFile], { env }).status === 0) return true;
+  return runCommand('curl', ['-LsSf', url, '-o', outFile]).ok
+    || runCommand('wget', ['-q', '-O', outFile, url]).ok
+    || runCommand('powershell', ['-NoProfile', '-Command',
+      `Invoke-WebRequest -UseBasicParsing -Uri ${psQuote(url)} -OutFile ${psQuote(outFile)}`]).ok;
+}
+
+// Extrae un archivo de un .tar.gz con zlib de Node: cabeceras de 512 bytes, tamaño en octal.
+function extractFromTarGz(archivePath, fileName) {
+  const tar = zlib.gunzipSync(fs.readFileSync(archivePath));
+  for (let offset = 0; offset + 512 <= tar.length;) {
+    const name = tar.toString('utf8', offset, offset + 100).replace(/\0.*$/s, '');
+    if (!name) break;
+    const size = parseInt(tar.toString('utf8', offset + 124, offset + 136).replace(/\0.*$/s, '').trim() || '0', 8);
+    const isFile = tar[offset + 156] === 0x30 || tar[offset + 156] === 0; // '0' o '\0'; no metadatos PAX
+    if (isFile && path.posix.basename(name) === fileName) return tar.subarray(offset + 512, offset + 512 + size);
+    offset += 512 + Math.ceil(size / 512) * 512;
+  }
+  return null;
+}
+
+// Windows trae tar.exe (lee .zip) desde Windows 10; PowerShell queda como respaldo.
+function extractZip(archivePath, destDir) {
+  const systemTar = path.join(process.env.SystemRoot ?? 'C:\Windows', 'System32', 'tar.exe');
+  return (fs.existsSync(systemTar) && runCommand(systemTar, ['-xf', archivePath, '-C', destDir]).ok)
+    || runCommand('powershell', ['-NoProfile', '-Command',
+      `Expand-Archive -LiteralPath ${psQuote(archivePath)} -DestinationPath ${psQuote(destDir)} -Force`]).ok;
+}
+
+// Sin Python ni uv: instala uv en ~/.local/bin (mismo lugar que su instalador oficial), que trae su
+// propio Python 3.13.
 function bootstrapUv() {
-  const { ok } = process.platform === 'win32'
-    ? runCommand('powershell', ['-NoProfile', '-ExecutionPolicy', 'ByPass', '-Command', 'irm https://astral.sh/uv/install.ps1 | iex'])
-    : runCommand('sh', ['-c', 'curl -LsSf https://astral.sh/uv/install.sh | sh']);
-  addUvBinToPath();
-  if (ok) logOk('uv instalado');
-  return ok;
+  const target = UV_TARGETS[`${process.platform}-${process.arch}`];
+  if (!target) {
+    console.log(`  ${colors.yellow}⚠${colors.reset} uv no publica binario para ${process.platform}-${process.arch}: instalar Python 3.10+ con pip`);
+    return false;
+  }
+  const isWindows = process.platform === 'win32';
+  const archive = `uv-${target}.${isWindows ? 'zip' : 'tar.gz'}`;
+  const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'uv-'));
+  try {
+    const archivePath = path.join(workDir, archive);
+    const sumsPath = path.join(workDir, 'sha256.sum');
+    if (!download(`${UV_RELEASE}/${archive}`, archivePath) || !download(`${UV_RELEASE}/sha256.sum`, sumsPath)) {
+      console.log(`  ${colors.yellow}⚠${colors.reset} No se pudo descargar uv de GitHub (¿sin red o proxy?)`);
+      return false;
+    }
+    const expected = fs.readFileSync(sumsPath, 'utf8').split('\n')
+      .find((line) => line.trim().endsWith(`*${archive}`))?.split(' ')[0];
+    const actual = crypto.createHash('sha256').update(fs.readFileSync(archivePath)).digest('hex');
+    if (!expected || actual !== expected) {
+      console.log(`  ${colors.yellow}⚠${colors.reset} uv descargado no coincide con su SHA-256 publicado: no se instaló`);
+      return false;
+    }
+    const binDir = path.join(os.homedir(), '.local', 'bin');
+    fs.mkdirSync(binDir, { recursive: true });
+    if (isWindows) {
+      if (!extractZip(archivePath, workDir)) return false;
+      for (const name of ['uv.exe', 'uvx.exe']) fs.copyFileSync(path.join(workDir, name), path.join(binDir, name));
+    } else {
+      for (const name of ['uv', 'uvx']) {
+        const content = extractFromTarGz(archivePath, name);
+        if (!content) return false;
+        fs.writeFileSync(path.join(binDir, name), content, { mode: 0o755 });
+      }
+    }
+    addUvBinToPath();
+    const ok = runCommand('uv', ['--version']).ok;
+    if (ok) logOk('uv instalado');
+    return ok;
+  } finally {
+    fs.rmSync(workDir, { recursive: true, force: true });
+  }
 }
 
 // Instala un paquete PyPI con el primer instalador que funcione; si no hay uv, lo trae y reintenta.
@@ -592,7 +684,7 @@ function enableClaudePlugins(homeDir, plugins) {
     }
     settings.enabledPlugins[id] = true;
   }
-  fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}
+  writeFileSafe(settingsPath, `${JSON.stringify(settings, null, 2)}
 `);
   logOk(`Claude Code: ${missing.map(({ id }) => id).join(', ')} activado en ~/.claude/settings.json`);
 }
@@ -945,7 +1037,7 @@ function installSessionStartHook(homeDir) {
   settings.permissions ??= {};
   settings.permissions.deny = [...new Set([...(settings.permissions.deny ?? []), ...SECRET_DENY])];
 
-  fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}
+  writeFileSafe(settingsPath, `${JSON.stringify(settings, null, 2)}
 `);
   logOk('Claude Code: hook SessionStart (Headroom)');
   if (settings.env.ANTHROPIC_BASE_URL === HEADROOM_URL) logOk(`Claude Code: modelo vía Headroom (${HEADROOM_URL})`);

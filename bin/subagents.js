@@ -187,13 +187,27 @@ const DELEGATION_FILES = [
   { label: 'Gemini CLI', requires: '.gemini', file: ['.gemini', 'GEMINI.md'] },
 ];
 
+// Escribe config global del usuario sin riesgo de dejarla a medias: copia la versión previa a
+// `<archivo>.bak` y reemplaza con rename (atómico), así un corte deja el archivo viejo o el nuevo.
+// Un symlink (dotfiles) se sigue hasta el archivo real: el rename no lo reemplaza por una copia.
+function writeFileSafe(linkPath, content) {
+  const filePath = fs.existsSync(linkPath) ? fs.realpathSync(linkPath) : linkPath;
+  if (fs.existsSync(filePath)) {
+    if (fs.readFileSync(filePath, 'utf8') === content) return;
+    fs.copyFileSync(filePath, `${filePath}.bak`);
+  }
+  const tmpPath = `${filePath}.${process.pid}.tmp`;
+  fs.writeFileSync(tmpPath, content);
+  fs.renameSync(tmpPath, filePath);
+}
+
 // Inserta o reemplaza el bloque marcado. El resto del archivo no se toca.
 function upsertBlock(filePath, block) {
   const current = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
   const start = current.indexOf(BLOCK_START);
   const end = current.indexOf(BLOCK_END);
   if (start !== -1 && end > start) {
-    fs.writeFileSync(filePath, current.slice(0, start) + block + current.slice(end + BLOCK_END.length));
+    writeFileSafe(filePath, current.slice(0, start) + block + current.slice(end + BLOCK_END.length));
     return;
   }
   // Un marcador sin su par (editado a mano): reemplazar borraría texto del usuario
@@ -203,7 +217,7 @@ function upsertBlock(filePath, block) {
   }
   let separator = '';
   if (current) separator = current.endsWith('\n') ? '\n' : '\n\n';
-  fs.writeFileSync(filePath, `${current}${separator}${block}\n`);
+  writeFileSafe(filePath, `${current}${separator}${block}\n`);
 }
 
 // Lee ~/.claude/settings.json: {} si no existe, null si no es un objeto JSON válido.
@@ -232,7 +246,7 @@ function allowGraphifyInClaude(homeDir, log) {
   const missing = GRAPHIFY_PERMISSIONS.filter((rule) => !settings.permissions.allow.includes(rule));
   if (missing.length === 0) return;
   settings.permissions.allow.push(...missing);
-  fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}
+  writeFileSafe(settingsPath, `${JSON.stringify(settings, null, 2)}
 `);
   log(`Claude Code: graphify permitido sin aprobación (${missing.join(', ')})`);
 }
@@ -269,4 +283,4 @@ function installSubagents({ homeDir, isDryRun, only, log }) {
   }
 }
 
-module.exports = { installSubagents, readClaudeSettings };
+module.exports = { installSubagents, readClaudeSettings, writeFileSafe };
