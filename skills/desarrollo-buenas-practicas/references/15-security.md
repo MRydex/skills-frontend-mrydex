@@ -15,7 +15,7 @@
 - 15.11 Blue Team: detección, logging y respuesta
 - 15.12 Verificación manual de seguridad
 - 15.13 Mapa OWASP Top 10 (2025)
-- 15.14 Pedido explícito de seguridad (auditoría completa red + blue)
+- 15.14 Pedido de seguridad (auditoría completa red + blue + network)
 
 ### 15.1 Regla general y modo de trabajo
 
@@ -324,18 +324,20 @@ Sin archivos de test (§8). Antes de entregar, probar a mano en la app:
 | A09 Logging & Alerting Failures | §15.11 |
 | A10 Mishandling of Exceptional Conditions | §15.8 (errores genéricos), §15.5 (401/403) |
 
-### 15.14 Pedido explícito de seguridad (auditoría completa red + blue)
+### 15.14 Pedido de seguridad (auditoría completa red + blue + network)
 
-§15.1–15.2 cubren **cada cambio**. Cuando el usuario pide seguridad a secas ("revisá la seguridad",
-"auditá esto", "¿es seguro?"), el alcance es **todo el código tocado o el que se indique**, no solo el
+§15.1–15.2 cubren **cada cambio**. Esta auditoría corre con todo pedido de auditoría a secas
+("auditá", "auditá la app"), junto con la pasada de calidad de §11.9, y sola cuando el pedido es solo
+de seguridad ("auditá la seguridad", "¿es seguro?", "pentest", "hardening"). El alcance es **todo el código tocado o el que se indique**, no solo el
 último diff. Para el equipo la seguridad es prioridad: se revisan **todas las áreas**, ninguna se
 saltea en silencio, y la profundidad de cada una la decide el agente según lo que encuentra.
 
-1. **Delimitar el alcance.** Preguntar qué auditar si no está claro: el diff actual, una feature, un
+1. **Delimitar el alcance.** Sin alcance en el pedido, todo el repo, sin preguntar; si no, lo indicado: el diff actual, una feature, un
    módulo o todo el repo.
 2. **Orientar con graphify** (`graphify query`) para ubicar entradas, interceptores, render de datos
    externos, auth, uploads, llamadas a terceros y límites de confianza. Una sola pasada alimenta a
-   todas las herramientas.
+   todas las herramientas. Alcance feature o repo: modelo de amenazas primero
+   (`performing-threat-modeling-with-owasp-threat-dragon`) para ordenar qué se ataca.
 3. **Revisión base de todas las áreas.** Recorrer la tabla de abajo completa. Cada área termina en
    uno de tres estados: **OK** (con la evidencia, `archivo:línea`), **hallazgo** o **N/A** (con el
    motivo: "no hay uploads en el alcance"). Incluye la tabla de §15.2 (Red Team), las defensas de
@@ -374,13 +376,25 @@ saltea en silencio, y la profundidad de cada una la decide el agente según lo q
 | CORS | §15.9 | `testing-cors-misconfiguration` |
 | Redirects y navegación | §15.7 | `offensive-open-redirect` |
 | Secretos y PII | §15.8 | `implementing-secret-scanning-with-gitleaks` |
-| Cabeceras (IIS) | §15.9 | `security-audit` |
+| Cabeceras (IIS) | §15.9 | `performing-security-headers-audit`, `security-audit` |
+| Clickjacking | §15.9 | `performing-clickjacking-attack-test` |
+| Host header y cache | §15.9 | `testing-for-host-header-injection`, `performing-web-cache-poisoning-attack` |
+| TLS y certificados (network) | §15.9 (HSTS, solo TLS 1.2/1.3, sin cifrados débiles, certificado válido y con renovación) | `performing-ssl-tls-security-assessment`, `configuring-tls-1-3-for-secure-communications`, `offensive-tls-attacks` |
+| Superficie expuesta (network) | Qué responde el host además de la app: `*.map` en producción, `web.config` o directorios listables, puertos y sitios extra en IIS, ambientes de prueba públicos | `scanning-network-with-nmap-advanced`, `offensive-network-attacks` |
+| Tiempo real (network) | §16: `wss://`, origen validado, token en la conexión | `testing-websocket-api-security`, `exploiting-websocket-vulnerabilities` |
+| Salidas a terceros (network) | §15.4: CSP `connect-src` limitada a orígenes propios, terceros listados, SRI | `security-audit` |
 | API (REST, GraphQL, WebSocket) | §15.2 | `offensive-api-security`, `testing-api-security-with-owasp-top-10`, `offensive-graphql` |
 | Inyección en backend (SQL, SSRF, SSTI, XXE, deserialización) | §15.2 | `offensive-sqli`, `offensive-ssrf`, `offensive-ssti`, `offensive-xxe`, `offensive-deserialization` |
 | Uploads | §15.2 | `offensive-file-upload` |
 | Concurrencia y parámetros | §15.2 | `offensive-race-condition`, `offensive-parameter-pollution`, `offensive-request-smuggling` |
 | Dependencias y supply chain | §15.10 | `detecting-malicious-npm-packages`, `detecting-typosquatting-packages-in-npm-pypi`, `offensive-dependency-confusion`, `offensive-supply-chain`, `generating-and-analyzing-sboms` |
-| Logging y respuesta (Blue Team) | §15.11 | `security-audit` |
+| Logging y respuesta (Blue Team) | §15.11 | `analyzing-web-server-logs-for-intrusion`, `security-audit` |
+
+**Pruebas en vivo (network).** Escaneo de puertos, evaluación TLS y cabeceras contra un host real son
+acciones hacia afuera. Solo contra hosts propios y autorizados: confirmar host y ambiente con el
+usuario antes de correrlas; producción solo con OK explícito. Sin URL disponible, revisar la
+configuración (`web.config`, bindings de IIS) y marcar el área como "sin prueba en vivo" en la
+cobertura.
 
 **Eficiencia sin perder cobertura:** la revisión base de todas las áreas es obligatoria; lo que se
 dosifica es la profundidad. No releer lo mismo para cada skill: pasarles los `archivo:línea` que ya

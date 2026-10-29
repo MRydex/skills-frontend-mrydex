@@ -5,6 +5,18 @@ Para actualizar en un proyecto: `npx skills-frontend-mrydex@latest`.
 
 ## [Unreleased]
 
+### Skill `desarrollo-buenas-practicas`
+
+- Auditoría de código sin usar, duplicado y optimizable (§11.9, regla 10): todo pedido de
+  auditoría la suma a la de seguridad. Herramientas, verificación de falsos positivos, reporte
+  priorizado y correcciones en tandas (borrar sin uso, unificar duplicados, optimizar).
+- Auditar = control de calidad completo (§11.9): calidad, eficiencia, duplicado y sin uso, con
+  tabla de cobertura por área.
+- Auditoría de seguridad (§15.14): corre con todo "auditá" a secas (junto con la de calidad) o pedido de
+  seguridad; suma modelo de
+  amenazas, network (TLS, superficie expuesta, cabeceras, WebSocket) y Blue Team, con pruebas en vivo
+  solo contra hosts autorizados. El instalador agrega las skills de network y Blue Team.
+
 ## [1.32.0] - 2026-10-28
 
 Actualizacion de version

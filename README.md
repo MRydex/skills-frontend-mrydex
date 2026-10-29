@@ -58,9 +58,9 @@ Siempre instala todo; no hay flags para saltear partes.
   siempre la skill y delegar solo cuando baja el total de tokens.
 - **caveman**: respuestas cortas (sin él salen 33% más largas).
 - **Seguridad**: [security-audit](https://github.com/cloudflare/security-audit-skill),
-  14 skills de [Anthropic-Cybersecurity-Skills](https://github.com/mukul975/Anthropic-Cybersecurity-Skills)
-  y 20 `offensive-*` de [claude-red](https://github.com/SnailSploit/claude-red), solo de web, API,
-  auth y supply chain. Plugin `claude-security` en Claude Code.
+  25 skills de [Anthropic-Cybersecurity-Skills](https://github.com/mukul975/Anthropic-Cybersecurity-Skills)
+  y 22 `offensive-*` de [claude-red](https://github.com/SnailSploit/claude-red), solo de web, API,
+  auth, supply chain y network (TLS, cabeceras, WebSocket, superficie expuesta). Plugin `claude-security` en Claude Code.
 - **Otras skills**: [emilkowalski/skills](https://github.com/emilkowalski/skills) (solo web),
   [ponytail](https://github.com/DietrichGebert/ponytail) y
   [agent-skills](https://github.com/addyosmani/agent-skills). Plugin `claude-code-setup` en Claude Code.

@@ -194,6 +194,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿`npm audit` y `npm audit --omit=dev` corridos después del último cambio de dependencias, con los hallazgos reportados y sin `high`/`critical` de runtime nuevos? ¿`npm ci` en CI? ¿Dependencia nueva evaluada? ¿SRI en scripts externos? (§15.10)
 - [ ] ¿Eventos de seguridad reportados sin datos sensibles? (§15.11)
 - [ ] ¿Payload XSS probado a mano en componentes/pipes que renderizan datos externos? (§15.12)
+- [ ] ¿"Auditá" a secas o pedido de seguridad? ¿Auditoría completa red + blue + network con cobertura por área, y pruebas en vivo solo contra hosts autorizados por el usuario? (§15.14)
 
 ---
 
@@ -211,6 +212,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿El cambio se limita a lo pedido (sin refactors "de paso")? (§11.5)
 - [ ] ¿Sin subcomponentes innecesarios? Solo se dividió por límite, reutilización o lógica propia. (§1.4)
 - [ ] ¿Sin sobreingeniería? Cada archivo, clase, input y parámetro nuevo tiene un uso hoy; nada "por si acaso". (§11.7.1)
+- [ ] ¿Auditoría pedida? ¿Cubrió calidad, eficiencia, duplicado y sin uso con tabla de cobertura, candidatos verificados y correcciones en tandas con build y prueba manual? (§11.9)
 - [ ] ¿Se delegó solo lo que bajaba el total de tokens (lecturas 3+ archivos, ediciones 8+ archivos) y lo chico se hizo directo? (§14.3.4)
 - [ ] ¿Respuestas al usuario en modo caveman (salvo excepciones de seguridad y artefactos persistidos)? (§14.1)
 

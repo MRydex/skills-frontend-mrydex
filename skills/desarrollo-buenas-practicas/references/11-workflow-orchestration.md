@@ -198,3 +198,54 @@ el límite en una línea. El usuario decide si vale la complejidad extra.
   de acumular reglas redundantes o contradictorias.
 
 ---
+
+### 11.9 Auditoría de calidad: eficiencia, duplicado y código sin uso
+
+Todo pedido de auditoría que no sea solo de seguridad hace esta pasada completa y corrige lo que
+encuentra. Vale para la app completa, una feature, una carpeta o el diff. Sin alcance en el pedido: la
+app completa (`src/`), sin preguntar.
+
+**Qué corre según el pedido:**
+
+| Pedido | Corre |
+| :--- | :--- |
+| Auditoría a secas ("auditá", "auditá la app", "revisá todo") | Esta pasada completa + auditoría de seguridad completa red + blue + network (§15.14) |
+| Solo seguridad ("auditá la seguridad", "¿es seguro?", "pentest", "hardening") | Solo §15.14 |
+| Solo calidad ("optimizá", "limpiá", "qué sobra", "auditá la calidad / performance") | Esta pasada + seguridad base (tabla de §15.2 y `npm audit`, §15.10) |
+
+**Áreas.** Cada una termina en **OK** (con evidencia `archivo:línea`), **hallazgo** o **N/A** (con
+motivo). Ninguna se saltea en silencio.
+
+| Área | Qué se busca | Herramienta |
+| :--- | :--- | :--- |
+| Calidad | Bugs de lógica, errores sin manejar, convenciones de la skill ([checklists.md](./checklists.md)), legibilidad, sobreingeniería (§11.7.1) | `code-review-and-quality`, `ponytail-audit`, `revisor-checklist` |
+| Eficiencia | Bundle fuera de budget (§9.8), rutas no lazy (§9.6), falta de `@defer` (§9.3), `@for` sin `track` estable (§9.4), `computed` caro o funciones en el template (§9.10), leaks (§9.11), imágenes sin `NgOptimizedImage` (§9.5), listas largas sin virtual scroll (§9.9), requests repetidas o en cascada | `performance-optimization`, `ng build --stats-json`, Lighthouse |
+| Código duplicado | Componentes, lógica, templates y estilos copiados | `npx jscpd src --min-tokens 50 --reporters console` |
+| Código sin uso | Archivos, exports, componentes, servicios, dependencias, imports standalone, variables, parámetros, clases SCSS | `npx knip`, `ng build` (diagnóstico `unusedStandaloneImports`), `npx tsc --noEmit -p tsconfig.app.json --noUnusedLocals --noUnusedParameters`, `grep` de cada clase del `.scss` en su template |
+
+**Pasos:**
+
+1. **Orientar con el grafo.** `graphify query` para mapear usos. Un símbolo sin referencias en el grafo
+   es candidato, no prueba.
+2. **Correr las herramientas** (gratis, con `npx`, sin sumarlas al `package.json`) y revisar a mano lo
+   que no ven: calidad y eficiencia se leen en el código, no solo en el reporte de una herramienta.
+3. **Verificar cada candidato** antes de reportarlo o borrarlo. Uso dinámico que las herramientas no
+   ven: rutas lazy (`loadComponent`, `loadChildren`), `providers`, selectores en templates, `exposes`
+   de Native Federation (§17), claves de `environment`, API pública de una librería. Falso positivo:
+   se descarta, no se reporta.
+4. **Reporte** con la tabla de cobertura por área y una fila por hallazgo: categoría, `archivo:línea`,
+   evidencia, acción y riesgo. Orden: bugs, dependencias sin uso (bundle y supply chain), eficiencia
+   con impacto medible, lógica duplicada, el resto.
+5. **Corregir**, en tandas chicas (§11.4) y sin cambiar comportamiento:
+   - Código sin uso verificado: borrarlo, no comentarlo. Dependencia sin uso: `npm uninstall` y
+     `npm audit`.
+   - Duplicados: unificar con la forma de §1.5 (componente, directiva, pipe, servicio o capa ITCSS),
+     reemplazar todas las copias y borrar las viejas.
+   - Eficiencia: aplicar la regla de §9 que corresponde, la solución más simple (§11.7.1). Medir antes
+     y después cuando se pueda (tamaño del bundle, Lighthouse).
+   - Preguntar antes, todo junto y una sola vez (§11.6): cambios que el usuario ve, API pública de una
+     librería o `exposes` de un microfrontend, refactors de más de ~400 líneas.
+   - Pedido de solo lectura ("solo revisá", "no toques nada"): solo el reporte.
+   - Tras cada tanda: build, lint, `ponytail-review` y prueba manual de cada lugar tocado (§11.3).
+6. **Escala.** Barrido por área en subagentes en paralelo si cumple §14.3.4. 5+ unidades
+   independientes (ej. una feature por unidad): proponer `/batch <instrucción>`.

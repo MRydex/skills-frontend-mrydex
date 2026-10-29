@@ -647,6 +647,12 @@ const EXTERNAL_SKILLS = [
       'performing-web-application-vulnerability-triage', 'detecting-malicious-npm-packages',
       'detecting-typosquatting-packages-in-npm-pypi', 'generating-and-analyzing-sboms',
       'implementing-secret-scanning-with-gitleaks',
+      // Network y Blue Team de la auditoría de seguridad (§15.14)
+      'performing-ssl-tls-security-assessment', 'configuring-tls-1-3-for-secure-communications',
+      'performing-security-headers-audit', 'testing-for-host-header-injection', 'performing-web-cache-poisoning-attack',
+      'performing-clickjacking-attack-test', 'testing-websocket-api-security', 'exploiting-websocket-vulnerabilities',
+      'scanning-network-with-nmap-advanced', 'analyzing-web-server-logs-for-intrusion',
+      'performing-threat-modeling-with-owasp-threat-dragon',
     ],
   },
   {
@@ -661,6 +667,7 @@ const EXTERNAL_SKILLS = [
       'offensive-open-redirect', 'offensive-parameter-pollution', 'offensive-race-condition',
       'offensive-request-smuggling', 'offensive-graphql', 'offensive-api-security', 'offensive-jwt',
       'offensive-oauth', 'offensive-dependency-confusion', 'offensive-supply-chain', 'offensive-reporting',
+      'offensive-tls-attacks', 'offensive-network-attacks',
     ],
   },
   {
