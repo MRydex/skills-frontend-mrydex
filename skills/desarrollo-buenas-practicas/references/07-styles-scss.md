@@ -13,6 +13,7 @@
 - 7.9 Tamaño máximo de archivo
 - 7.10 SCSS repetido: triángulo invertido (ITCSS)
 - 7.11 Layout con SCSS propio, nunca con componentes de layout de la librería
+- 7.12 Angular Material: tema M3 y tokens, sin tocar su DOM
 
 ### 7.1 Módulos Sass: `@use` y `@forward` (nunca `@import`)
 
@@ -297,13 +298,18 @@ soportadas de personalizar sin llegar a `::ng-deep`:
 1. **Theming por variables Less (oficial, build-time)** — para cambiar tokens globales (color
    primario, radios de borde, tipografía) de todos los componentes NG-ZORRO a la vez: override de
    variables Less en un `theme.less` propio cargado en `angular.json` → `styles` (el builder compila
-   Less sin `less-loader`), o partiendo de un preset
-   (`ng-zorro-antd/dark-theme`, `ng-zorro-antd/compact-theme`). No toca el SCSS de ningún
-   componente de la app.
-2. **Tema dinámico con CSS variables (experimental)** — NG-ZORRO expone también un modo de tema
-   basado en custom properties para cambiar de tema en runtime sin recompilar Less (útil para un
-   toggle claro/oscuro). Está marcado experimental por el equipo de NG-ZORRO: evaluarlo antes de
-   adoptarlo como única vía.
+   Less sin `less-loader`). Los presets oscuro y compacto se cargan igual:
+   `node_modules/ng-zorro-antd/ng-zorro-antd.dark.less` / `.compact.less` (o sus `.css`) en
+   `styles`, o con `@import` al principio del `theme.less`. Los paths `ng-zorro-antd/dark-theme` /
+   `compact-theme` son solo para `modifyVars` de webpack: no usarlos con `angular.json`. No toca el
+   SCSS de ningún componente de la app. Para alternar claro/oscuro en runtime con Less: cada tema
+   como entrada de `styles` con `"bundleName"` e `"inject": false`, y cambiar el `<link>` del tema
+   activo desde un servicio.
+2. **Tema dinámico con CSS variables (experimental)** — cargar `ng-zorro-antd.variable.min.css`
+   (en vez del CSS compilado) y fijar el color con
+   `provideNzConfig({ theme: { primaryColor: '#1677ff' } })`; en runtime,
+   `inject(NzConfigService).set('theme', { primaryColor })`. Acepta `primaryColor`, `infoColor`,
+   `successColor`, `processingColor`, `errorColor` y `warningColor`; la API está marcada experimental: para más tokens, usar la opción 1.
 3. **Clases globales con prefijo del equipo** — para un ajuste puntual a una instancia particular
    (no un token global): agregar una hoja de estilos **global** (fuera de la encapsulación de
    cualquier componente, cargada desde `styles.scss`, §7.10) con una clase prefijada por el
@@ -326,6 +332,8 @@ soportadas de personalizar sin llegar a `::ng-deep`:
    en la app. Si el override necesita convivir con estilos globales de terceros, envolverlo en
    `@layer` (ver [13-css3-layouts-animations.md](./13-css3-layouts-animations.md) §13.8) para
    controlar explícitamente quién gana.
+   **Solo NG-ZORRO.** En Angular Material el DOM y las clases internas (`.mat-mdc-*`, `.mdc-*`)
+   son privados: no se apuntan ni desde una hoja global. Se personaliza con tokens (§7.12).
 4. **Nunca `::ng-deep` dentro del `.scss` encapsulado de un componente.**
 
 ### 7.6 Container queries en componentes
@@ -528,5 +536,49 @@ assets/styles/
     }
   }
   ```
+
+### 7.12 Angular Material: tema M3 y tokens, sin tocar su DOM
+
+Si el proyecto usa Angular Material (librería de respaldo del equipo), el tema es Material 3
+con `mat.theme()`. `mat.theme()` arma los colores con `light-dark()`, así que necesita
+`color-scheme` declarado (§7.2); sin él solo se ve el tema claro.
+Instalación y providers: `ng add @angular/material` ([10](./10-environment-tooling.md) §10.10).
+
+```scss
+// assets/styles/styles.scss (global)
+@use '@angular/material' as mat;
+
+:root {
+  color-scheme: light dark; // o light / dark fijo desde un toggle (§7.2)
+  @include mat.theme((
+    color: mat.$azure-palette,
+    typography: Roboto,
+    density: 0,
+  ));
+  @include mat.strong-focus-indicators(); // foco con borde: el de fondo solo puede no cumplir WCAG
+}
+```
+
+- **Colores y tipografía propios desde los tokens del sistema**: `var(--mat-sys-surface)`,
+  `--mat-sys-on-surface`, `--mat-sys-primary`, `--mat-sys-outline-variant`,
+  `--mat-sys-body-large`... en el SCSS de los componentes, en vez de mapas `$theme` de Sass o
+  colores fijos. Si el proyecto tiene tokens propios (§7.2), se definen a partir de estos.
+- **Personalizar un componente**: solo con la API de overrides, nunca con selectores sobre su DOM
+  (ni `::ng-deep` ni hoja global, §7.5):
+  ```scss
+  html {
+    @include mat.theme-overrides((primary-container: #84ffff)); // token del sistema
+    @include mat.card-overrides((elevated-container-color: var(--mat-sys-surface-container)));
+  }
+  ```
+  Una instancia puntual: el mismo `mat.<componente>-overrides()` dentro de una clase global
+  (`.ui-card--destacada { @include mat.card-overrides(...); }`).
+- **Densidad**: enteros de `0` a `-5`. Por debajo de `0` baja el área táctil (WCAG 2.5.8); no
+  bajarla en diálogos, menús ni datepicker.
+- **Alto contraste** (Windows `forced-colors`): bordes o íconos que solo se distinguen por color
+  se cubren con `@include cdk.high-contrast { outline: 1px solid; }` (`@use '@angular/cdk' as cdk;`).
+- **Texto solo para lectores de pantalla**: `.u-sr-only` (§7.10) también con Material:
+  `.cdk-visually-hidden` solo existe cuando la CDK la carga, no está garantizada global.
+- **Material 2** (`mat.m2-*`, `mat.m2-theme()`): solo en apps que ya lo usan. Código nuevo, M3.
 
 ---

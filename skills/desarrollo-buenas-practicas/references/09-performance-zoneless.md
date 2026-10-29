@@ -10,7 +10,9 @@
   - [9.6.1 Recrear componente y servicios al navegar a la misma ruta](#961-recrear-componente-y-servicios-al-navegar-a-la-misma-ruta)
   - [9.6.2 Router resources: datos de la ruta sin resolvers (v22.2+)](#962-router-resources-datos-de-la-ruta-sin-resolvers-v222)
   - [9.6.3 Navigation API del navegador (experimental)](#963-navigation-api-del-navegador-experimental)
-- [9.7 Hydration incremental y `withEventReplay`](#97-hydration-incremental-y-witheventreplay)
+  - [9.6.4 Guards y configuración del router](#964-guards-y-configuración-del-router)
+- [9.7 Hydration incremental y event replay](#97-hydration-incremental-y-event-replay)
+  - [9.7.1 SSR: modo de render por ruta, tareas pendientes y transfer cache](#971-ssr-modo-de-render-por-ruta-tareas-pendientes-y-transfer-cache)
 - [9.8 Presupuestos de bundle y análisis](#98-presupuestos-de-bundle-y-análisis)
 - [9.9 Virtual scroll para listas largas](#99-virtual-scroll-para-listas-largas)
 - [9.10 `computed()` caro y funciones invocadas desde el template](#910-computed-caro-y-funciones-invocadas-desde-el-template)
@@ -68,6 +70,14 @@ todo lo demás en este archivo.
 - **`ChangeDetectorRef.detectChanges()`/`markForCheck()` esparcidos "por las dudas"**: si hace falta
   llamarlos seguido, el estado no está bien modelado en signals. Es la misma señal de alarma que un
   `effect()` de sincronización (§2.7).
+- **Mutar in-place un array u objeto que se pasa como input a un componente de librería**: desde
+  NG-ZORRO 22 todos sus componentes son `OnPush` (igual que los de Angular Material), así que
+  `this.filas.push(x)` no repinta un `nz-table`. Actualizar siempre de forma inmutable:
+  `filas.update(f => [...f, x])`.
+- **Para detectar bindings que cambian sin notificar** (el bug típico tras migrar), en desarrollo:
+  `provideCheckNoChangesConfig({ exhaustive: true, interval: 1000 })` (developer preview). Revisa
+  periódicamente todo el árbol y lanza `ExpressionChangedAfterItHasBeenCheckedError` donde un valor
+  cambió sin signal. Solo en el `app.config` de desarrollo, nunca en producción.
 
 ### 9.3 `@defer` para código y componentes pesados
 
@@ -92,6 +102,7 @@ modales, gráficos, contenido below-the-fold.
 |------------------------------|--------------------------------------------------------------|
 | `on idle` / `on idle(500)`   | El navegador queda inactivo (con timeout opcional en ms)     |
 | `on viewport` / `on viewport(ref)` | El bloque (o el elemento `ref`) entra en el viewport    |
+| `on viewport({ trigger: ref, rootMargin: '100px', threshold: 0.5 })` | Igual, con las opciones de `IntersectionObserver` (salvo `root`) |
 | `on interaction` / `(ref)`   | Click/keydown sobre el bloque o sobre `ref`                   |
 | `on hover`                   | Hover sobre el bloque                                         |
 | `on timer(500ms)`            | Pasa el tiempo indicado                                       |
@@ -109,6 +120,14 @@ render "lazy" con un prefetch más agresivo:
 
 Para servicios pesados (no componentes), usar `injectAsync()` en vez de `@defer` (ver
 [02-typescript-signals.md](./02-typescript-signals.md) §2.4).
+
+Cuándo `@defer` **no** separa el código (el componente termina igual en el bundle inicial):
+
+- La dependencia se usa fuera del `@defer` en el mismo archivo, o en un `viewChild()`.
+- Se importa desde un barrel (`index.ts`): el bundler trata el barrel como un solo módulo. Importar
+  desde el archivo del componente.
+- Con HMR activo (`ng serve` por defecto) se descargan todos los chunks de `@defer` al inicio, sin
+  respetar triggers. Para probar triggers: `ng serve --no-hmr`.
 
 ### 9.4 `track` en `@for`
 
@@ -160,8 +179,31 @@ import { NgOptimizedImage } from '@angular/common';
 - `priority` en la imagen LCP: fija `fetchpriority="high"`, `loading="eager"` y genera el `preload`
   link en SSR. **Sin esto, la imagen más grande del viewport inicial compite por ancho de banda con
   todo lo demás** y empeora el LCP.
-- `width`/`height` siempre, para reservar el espacio y evitar layout shift (CLS).
+- `width`/`height` siempre, para reservar el espacio y evitar layout shift (CLS). Imagen responsive:
+  dimensiones intrínsecas del archivo (el tamaño en pantalla lo da el CSS). Imagen de tamaño fijo:
+  el tamaño renderizado, con la misma proporción. Con `fill` no van (el padre define el tamaño).
+- Puede haber más de una imagen `priority` por página si el LCP cambia según el tamaño de pantalla.
 - No aplica a imágenes en base64 inline.
+
+**Imágenes responsive y CDN:**
+
+```html
+<!-- sizes es obligatorio para que genere el srcset responsive -->
+<img ngSrc="banner.jpg" width="1600" height="600" sizes="(max-width: 768px) 100vw, 50vw" placeholder />
+```
+
+```ts
+// app.config.ts: loader del CDN (preconnect automático al dominio pasado como literal)
+providers: [provideImgixLoader('https://imagenes.ejemplo.com/')],
+```
+
+- Con loader, `ngSrcset="100w, 200w"` o `"1x, 2x"` arma el `srcset` (sin nombres de archivo).
+- `placeholder` muestra una versión borrosa mientras carga; **necesita loader** (sin él, pasar un
+  data URL base64 de menos de 4 KB). `[placeholderConfig]="{ blur: false }"` quita el blur.
+- Loader propio: proveer una función en el token `IMAGE_LOADER`; `loaderParams` le pasa datos extra.
+  `IMAGE_CONFIG` ajusta `breakpoints` y `placeholderResolution`.
+- Si el dominio va en una variable, Angular no genera el `preconnect`: agregarlo a mano en
+  `index.html`.
 
 ### 9.6 Lazy loading de rutas: `loadComponent` / `loadChildren`
 
@@ -314,27 +356,115 @@ y el navegador restaura scroll y foco.
 - `window.navigation` no existe en el servidor: con SSR/prerender rompe si se habilita sin chequear.
 - Hasta que sea estable, seguir con `routerLink`.
 
-### 9.7 Hydration incremental y `withEventReplay`
+#### 9.6.4 Guards y configuración del router
 
-`provideClientHydration()` habilita SSR + hydration en el cliente. **Desde v22, la hydration
-incremental viene activada por defecto** al usar `provideClientHydration()` (para desactivarla:
-`withNoIncrementalHydration()`).
+Guards **funcionales** (`CanActivateFn`, `CanActivateChildFn`, `CanDeactivateFn`, `CanMatchFn`),
+nunca clases. Son UX: la autorización real la hace el back (15 §15.5).
+
+```ts
+// core/guard/auth-guard.ts
+export const authGuard: CanActivateFn = (_route, state) =>
+  inject(Auth).autenticado() ||
+  inject(Router).createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
+```
+
+- Para redirigir, **devolver** un `UrlTree` o un `RedirectCommand` (este acepta opciones de
+  navegación: `new RedirectCommand(urlTree, { skipLocationChange: true })`). Desde v22.2 también se
+  puede **lanzar** el `RedirectCommand` (22.2.4+ para que respete el orden de los guards); preferir
+  devolverlo.
+  - ❌ `router.navigate()` dentro del guard y `return false`.
+  - `returnUrl` se valida al usarlo (15 §15.7).
+- `canActivateChild` corre una vez por cada ruta hija: un solo guard en el padre en vez de repetirlo.
+- `canMatch` devuelve `false` y el router **sigue probando** las rutas siguientes: sirve para que un
+  mismo `path` cargue un componente distinto según rol o feature flag, sin descargar el chunk ajeno.
+  Tercer parámetro `currentSnapshot` (obligatorio en la interfaz desde v22).
+- Varios guards en una ruta arrancan **en paralelo**; gana el resultado del primero del array que no
+  devolvió `true`. Un guard no depende de otro: la lógica compartida va en un servicio.
+
+**Cambios sin guardar** (`canDeactivate`), con el `dirty()` de Signal Forms:
+
+```ts
+// shared/guards/cambios-sin-guardar-guard.ts
+export interface ConFormulario {
+  readonly form: FieldTree<unknown>;
+}
+
+export const cambiosSinGuardarGuard: CanDeactivateFn<ConFormulario> = (componente) =>
+  !componente.form().dirty() ||
+  inject(Confirmacion).preguntar('Hay cambios sin guardar. ¿Salir igual?'); // modal propio, Promise<boolean>
+```
+
+- Después de guardar, `reset()` del form ([06](./06-signal-forms.md) §6.8) para que el guard no vuelva a preguntar.
+- No cubre cerrar la pestaña ni recargar: para eso, `beforeunload` solo mientras haya cambios
+  ([16](./16-websocket-signalr.md) §16.5).
+
+**Configuración** (`app.config.ts`):
+
+```ts
+provideRouter(
+  routes,
+  withComponentInputBinding(),
+  withInMemoryScrolling({ scrollPositionRestoration: 'enabled', anchorScrolling: 'enabled' }),
+  withPreloading(PreloadAllModules),
+),
+```
+
+- `withInMemoryScrolling`: vuelve arriba al navegar y restaura el scroll con atrás / adelante. Sin
+  esto, la página nueva abre en la posición de scroll de la anterior.
+- `withPreloading(PreloadAllModules)`: descarga los chunks lazy en segundo plano después del
+  arranque. Con muchas features pesadas, una `PreloadingStrategy` propia que precargue solo las
+  rutas marcadas (`data: { precargar: true }`).
+- **v22 (breaking)**: `paramsInheritanceStrategy` pasa a `'always'` por defecto. Una ruta hija ve
+  los params de todos sus padres. Si un hijo usa un param con el mismo nombre que el padre,
+  renombrarlo. Volver al comportamiento anterior (`withRouterConfig({ paramsInheritanceStrategy:
+  'emptyOnly' })`) solo al migrar.
+
+**Rutas**:
+
+- `redirectTo` acepta una función que recibe el snapshot parcial (`params`, `queryParams`) y
+  devuelve `string` o `UrlTree`; desde v20 también `Promise` u `Observable`. Para redirects que
+  dependen de la URL; si dependen de permisos, es un guard.
+- `loadComponent` / `loadChildren` corren en el contexto de inyección de la ruta (v20.1+): pueden
+  usar `inject()`.
+- `providers` en la `Route` para un servicio que vive con una feature lazy (se crea una vez y no se
+  recrea al volver, §9.6.1; salvo con `withAutoCleanupInjectors()`, [17](./17-microfrontends.md) §17.3). Estado que se reinicia: `providers` del componente.
+- Rutas anidadas: `children` + `<router-outlet />` en el layout padre. Outlets con nombre solo para
+  un panel que navega independiente de la página. `routerOutletData` (v19+) pasa datos del padre al
+  componente de la ruta hija, que lo lee como signal con `inject(ROUTER_OUTLET_DATA)`, sin servicio.
+- `runGuardsAndResolvers: 'paramsOrQueryParamsChange'` cuando los guards o resources tienen que
+  volver a correr al cambiar un query param (por defecto solo con cambios de params de ruta). Desde
+  v21.1, la forma función corre en contexto de inyección.
+
+**Estado del router en signals**:
+
+- `isActive(url, router, opciones?)` (v21.1+) devuelve un `Signal<boolean>`. Sirve para la clase
+  activa fuera de un link, en lugar de suscribirse a `router.events`:
+  `readonly enConfig = isActive('/config', this._router, { paths: 'exact' });`
+- `router.lastSuccessfulNavigation()` (signal desde v21) y `router.currentNavigation()` (ejemplo de uso: §10.4)
+  reemplazan filtrar `router.events` para saber dónde se está o si hay una navegación en curso.
+
+### 9.7 Hydration incremental y event replay
+
+Solo si la app usa SSR. `provideClientHydration()` habilita la hydration en el cliente. **Desde v22,
+la hydration incremental viene activada por defecto** (para desactivarla:
+`withNoIncrementalHydration()`), y con ella el **event replay**.
 
 ```ts
 // app.config.ts
-import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
+import { provideClientHydration } from '@angular/platform-browser';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideClientHydration(withEventReplay()),
+    provideClientHydration(), // sin withEventReplay(): ya viene incluido
     // ...
   ],
 };
 ```
 
-- `withEventReplay()`: si el usuario hace click/interactúa **antes** de que termine la hydration, el
+- **Event replay**: si el usuario hace click/interactúa **antes** de que termine la hydration, el
   evento se guarda y se re-dispara apenas el componente correspondiente termina de hidratarse — evita
-  clicks "perdidos" en la carga inicial.
+  clicks "perdidos" en la carga inicial. Si el proyecto tiene `withEventReplay()` explícito, se saca
+  ([03](./03-html-templates.md) §3.11).
 - **Hydration incremental**: un `@defer` puede declarar un trigger `hydrate` para decirle a Angular
   "renderizá esto en el servidor, pero dejalo **deshidratado** en el cliente hasta que ocurra esto":
 
@@ -355,6 +485,78 @@ export const appConfig: ApplicationConfig = {
   terceros que tocan el DOM) rompe el matching y fuerza a Angular a descartar y re-renderizar ese
   subárbol (pierde el beneficio de la hydration). Si un componente puntual no se puede arreglar,
   `ngSkipHydration` lo excluye — pero sacrifica performance para ese árbol.
+- **Nunca `isPlatformBrowser` en un `@if` del template**: el servidor y el cliente renderizan
+  distinto y rompe la hydration. Código solo de navegador va en `afterNextRender()`; para acceder al
+  documento, `inject(DOCUMENT)`, nunca `document` global. Antes que chequeos en runtime, preferir un
+  provider distinto por plataforma (en `app.config.server.ts`).
+
+#### 9.7.1 SSR: modo de render por ruta, tareas pendientes y transfer cache
+
+Solo si la app usa SSR (con hosting estático en IIS no aplica: build sin SSR).
+
+**Modo de render por ruta** (`@angular/ssr`): cada ruta elige servidor, cliente o prerender.
+
+```ts
+// app.routes.server.ts
+import { PrerenderFallback, RenderMode, ServerRoute } from '@angular/ssr';
+
+export const serverRoutes: ServerRoute[] = [
+  { path: '', renderMode: RenderMode.Client },            // CSR
+  { path: 'ayuda', renderMode: RenderMode.Prerender },    // estático en el build
+  {
+    path: 'expedientes/:id',
+    renderMode: RenderMode.Prerender,
+    fallback: PrerenderFallback.Server,                  // ids no generados: SSR
+    async getPrerenderParams() {
+      const api = inject(ExpedientesApi);                // inject antes de cualquier await
+      const ids = await api.ids();
+      return ids.map(id => ({ id }));
+    },
+  },
+  { path: '**', renderMode: RenderMode.Server },         // datos por usuario: SSR
+];
+
+// app.config.server.ts
+providers: [provideServerRendering(withRoutes(serverRoutes))],
+```
+
+- Datos del request en el servidor: tokens `REQUEST`, `RESPONSE_INIT` y `REQUEST_CONTEXT` de
+  `@angular/core`. Valen `null` en el navegador y en el build; chequear antes de usarlos.
+
+**Tareas pendientes en zoneless**: sin Zone.js, Angular no sabe que hay trabajo async en curso y
+puede serializar el HTML antes de tiempo. Registrar lo que tiene que aparecer en el HTML del
+servidor:
+
+```ts
+// servicio que inicializa una librería de terceros con callback (no HttpClient)
+private readonly _tareas = inject(PendingTasks);
+
+iniciar(): void {
+  const listo = this._tareas.add(); // la app queda "inestable" hasta llamar listo()
+  libreria.init(() => listo());
+}
+```
+
+Un flujo RxJS dentro de un servicio: `.pipe(pendingUntilEvent())` (`@angular/core/rxjs-interop`)
+lo mantiene pendiente hasta que emite, completa o falla.
+
+`HttpClient` (y por lo tanto `httpResource` / `rxResource` sobre él) ya se registra solo; esto es
+para promesas o timers propios.
+
+**HTTP transfer cache**: los GET hechos en el servidor se reusan en la hydration sin repetir la
+request (§4.9). Por defecto excluye POST y requests con `Authorization`. Ajustarlo con:
+
+```ts
+provideClientHydration(
+  withHttpTransferCacheOptions({
+    includeHeaders: ['ETag'],
+    filter: req => !req.url.includes('/api/perfil'),
+  }),
+),
+```
+
+Por request: `http.get(url, { transferCache: false })`. Nunca `includeRequestsWithAuthHeaders: true`
+con datos por usuario: la respuesta queda serializada en el HTML.
 
 ### 9.8 Presupuestos de bundle y análisis
 
@@ -393,22 +595,35 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
 </cdk-virtual-scroll-viewport>
 ```
 
-> `*cdkVirtualFor` es la **única** excepción admitida a "control flow nativo" (§3.4 / checklists): CDK
-> todavía no tiene equivalente en `@for`, y sin él no hay virtualización posible con la CDK.
+> `*cdkVirtualFor` y `<ng-template nz-virtual-scroll>` (abajo) son las **únicas** excepciones
+> admitidas a "control flow nativo" (§3.4 / checklists): ni la CDK ni NG-ZORRO tienen equivalente en
+> `@for`, y sin ellos no hay virtualización.
 
 **NG-ZORRO** (`nz-table`), si la tabla ya es `nz-table` (librería de UI principal del equipo):
 
 ```html
+<!-- El virtual scroll se activa con nzVirtualItemSize; no existe un input nzVirtualScroll -->
 <nz-table
   [nzData]="items()"
-  [nzVirtualScroll]="true"
   [nzVirtualItemSize]="54"
-  [nzVirtualMaxBufferPx]="200"
-  [nzVirtualMinBufferPx]="100"
+  [nzVirtualForTrackBy]="trackById"
+  [nzFrontPagination]="false"
+  [nzShowPagination]="false"
   [nzScroll]="{ y: '480px' }"
 >
-  ...
+  <thead>
+    <tr><th>Nombre</th></tr>
+  </thead>
+  <tbody>
+    <ng-template nz-virtual-scroll let-data let-index="index">
+      <tr><td>{{ data.nombre }}</td></tr>
+    </ng-template>
+  </tbody>
 </nz-table>
+```
+
+```ts
+protected readonly trackById = (_: number, item: Item) => item.id;
 ```
 
 Para listas moderadas que no justifican virtualización completa, `content-visibility: auto` en el
@@ -490,6 +705,16 @@ export class GeolocationWatcher {
 
 ### 9.12 Profiling: Chrome DevTools y Angular DevTools
 
+- **Pista de Angular en Chrome DevTools → Performance**: `enableProfiling()` (de `@angular/core`)
+  antes de `bootstrapApplication`, o `ng.enableProfiling()` en la consola. Agrega al timeline qué
+  componentes, change detection y hydration consumieron cada tramo. Solo funciona en modo desarrollo.
+
+  ```ts
+  // main.ts
+  if (isDevMode()) enableProfiling(); // antes del bootstrap, para capturar el arranque
+  bootstrapApplication(App, appConfig);
+  ```
+
 - **Angular DevTools → pestaña Profiler**: graba una sesión y muestra cada ciclo de detección de
   cambios, cuánto tardó y qué componentes se re-evaluaron. Señales de alarma: ciclos muy frecuentes
   sin interacción del usuario (algo dispara CD de más, ver §9.1) o un componente puntual que aparece
@@ -510,7 +735,8 @@ export class GeolocationWatcher {
 - ¿La imagen LCP tiene `NgOptimizedImage` + `priority` (§9.5)?
 - ¿Ninguna plantilla llama a un método del componente directamente; todo pasa por `computed`/`@let`
   (§9.10, [03-html-templates.md](./03-html-templates.md) §3.5)?
-- ¿Las listas largas usan virtual scroll (CDK o `nz-table`, §9.9)?
+- ¿Las listas largas usan virtual scroll (CDK o `nz-table` con `nzVirtualItemSize`, §9.9)?
+- ¿Los arrays y objetos que van a componentes de librería se actualizan inmutables (§9.2)?
 - ¿El bundle inicial está dentro del budget de `angular.json` (§9.8)?
 
 ---

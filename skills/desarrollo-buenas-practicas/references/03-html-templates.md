@@ -17,6 +17,7 @@
 - 3.13 Content projection antes que inputs de texto
 - 3.14 Eventos: `$event.stopPropagation()` en el template, sin directiva
 - 3.15 Directivas: selector, alias del input y exclusión con `:not()`
+- 3.16 Íconos de NG-ZORRO: `<nz-icon>`
 
 ### 3.1 Accesibilidad (obligatorio)
 
@@ -60,6 +61,9 @@
     teclado, touch o programáticamente — útil para mostrar el anillo de foco solo en navegación por
     teclado), `FocusKeyManager` (flechas para moverse entre ítems de una lista/menú) y la directiva
     `cdkTrapFocus` (atrapa el foco dentro de un modal/drawer mientras está abierto).
+  - **Angular Material**: `matMenuTriggerFor` ya pone `aria-haspopup`, `aria-expanded` y
+    `aria-controls` en el trigger, y el panel es `role="menu"`. No agregar esos atributos a mano.
+    Para la accesibilidad de `MatDialog` ver [02](./02-typescript-signals.md) §2.4.
   - **Signal Forms**: `campo().focusBoundControl()` mueve el foco al control del DOM enlazado a ese
     campo — típicamente para saltar al primer campo inválido cuando falla un submit. Acepta
     `{ preventScroll: true }` si el control ya está en pantalla y no querés que la página scrollee.
@@ -139,6 +143,9 @@ Se pueden encadenar múltiples `[class.x]` y `[style.x]` en el mismo elemento si
   recurso, porque Angular pasa a comparar por referencia (`===`) y no puede mapear qué dato
   corresponde a qué nodo del DOM si la referencia cambia — es la opción con peor performance.
 - Aprovechar `@empty` para estados vacíos.
+- Excepciones admitidas, solo para virtualizar listas largas: `*cdkVirtualFor` (CDK) y
+  `<ng-template nz-virtual-scroll>` (`nz-table`). Ninguna de las dos tiene equivalente con `@for`
+  (ver [09](./09-performance-zoneless.md) §9.9).
 - `@case` consecutivos comparten bloque (fall-through, v21.1+): sirve para colapsar `@case` que
   renderizan lo mismo sin duplicar markup.
 - `@default never;` (o `@default never(expr);`) fuerza **verificación exhaustiva** de uniones en
@@ -264,6 +271,59 @@ Si hay que aplicar `flex` u otros estilos de bloque a celdas `<td>`, hacerlo en 
 
 > `highlightSearch` devuelve HTML: tiene que escapar el texto y la búsqueda antes de marcar
 > coincidencias, y nunca usar `bypassSecurityTrustHtml`. Ver [15-security.md](./15-security.md) §15.3.
+
+#### `nz-table` con paginado, orden y filtro en el servidor
+
+Si el back pagina, la tabla no pagina en el front: `[nzFrontPagination]="false"` y el total viene
+del back. `(nzQueryParams)` emite `NzTableQueryParams` (`pageIndex`, `pageSize`, `sort`, `filter`)
+cada vez que cambia la página, el tamaño, el orden o un filtro: se pasa al signal de `params` del
+resource ([04](./04-resource-api.md)), sin llamar al back a mano.
+
+```html
+<nz-table
+  #tabla
+  [nzData]="items()"
+  [nzFrontPagination]="false"
+  [nzTotal]="total()"
+  [nzPageIndex]="pagina()"
+  [nzPageSize]="tamanio()"
+  [nzLoading]="itemsResource.isLoading()"
+  (nzQueryParams)="onQueryParams($event)">
+  <thead>
+    <tr>
+      <th nzColumnKey="fecha" [nzSortFn]="true">Fecha</th>
+      <th nzColumnKey="estado" [nzFilters]="filtrosEstado" [nzFilterFn]="true">Estado</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (item of tabla.data; track item.id) {
+      <tr>
+        <td>{{ item.fecha | date }}</td>
+        <td>{{ item.estado }}</td>
+      </tr>
+    }
+  </tbody>
+</nz-table>
+```
+
+- `[nzSortFn]="true"` y `[nzFilterFn]="true"` le dicen a la tabla que ordena y filtra el back; el
+  `nzColumnKey` es la clave que llega en `sort` y `filter`.
+- `[nzData]` se reemplaza por un array nuevo, nunca se muta: la tabla es OnPush ([09](./09-performance-zoneless.md) §9.2).
+
+#### `mat-table` (Angular Material)
+
+```html
+<table mat-table [dataSource]="dataSource" aria-label="Items asignados">
+  <!-- columnas -->
+</table>
+```
+
+- Siempre `aria-label` o `aria-labelledby`. El rol por defecto es `table`; `role="grid"` no agrega
+  navegación por teclado, así que no usarlo sin implementarla.
+- Con `MatTableDataSource`, actualizar `dataSource.data = nuevos` cuando llegan datos nuevos. No
+  crear otro `MatTableDataSource`: se pierden el `sort` y el `paginator` conectados.
+- Con virtual scroll (`cdk-virtual-scroll-viewport`) la tabla fuerza `fixedLayout` y no admite filas
+  con `when`.
 
 ### 3.7 Two-way binding moderno
 
@@ -435,6 +495,31 @@ de una grilla de formulario.
   ancho que el control rompe la alineación visual.
 - Si el problema es el **control** (no el panel), ahí sí es CSS: `width: 100%` sobre el
   `nz-select` (clase BEM `&__control`), no sobre clases de `.ant-*`.
+
+#### Búsqueda en el servidor
+
+Con muchas opciones (personas, organismos), el select no filtra en el front: busca en el back.
+
+```html
+<nz-select
+  [formField]="filtroForm.organismo"
+  nzShowSearch
+  [nzServerSearch]="true"
+  [compareWith]="mismoId"
+  (nzOnSearch)="busqueda.set($event)">
+  @for (org of organismos(); track org.id) {
+    <nz-option [nzValue]="org" [nzLabel]="org.nombre" />
+  }
+</nz-select>
+```
+
+- `[nzServerSearch]="true"` apaga el filtro local: las opciones son las que devuelve el back.
+- `(nzOnSearch)` escribe un signal; el resource lee una versión con `debounced()` ([02](./02-typescript-signals.md) §2.5), no el
+  texto crudo, para no pegarle al back en cada tecla.
+- Si el valor es un objeto, `[compareWith]` compara por id (`mismoId = (a, b) => a?.id === b?.id`);
+  sin eso, un objeto igual pero con otra referencia no queda seleccionado.
+- La lista ya es virtual. `nzOptionHeightPx` (alto de cada opción) y `nzOptionOverflowSize`
+  (opciones visibles) se ajustan solo si las opciones no miden el default.
 
 ---
 
@@ -659,3 +744,17 @@ export class TextoTruncado {
   `EVENT_MANAGER_PLUGINS`, no una directiva con `output()` que hay que importar en cada lugar.
 - Sin `standalone: true` (default desde v19) ni `public` explícito (§2.2).
 
+### 3.16 Íconos de NG-ZORRO: `<nz-icon>`
+
+- Usar el elemento `<nz-icon nzType="search" />` (NG-ZORRO 19+), no `<span nz-icon>` ni `<i nz-icon>`.
+- Importar `NzIconModule` en el componente que lo usa. Los íconos se registran una vez, con
+  `provideNzIcons([...])` (o `provideNzIconsPatch` en una ruta lazy): ver
+  [10](./10-environment-tooling.md) §10.10.
+
+```html
+<!-- ❌ MAL -->
+<span nz-icon nzType="search"></span>
+
+<!-- ✅ BIEN -->
+<nz-icon nzType="search" nzTheme="outline" />
+```

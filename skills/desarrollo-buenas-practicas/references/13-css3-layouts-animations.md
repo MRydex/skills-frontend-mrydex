@@ -31,6 +31,7 @@
 - 13.27 Unidades de viewport dinámicas (`dvh`, `svh`, `lvh`)
 - 13.28 Gráficos simples con `conic-gradient()`
 - 13.29 Contadores animados sin JavaScript (`@property` + `counter()`)
+- 13.30 Transiciones entre rutas (`withViewTransitions`)
 
 > Este archivo cubre CSS genérico (aplica a cualquier stack). Para convenciones SCSS del equipo en
 > Angular (`@use`/`@forward`, BEM, `:host`, encapsulación, theming de NG-ZORRO) ver
@@ -739,6 +740,10 @@ espera a que termine la animación CSS y recién ahí saca el elemento.
   se percibe más ágil.
 - Clases con BEM anidado (§7.3) y `prefers-reduced-motion` contemplado (§13.23).
 - Para `<dialog>` / popovers sin `@if`, alcanza con `@starting-style` (§13.19).
+- `animate.leave` de un componente hijo **no** corre cuando se saca el elemento padre: solo corre
+  dentro del mismo template. Si la salida importa, ponerla en el elemento que controla el `@if`.
+- Para controlar una animación desde código (pausar, cancelar, invertir), usar la API nativa
+  `elemento.getAnimations()` (`cancel()`, `pause()`, `reverse()`), no `AnimationPlayer`.
 
 ### 13.26 Medios sin layout shift (`aspect-ratio` + `object-fit`)
 
@@ -841,5 +846,33 @@ Registrar la custom property con tipo deja que el navegador la interpole en `@ke
 - Solo números enteros decorativos (KPIs). Montos con formato (moneda, separadores): pipe en el
   template.
 - Baseline desde julio de 2024.
+
+### 13.30 Transiciones entre rutas (`withViewTransitions`)
+
+El router anima el cambio de página con la View Transitions API (developer preview). Sin soporte
+del navegador, navega igual, sin animación.
+
+```ts
+// app.config.ts
+provideRouter(routes, withViewTransitions({
+  // El router no respeta prefers-reduced-motion solo: hay que saltear la transición
+  onViewTransitionCreated: ({ transition }) => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      transition.skipTransition();
+    }
+  },
+}))
+```
+
+```scss
+// assets/styles/styles.scss (global): con encapsulación, el SCSS de un componente no llega
+::view-transition-old(root) { animation-duration: 150ms; }
+::view-transition-new(root) { animation-duration: 200ms; }
+```
+
+- Los `::view-transition-*` van siempre en estilos **globales**, nunca en el `.scss` de un
+  componente.
+- `skipTransition()` saltea la animación pero la navegación se completa.
+- Elementos que deben "viajar" entre páginas: `view-transition-name` único por página.
 
 ---

@@ -137,12 +137,26 @@ this.html = this._sanitizer.bypassSecurityTrustHtml(respuesta.descripcion);
 }
 ```
 
+- `autoCsp` **no funciona con SSR** y **cubre solo scripts**: no restringe `style-src`. Con
+  SSR, la CSP de scripts la arma el servidor con nonce.
 - Si el servidor genera un nonce por request, pasarlo con `ngCspNonce` en el root o con el token
-  `CSP_NONCE`. Así los `<style>` de los componentes cumplen la política.
+  `CSP_NONCE`. Así los `<style>` de los componentes cumplen la política. Con inlining de CSS crítico
+  activo, `CSP_NONCE` no sirve: usar `ngCspNonce` en el root.
 - Cerrar los vectores que el meta tag no cubre desde cabeceras del servidor (§15.9):
   `frame-ancestors`, `object-src`, `base-uri`, `form-action`.
 - **Trusted Types**: Angular es compatible. Activarlos en proyectos nuevos:
   `require-trusted-types-for 'script'; trusted-types angular angular#bundler;`
+  (`angular#bundler` lo necesitan los chunks lazy). Si el código usa algún `bypassSecurityTrust*`
+  (solo con constantes, §15.3), sumar `angular#unsafe-bypass`; sin esa política, el bypass falla.
+- **SSR** (solo si la app renderiza en servidor): limitar los hosts aceptados para evitar SSRF por
+  la cabecera `Host`. Un host fuera de la lista recibe `400`. Nunca `*`.
+
+  ```json
+  "security": { "allowedHosts": ["app.example.com"] }
+  ```
+
+  También en `new AngularNodeAppEngine({ allowedHosts: [...] })` o con `NG_ALLOWED_HOSTS`.
+  `trustProxyHeaders` (`NG_TRUST_PROXY_HEADERS`) solo detrás de un proxy propio y confiable.
 - Toda CSP nueva o endurecida se despliega primero como **`Content-Security-Policy-Report-Only`**,
   se revisan los reportes y después se pasa a modo bloqueo.
 - **Nunca** `'unsafe-eval'`. `'unsafe-inline'` en `script-src` tampoco.
@@ -242,7 +256,7 @@ Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
     <add name="X-Content-Type-Options" value="nosniff" />
     <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
     <add name="Permissions-Policy" value="camera=(), microphone=(), geolocation=()" />
-    <!-- script-src/style-src los define autoCsp (§15.4); acá solo lo que el meta tag no cubre -->
+    <!-- script-src lo define autoCsp (§15.4); acá solo lo que el meta tag no cubre -->
     <add name="Content-Security-Policy" value="object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'" />
   </customHeaders>
 </httpProtocol>

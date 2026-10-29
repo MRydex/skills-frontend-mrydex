@@ -225,6 +225,8 @@ Sobre un `value()` ya mapeado con `computed` (§4.6) se itera directo:
 - Validar el shape con `parse:` (Zod / Valibot) cuando corresponda (§4.3).
 - En SSR, los resources precargados en el servidor se integran con el **HTTP Transfer State**: no se
   repite la petición en el primer render del navegador (usar `id` en `rxResource`/`resource`, §4.4).
+  Requests con `Authorization` o POST no se cachean por defecto; ajustes en
+  [09-performance-zoneless.md](./09-performance-zoneless.md) §9.7.1.
 
 ### 4.10 Composición de resources: `snapshot` + `resourceFromSnapshots`
 

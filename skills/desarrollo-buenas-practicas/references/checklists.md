@@ -27,7 +27,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿El estado usa **signals**? ¿El derivado usa `computed()` / `linkedSignal()`?
 - [ ] ¿Sin mutación in-place de arrays/objetos dentro de signals (siempre nueva referencia)?
 - [ ] ¿Lecturas dentro de `computed()` que no deben recalcular envueltas en `untracked()`? (§2.5)
-- [ ] **¿CERO `effect()`?** ¿Cada caso resuelto con computed / linkedSignal / resource / interceptor?
+- [ ] **¿CERO `effect()` fuera de las excepciones de §2.7?** ¿Cada caso resuelto con computed / linkedSignal / resource / interceptor?
 - [ ] **¿CERO `Observable` / `Subject` / `BehaviorSubject` / `subscribe` guardado como estado?**
 - [ ] ¿Debounce con `debounced()` (leído con `.value()`), no con `debounceTime` a mano?
 - [ ] ¿Orden de declaraciones: injects → inputs/outputs → variables → signals → constructor → ngOnInit → públicas (onXxx primero) → privadas? (§2.6)
@@ -71,6 +71,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿El `<form>` tiene `[formRoot]` y los campos `[formField]`?
 - [ ] ¿Un solo envoltorio genérico (`<ng-content>`) que lee `required` / errores del `FieldTree`, sin reexponer atributos del control? ¿Layout con SCSS propio (BEM + Grid), sin `nz-row` / `nz-col` / `nz-form-item` ni `row` / `col-md-*`, reutilizando el `@mixin` de grilla si ya existe? (§7.11) ([06](./06-signal-forms.md) §6.10)
 - [ ] ¿Controles de NG-ZORRO si está instalado, si no Angular Material, si no propios? ¿Una sola librería por formulario? (§6.10)
+- [ ] ¿NG-ZORRO `>= 22.1.2` con Signal Forms? ¿Adaptador de fechas (`provideNzDateFnsAdapter` o `provideNzNativeDateAdapter`) y `provideNzI18n` registrados si hay date-picker o textos de la librería? ([10](./10-environment-tooling.md) §10.10)
 - [ ] ¿Cero `effect()`? Campos dependientes con opciones `computed()` y, si hace falta, `validate()` / `validateTree()` (§6.10)
 - [ ] ¿Los campos `hidden` usan `valueOf(path.x)` en el schema y `@if (!f.x().hidden())` en el template?
 - [ ] ¿Validaciones en el schema (`required`, `email`, `validateTree` para cruzadas, `validateAsync` / `validateHttp` para async)?
@@ -83,7 +84,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Pasa AXE y cumple WCAG AA? ¿Usa `@angular/aria` para patrones complejos?
 - [ ] ¿Landmarks (`<main>`, `<header>`, `<nav>`, `<section>`) y `aria-*` solo donde el HTML nativo no alcanza?
 - [ ] ¿Clases con **BEM** estricto?
-- [ ] ¿Control flow nativo (`@if`, `@for` con `track` por identidad, `@switch`, `@empty`, `@let`, `@defer`)?
+- [ ] ¿Control flow nativo (`@if`, `@for` con `track` por identidad, `@switch`, `@empty`, `@let`, `@defer`)? Únicas excepciones: `*cdkVirtualFor` y `nz-virtual-scroll` de `nz-table` ([09](./09-performance-zoneless.md) §9.9)
 - [ ] ¿**Sin `[ngClass]` ni `[ngStyle]`** (usar `[class.x]` / `[style.x]`)?
 - [ ] ¿Templates simples, sin llamadas a métodos del `.ts` ni lógica compleja (usar `computed` / `@let`)? (§3.5)
 - [ ] ¿`NgOptimizedImage` para imágenes estáticas? ¿`priority` en la imagen LCP?
@@ -102,6 +103,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Estilos anidados bajo el bloque BEM, máximo 3 niveles? (§7.3)
 - [ ] ¿Elementos y modificadores con `&__` / `&--`, sin reescribir la clase completa ni juntar `&__elemento--modificador`? (§7.3)
 - [ ] ¿Sin `::ng-deep` ni `:host-context()`? ¿NG-ZORRO personalizado por theming o clases globales con prefijo? (§7.4, §7.5)
+- [ ] Con Angular Material: ¿tema M3 con `mat.theme()` y `color-scheme`, colores propios desde `--mat-sys-*`, cambios solo con `mat.*-overrides()` (nunca selectores sobre `.mat-mdc-*`), `mat.strong-focus-indicators()` y densidad no menor a `0` en diálogos y menús? (§7.12)
 - [ ] ¿`:focus-visible` para foco accesible? ¿`prefers-reduced-motion` contemplado? (§7.7)
 - [ ] ¿Sin SCSS duplicado? Lo repetido extraído a su capa ITCSS (token, `@mixin`, `.o-*`, `.u-*`); sin `@extend`; el componente solo hace `@use` de `_index.scss` y de la carpeta de su módulo. (§7.10)
 
@@ -113,9 +115,11 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Sin Zone.js, sin `provideZoneChangeDetection`, sin `Eager`?
 - [ ] ¿Sin `setTimeout` / promesas sueltas que esperen refrescar la vista? (§9.1)
 - [ ] ¿Rutas pesadas con `loadComponent` / `loadChildren`? ¿Componentes pesados detrás de `@defer`?
+- [ ] ¿Guards funcionales que redirigen devolviendo `UrlTree` / `RedirectCommand`, sin `router.navigate()` adentro? ¿`canDeactivate` en formularios editables? (§9.6.4)
+- [ ] ¿`withInMemoryScrolling` en `provideRouter`? Al migrar a v22: ¿params de hijos que chocan con los del padre (`paramsInheritanceStrategy: 'always'`)? (§9.6.4)
 - [ ] ¿Links a la misma ruta recrean el componente (`shouldReuseRoute = () => false` + `onSameUrlNavigation: 'reload'`) en vez de limpiar estado a mano? ¿Estrategia restaurada en `onDestroy`? (§9.6.1)
 - [ ] ¿Servicios pesados con `injectAsync()` (+ `prefetch: onIdle` si corresponde)?
-- [ ] ¿Listas largas con virtual scroll (CDK o `nzVirtualScroll`)? (§9.9)
+- [ ] ¿Listas largas con virtual scroll (`*cdkVirtualFor` o `nz-table` con `nzVirtualItemSize`)? (§9.9)
 - [ ] ¿Subscripciones inevitables cerradas con `takeUntilDestroyed()` / `DestroyRef`? (§9.11)
 - [ ] ¿Sin `withExperimentalPlatformNavigation()` en producción? (§9.6.3)
 - [ ] ¿Budgets de `angular.json` respetados?
@@ -178,6 +182,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿APIs que no son Baseline (`interpolate-size`, `base-select`, scroll-driven, anchor positioning) bajo `@supports` con fallback?
 - [ ] ¿Fondos por densidad con `image-set()` (y `<img>` con `NgOptimizedImage`)? (§13.24)
 - [ ] ¿Entrada/salida de `@if` / `@for` con `animate.enter` / `animate.leave` y un solo `@keyframes` (`reverse` para salir), sin `@angular/animations`? (§13.25)
+- [ ] ¿Transiciones de ruta (`withViewTransitions`) salteadas con `prefers-reduced-motion` y `::view-transition-*` en estilos globales? (§13.30)
 - [ ] ¿`@media (prefers-reduced-motion: reduce)` contemplado?
 
 ---

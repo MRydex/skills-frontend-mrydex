@@ -250,6 +250,34 @@ onClickAbrirModal(): void {
 - Los servicios `@Service()` / `providedIn: 'root'` no necesitan esto: ya son singletons globales.
 - El equivalente en Angular Material es la opción `viewContainerRef` de `MatDialog.open()`.
 
+#### Datos y cierre del modal (NG-ZORRO)
+
+```ts
+// en el componente del modal
+private readonly _data = inject<EditarItemData>(NZ_MODAL_DATA);
+private readonly _modalRef = inject(NzModalRef);
+
+onClickGuardar(): void {
+  this._modalRef.close(true);   // el que abrió recibe el valor en afterClose
+}
+```
+
+- `nzData` se lee con `inject(NZ_MODAL_DATA)`, tipado. No se pasa por `@Input`.
+- `nzOnOk` puede devolver una `Promise`: el modal muestra loading en el botón y se cierra cuando se
+  resuelve; si resuelve `false`, queda abierto (útil para validar antes de cerrar).
+- Desde NG-ZORRO 22, `nzOnOk` / `nzOnCancel` ya no son inputs de `<nz-modal>`: en el template se
+  escuchan como outputs (`(nzOnOk)`), y la función con `Promise` va en `NzModalService.create()`.
+
+#### Accesibilidad de `MatDialog`
+
+- Pasar `ariaLabelledBy` (id del título) o `ariaLabel`, y `ariaDescribedBy` si hay texto
+  explicativo.
+- `role: 'alertdialog'` para confirmaciones que interrumpen (borrar, descartar cambios).
+- `autoFocus` acepta `'first-tabbable'` (default), `'first-heading'`, `'dialog'` o un selector: en
+  confirmaciones destructivas, enfocar el título o el botón de cancelar, no el de confirmar.
+- Al cerrar, el foco vuelve al elemento que abrió el diálogo. Si ese elemento ya no existe (diálogo
+  abierto desde un menú), mover el foco a mano en `afterClosed()`.
+
 ### 2.5 Estado — Signals como única fuente de verdad
 
 - Estado local del componente: **signals**.
@@ -393,9 +421,14 @@ itemsResource = httpResource<Item[]>(() => {
 });
 ```
 
-**Única excepción admitida** (documentada en el PR): sincronizar con una API externa **no reactiva y
-sin alternativa declarativa** — por ejemplo alimentar una librería de gráficos imperativa de un
-tercero. En ese caso el effect va **como propiedad de clase, con nombre descriptivo**, nunca anónimo
+**Excepciones admitidas** (documentadas en el PR), las mismas que acepta la documentación oficial:
+sincronizar con algo externo **no reactivo y sin alternativa declarativa**:
+
+- Alimentar una librería imperativa de un tercero (gráficos, mapas).
+- Persistir un signal en `localStorage`, `sessionStorage` o una cookie cuando cambia.
+- Logging o analytics de cambios de estado.
+
+En esos casos el effect va **como propiedad de clase, con nombre descriptivo**, nunca anónimo
 dentro del constructor, y nunca escribe signals que él mismo lee.
 
 ### 2.8 Constructor vs ngOnInit vs afterNextRender
@@ -406,6 +439,13 @@ dentro del constructor, y nunca escribe signals que él mismo lee.
   - Lógica que necesita inputs ya resueltos → un `computed`/`resource` que los lea (los inputs son
     signals); **no** un `effect`.
   - Manipulación del DOM tras el primer render → `afterNextRender()` / `afterRenderEffect()`.
+- `afterNextRender()` / `afterRenderEffect()` aceptan fases que Angular corre en este orden:
+  `earlyRead` → `write` → `mixedReadWrite` → `read`. Sin fase, todo corre en `mixedReadWrite`, que
+  mezcla lecturas y escrituras de layout y puede forzar reflows. Separar: leer en `earlyRead` o
+  `read`, escribir en `write`.
+- Para reaccionar a cambios de tamaño, de contenido o de visibilidad, `ResizeObserver`,
+  `MutationObserver` o `IntersectionObserver` antes que un `afterRenderEffect` que mide en cada
+  render.
 - Si igual hace falta `ngOnInit`, mantenerlo **corto**: llamadas a métodos bien nombrados, e
   `implements OnInit`.
 

@@ -79,7 +79,7 @@ Con el instalador (`npx github:MRydex/skills-frontend-mrydex`) ya está hecho: e
 
 ### Las reglas que más se violan (leer siempre)
 
-1. **Nunca `effect()`.** Derivar con `computed()` / `linkedSignal()`, datos con la Resource API, concerns transversales con interceptores. Por qué: crea cascadas de escrituras difíciles de razonar y testear. Ver [02](./references/02-typescript-signals.md).
+1. **Nunca `effect()`** (salvo las excepciones acotadas de [02](./references/02-typescript-signals.md) §2.7). Derivar con `computed()` / `linkedSignal()`, datos con la Resource API, concerns transversales con interceptores. Por qué: crea cascadas de escrituras difíciles de razonar y testear. Ver [02](./references/02-typescript-signals.md).
 2. **Nunca `Observable` / `Subject` / `BehaviorSubject` como estado.** Estado siempre en signals. RxJS solo dentro de servicios, para flujos (`rxResource`, eventos). Ver [02](./references/02-typescript-signals.md).
 3. **Nunca Reactive Forms ni `ngModel`.** Solo **Signal Forms** (`@angular/forms/signals`). Ver [06](./references/06-signal-forms.md).
 4. **`changeDetection` según `@angular/core` en `package.json`.** v22+: **no declararlo** (OnPush es default). Menor a v22: **siempre** `ChangeDetectionStrategy.OnPush`. `standalone: true` solo en v18 o menor. Ver [02](./references/02-typescript-signals.md) §2.2.
@@ -116,12 +116,12 @@ Rige toda la sesión desde que la skill se carga. Para sesiones que no tocan Ang
 - **Angular 22+**; lo marcado "v21" sigue valiendo salvo indicación. **Standalone first**: sin `NgModule` salvo legacy de terceros.
 - **Zoneless** (`provideZonelessChangeDetection()`, default v21+). **Nunca** `zone.js` ni `provideZoneChangeDetection()`.
 - **`OnPush` default desde v22**; `Default` se renombró a **`Eager`** (deprecada). Regla 4.
-- **TypeScript 6** estricto (`strict`, `noImplicitAny`, `strictTemplates`); TS 5.9 no soportado. Node 26 sí, Node 20 no.
+- **TypeScript 6** estricto (`strict`, `noImplicitAny`, `strictTemplates`; v22.2+: `strictUnclaimedEventNames` en `angularCompilerOptions`, detecta outputs mal escritos); TS 5.9 no soportado. Node 26 sí, Node 20 no.
 - **`HttpClient` usa `FetchBackend`** por defecto: `withFetch()` innecesario y deprecado. Progreso de subida: `withXhr()` (§5.9).
 - **Sin tests**: nunca `*.spec.ts` ni ningún archivo de test por cuenta propia (si el usuario los pide explícitamente, se hacen); `skipTests: true` en schematics; verificar con build, lint y prueba manual. Ver [08](./references/08-sin-tests.md).
 - Incremental Hydration activa por defecto con `provideClientHydration()`. Imágenes estáticas con `NgOptimizedImage`.
 - Accesibilidad: AXE limpio + WCAG **AA** mínimo; primitivas headless con **`@angular/aria`** (v22+).
-- **Librería de componentes** (mirar `package.json`): **NG-ZORRO** si está; si no, **Angular Material**; si no, **controles propios**. Nunca mezclar dos ni instalar una para un solo control. §6.10.
+- **Librería de componentes** (mirar `package.json`): **NG-ZORRO** si está; si no, **Angular Material**; si no, **controles propios**. Nunca mezclar dos ni instalar una para un solo control. §6.10. NG-ZORRO ≥ 22.1.2 con adaptador de fechas e i18n en `app.config.ts` (§10.10).
 
 ---
 
@@ -137,15 +137,15 @@ Leer solo la referencia de la tarea. Cada archivo de más de 100 líneas empieza
 | [04-resource-api.md](./references/04-resource-api.md) | `httpResource`, `rxResource`, `resource`, estados, fetch condicional, mutaciones + `reload()`, debounce. | Al leer datos asíncronos o hacer POST/PUT/DELETE. |
 | [05-http-interceptors.md](./references/05-http-interceptors.md) | Interceptores funcionales (spinner, errores, retries), `HttpContextToken`, `ErrorHandler`, orden, fetch vs `withXhr`. | Al configurar infraestructura HTTP. |
 | [06-signal-forms.md](./references/06-signal-forms.md) | `form()`, schema, validadores, `validateTree`, `applyEach`, errores accesibles, controles propios y NG-ZORRO. | Al crear o modificar formularios. |
-| [07-styles-scss.md](./references/07-styles-scss.md) | `@use` / `@forward`, partials, tokens, BEM anidado, `:host`, theming NG-ZORRO sin `::ng-deep`, ITCSS, layout propio (nunca `nz-row` / `nz-col` / `nz-form-item`). | Al escribir estilos de componentes. |
+| [07-styles-scss.md](./references/07-styles-scss.md) | `@use` / `@forward`, partials, tokens, BEM anidado, `:host`, theming NG-ZORRO sin `::ng-deep`, Angular Material M3 con tokens (`mat.theme`, `--mat-sys-*`), ITCSS, layout propio (nunca `nz-row` / `nz-col` / `nz-form-item`). | Al escribir estilos de componentes. |
 | [08-sin-tests.md](./references/08-sin-tests.md) | Sin archivos de test, `skipTests`, specs existentes, verificar sin tests. | Al generar archivos con el CLI o al verificar una tarea. |
-| [09-performance-zoneless.md](./references/09-performance-zoneless.md) | Change detection zoneless, `@defer`, `track`, lazy routes, router resources, `shouldReuseRoute`, Navigation API, virtual scroll, hidratación, budgets, leaks, profiling. | Al diagnosticar performance o si la vista no se actualiza. |
-| [10-environment-tooling.md](./references/10-environment-tooling.md) | Schematics, `web.config` IIS, contrato con .NET, config en runtime, VS Code, Graphify, MCP, `.gitignore` de IA. | Al crear proyectos, desplegar o integrar con el backend. |
+| [09-performance-zoneless.md](./references/09-performance-zoneless.md) | Change detection zoneless, `@defer`, `track`, lazy routes, guards funcionales y config del router, router resources, `shouldReuseRoute`, Navigation API, virtual scroll, hidratación, budgets, leaks, profiling. | Al diagnosticar performance o si la vista no se actualiza. |
+| [10-environment-tooling.md](./references/10-environment-tooling.md) | Schematics, `web.config` IIS, contrato con .NET, config en runtime, VS Code, Graphify, MCP, `.gitignore` de IA, setup de NG-ZORRO 22 / Material (fechas, i18n, config global, íconos, APIs eliminadas), i18n de Angular. | Al crear proyectos, desplegar, integrar con el backend o configurar la librería de UI. |
 | [11-workflow-orchestration.md](./references/11-workflow-orchestration.md) | Explorar antes de editar, `tasks/todo.md`, verificación, commits chicos, alcance, preguntas, lecciones, auditoría de código sin usar y duplicado (§11.9). | En toda tarea no trivial y en todo pedido de auditoría. |
 | [12-html5-semantics-seo.md](./references/12-html5-semantics-seo.md) | HTML5 semántico, landmarks, ARIA, formularios nativos, SEO, `TitleStrategy`, foco. | Al maquetar HTML o auditar accesibilidad/SEO. |
-| [13-css3-layouts-animations.md](./references/13-css3-layouts-animations.md) | Cascada, `@layer`, `:has()`, Flexbox, Grid, `@container`, anchor positioning, transiciones, `animate.enter` / `animate.leave`, `@starting-style`, scroll-driven, `base-select`, `field-sizing`, `image-set()`, Baseline. | Al diseñar layouts o animaciones. |
+| [13-css3-layouts-animations.md](./references/13-css3-layouts-animations.md) | Cascada, `@layer`, `:has()`, Flexbox, Grid, `@container`, anchor positioning, transiciones, `animate.enter` / `animate.leave`, `@starting-style`, scroll-driven, `base-select`, `field-sizing`, `image-set()`, view transitions de rutas, Baseline. | Al diseñar layouts o animaciones. |
 | [14-agent-efficiency.md](./references/14-agent-efficiency.md) | Caveman, librerías, orquestador + subagentes, advisor, autocompactación, graphify (y "Si algo falla"), adaptación al agente, herramientas del agente. | Siempre: cómo responde el agente y cómo reparte el trabajo. |
-| [15-security.md](./references/15-security.md) | Red Team por cambio, XSS, CSP, `autoCsp`, Trusted Types, tokens, XSRF, open redirect, SRI, secretos, cabeceras IIS, supply chain, Blue Team, OWASP Top 10, auditoría completa (§15.14). | Siempre: en todo cambio y code review; §15.14 cuando se pide seguridad a secas. |
+| [15-security.md](./references/15-security.md) | Red Team por cambio, XSS, CSP, `autoCsp`, Trusted Types, `allowedHosts` (SSR), tokens, XSRF, open redirect, SRI, secretos, cabeceras IIS, supply chain, Blue Team, OWASP Top 10, auditoría completa (§15.14). | Siempre: en todo cambio y code review; §15.14 cuando se pide seguridad a secas. |
 | [16-websocket-signalr.md](./references/16-websocket-signalr.md) | SignalR estándar, singleton por hub, reconexión, estado en signals, ciclo de vida, contrato tipado, token (`accessTokenFactory`), WebSocket nativo (`rxjs/webSocket`). | Al crear o tocar una conexión en tiempo real (chat, presencia, notificaciones). |
 | [17-microfrontends.md](./references/17-microfrontends.md) | Cuándo sí / no (por defecto librería npm), Native Federation v4, shell + remotes, manifest, comunicación, auth, estilos, versiones, IIS, seguridad, diagnóstico por síntoma (`NG0201`, `NG0912`). | Al evaluar, crear o tocar un microfrontend. |
 | [checklists.md](./references/checklists.md) | Checklists Angular, HTML5/CSS3, seguridad y proceso; ejemplo Do & Don't. | Antes de entregar código o al revisar un PR. |

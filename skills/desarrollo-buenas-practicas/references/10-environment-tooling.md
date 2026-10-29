@@ -5,7 +5,9 @@
 [10.4](#104-configuración-en-runtime-vs-environmentts) Config en runtime · [10.5](#105-vs-code--settings-del-equipo) VS Code ·
 [10.6](#106-visual-studio-2026-backend-c) Visual Studio · [10.7](#107-graphify-mapa-del-repo-para-asistentes-ai) Graphify ·
 [10.8](#108-ai--mcp-server-de-angular-cli) MCP Server de Angular CLI ·
-[10.9](#109-archivos-de-ia-en-gitignore) Archivos de IA en `.gitignore`.
+[10.9](#109-archivos-de-ia-en-gitignore) Archivos de IA en `.gitignore` ·
+[10.10](#1010-librería-de-ui-setup-de-ng-zorro-22-y-angular-material) Setup de NG-ZORRO 22 y Material ·
+[10.11](#1011-i18n-de-angular-solo-apps-multi-idioma) i18n de Angular.
 
 ### 10.1 Crear o actualizar un proyecto con los schematics del equipo
 
@@ -357,5 +359,91 @@ tasks/brief-*.md
 - `.gitignore` no saca del repo lo que ya estaba commiteado. Para eso hace falta
   `git rm --cached <archivo>`, que lo borra del repo para todo el equipo en el próximo push. **El
   agente pregunta antes de correrlo.**
+
+### 10.10 Librería de UI: setup de NG-ZORRO 22 y Angular Material
+
+Qué librería usar: §6.10. Esta sección cubre la configuración base, una sola vez por app.
+
+**NG-ZORRO** (`ng-zorro-antd`):
+
+- Versión mínima **22.1.2** (peer `@angular/*` `^22`). Las anteriores tienen bugs de `[formField]`
+  con sus controles (§6.9).
+- Imports por componente (`NzSelectModule`, `NzTableModule`...). Nunca un módulo global.
+- Desde v22 todos sus componentes son `OnPush`: inputs inmutables ([09](./09-performance-zoneless.md) §9.2).
+- Providers en `app.config.ts`:
+
+```ts
+import { registerLocaleData } from '@angular/common';
+import es from '@angular/common/locales/es';
+import { ApplicationConfig, LOCALE_ID } from '@angular/core';
+import { CloseOutline, SearchOutline } from '@ant-design/icons-angular/icons';
+import { es as esFechas } from 'date-fns/locale';
+import { provideNzConfig } from 'ng-zorro-antd/core/config';
+import { provideNzDateFnsAdapter } from 'ng-zorro-antd/core/time';
+import { es_ES, provideNzI18n } from 'ng-zorro-antd/i18n';
+import { provideNzIcons } from 'ng-zorro-antd/icon';
+
+registerLocaleData(es);
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    { provide: LOCALE_ID, useValue: 'es' },
+    provideNzI18n(es_ES), // sin esto los textos de los componentes salen en chino
+    provideNzDateFnsAdapter({ locale: esFechas, firstDayOfWeek: 1 }), // obligatorio desde v22
+    provideNzConfig({ message: { nzTop: 80 } }),
+    provideNzIcons([CloseOutline, SearchOutline]), // solo los íconos que se usan
+  ],
+};
+```
+
+- **Adaptador de fechas**: desde v22 NG-ZORRO no trae uno por defecto. Sin él, `nz-date-picker`,
+  `nz-calendar` y `nz-time-picker` fallan por falta del provider `NzDateAdapter`.
+  `provideNzDateFnsAdapter` usa `date-fns` v4 (ya viene con `ng-zorro-antd`). Para usar `Date` + `Intl`:
+  `provideNzNativeDateAdapter({ locale: 'es-AR', firstDayOfWeek: 1 })` (`Date` + `Intl`).
+- **i18n de NG-ZORRO**: el idioma por defecto es chino. `registerLocaleData` para cada locale de
+  Angular que se use. App multi-idioma (§10.11): forma factory, que sigue a `LOCALE_ID`:
+  `provideNzI18n(() => (inject(LOCALE_ID) === 'es' ? es_ES : en_US))`. Lo mismo acepta
+  `provideNzDateFnsAdapter(() => ({ ... }))`. Cambio en runtime: `NzI18nService.setLocale(...)` y
+  `setLocale` del adaptador de fechas.
+- **Config global**: defaults del equipo en `provideNzConfig({...})`, no repetidos en cada
+  template. Prioridad: input de la instancia (o `service.create`) > `NZ_CONFIG` > default de la
+  librería. Cambio en runtime: `inject(NzConfigService).set('button', { nzSize: 'large' })`. Un
+  default que es `TemplateRef` (ej. `spin.nzIndicator`) va con un provider factory de `NZ_CONFIG`,
+  no con `set` en el `AppComponent`.
+- **Íconos**:
+  - ✅ `provideNzIcons([...])` con los íconos usados (tree-shaking).
+  - ❌ `import * as AllIcons from '@ant-design/icons-angular/icons'`: suma todos al bundle.
+  - Rutas o componentes lazy: `provideNzIconsPatch([...])` en los `providers` de la ruta.
+  - Carga dinámica (ícono no registrado, se pide por HTTP): requiere el glob de assets
+    `{ "glob": "**/*", "input": "./node_modules/@ant-design/icons-angular/src/inline-svg/", "output": "/assets/" }`
+    en `angular.json`.
+  - Uso en templates (`<nz-icon>`): [03](./03-html-templates.md) §3.16.
+- `@angular/animations` es opcional desde NG-ZORRO 21: no instalarlo solo por la librería.
+- **APIs eliminadas** (buscarlas al auditar o migrar):
+
+| Versión | Eliminado | Reemplazo |
+| :--- | :--- | :--- |
+| 20 | `NzMessageModule`, `NzNotificationModule` | `inject(NzMessageService)`, `inject(NzNotificationService)` |
+| 21 | `NzToolTipModule`, `nz-tabset`, `nzBorderless` | `NzTooltipModule`, `nz-tabs`, `nzVariant="borderless"` |
+| 21 | back-top | float-button |
+| 22 | `NzDropDownModule` (renombrado en 21) | `NzDropdownModule` |
+| 22 | `nz-input-group` (`nzAddOnBefore`...) | `nz-input-wrapper` (`nzAddonBefore`, `nzPrefix`, `nzSuffix`) |
+| 22 | `NzAutosizeDirective` (`textarea[nzAutosize]`) | `cdkTextareaAutosize` (`TextFieldModule` de `@angular/cdk/text-field`), o `field-sizing: content` (§13) |
+| 22 | `[nzOnOk]` / `[nzOnCancel]` como input de `nz-modal` | outputs `(nzOnOk)` / `(nzOnCancel)`, o `NzModalService.create` |
+| 22 | `nz-upload[nzTransformFile]` | sin reemplazo: transformar el archivo antes de subirlo |
+
+**Angular Material** (`@angular/material`, sin NG-ZORRO): `ng add @angular/material`. Tema M3,
+tokens `--mat-sys-*` y overrides por componente: [07](./07-styles-scss.md) §7.12.
+
+### 10.11 i18n de Angular (solo apps multi-idioma)
+
+App en un solo idioma: `LOCALE_ID` fijo (§10.10) y nada más. Multi-idioma:
+
+- `ng add @angular/localize`. Marcar textos con `i18n="@@id-estable"` en el template y atributos
+  con `i18n-placeholder`, `i18n-title`, `i18n-aria-label`. En TS: `` $localize`:@@id:Texto` ``.
+- `ng extract-i18n --output-path src/locale` genera el archivo fuente para traducir.
+- El build compila un bundle por idioma (`"localize": true` en `angular.json`): en IIS, una carpeta
+  por locale. Cambiar de idioma recarga la app, no hay cambio en runtime.
+- NG-ZORRO sigue al `LOCALE_ID` con la forma factory de `provideNzI18n` (§10.10).
 
 ---

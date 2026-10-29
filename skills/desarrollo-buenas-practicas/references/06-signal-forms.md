@@ -326,6 +326,9 @@ validateHttp(path.email, {
 ### 6.9 Controles propios e integración con NG-ZORRO
 
 > Qué librería usar (NG-ZORRO → Angular Material → controles propios): ver §6.10.
+>
+> `[formField]` con controles NG-ZORRO requiere `ng-zorro-antd` **22.1.2 o superior**. Versión mínima
+> y setup base (adaptador de fechas, i18n): [10](./10-environment-tooling.md) §10.10.
 
 - **Controles propios**: implementar `FormValueControl<T>` (expone `value = model<T>()`) o
   `FormCheckboxControl` (expone `checked`) para que `[formField]` pueda bindearlos — es el mecanismo
@@ -372,7 +375,8 @@ Patrón para formularios que se reutilizan en varias pantallas o dentro de un mo
 
 1. **NG-ZORRO** (`ng-zorro-antd` instalado): `nz-input`, `nz-select`, `nz-date-picker`,
    `nz-range-picker`, `nz-input-number`, `nz-checkbox`. Traen `ControlValueAccessor`, así que
-   `[formField]` los ata directo (§6.9).
+   `[formField]` los ata directo (§6.9). Los pickers de fecha necesitan el adaptador de fechas en
+   `app.config.ts` (§10.10).
 2. **Angular Material** (sin NG-ZORRO, con `@angular/material`): `matInput`, `mat-select`,
    `mat-datepicker`, `mat-checkbox`. También se atan directo con `[formField]`. Acá el envoltorio
    de cada campo es `mat-form-field` (`mat-label` + `mat-error`) **en vez de** `app-campo`:

@@ -15,6 +15,46 @@ Para actualizar en un proyecto: `npx skills-frontend-mrydex@latest`.
 - `~/.claude/settings.json` y el bloque de `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` se escriben con
   copia `.bak` y reemplazo atómico; un corte a mitad ya no deja el archivo roto.
 
+### Skill `desarrollo-buenas-practicas`
+
+Revisión contra la documentación oficial de Angular 22.2, Angular Material 22.2 y NG-ZORRO 22.1.
+
+- Corregido:
+  - Ejemplo de `nz-table` virtual (§9.9): `nzVirtualScroll` no existe; ahora usa
+    `<ng-template nz-virtual-scroll>`, que queda junto con `*cdkVirtualFor` como excepción al
+    control flow nativo.
+  - §9.7: la hydration incremental ya incluye event replay, sin `withEventReplay()`.
+  - §15.4: `autoCsp` no funciona con SSR, `CSP_NONCE` choca con el inlining de CSS crítico y la
+    política de Trusted Types lleva `angular#unsafe-bypass` solo si se usa `bypassSecurityTrust*`.
+  - §7.5: presets de NG-ZORRO (`ng-zorro-antd.dark.less`) y API real del tema dinámico. Las
+    clases internas de Angular Material son privadas.
+- Nuevo:
+  - NG-ZORRO 22:
+    - Setup base (§10.10): versión mínima 22.1.2, adaptador de fechas obligatorio,
+      `provideNzI18n`, `provideNzConfig`, íconos y APIs eliminadas.
+    - Tabla y select con datos del servidor (§3.6, §3.9) e íconos (§3.16).
+    - Datos del modal con `NZ_MODAL_DATA` (§2.4).
+  - Angular Material:
+    - Tema M3 con `mat.theme`, tokens `--mat-sys-*` y overrides, densidad, foco visible y alto
+      contraste (§7.12).
+    - `mat-table` (§3.6) y accesibilidad de `MatDialog` (§2.4).
+  - Angular:
+    - SSR con `ServerRoute` y `PendingTasks` (§9.7.1); sin `isPlatformBrowser` en templates (§9.7).
+    - `enableProfiling()` (§9.12) y `provideCheckNoChangesConfig` (§9.2).
+    - `NgOptimizedImage` con `sizes`, loaders y placeholder (§9.5).
+    - `@defer on viewport({...})` y casos en que `@defer` no separa el bundle (§9.3).
+    - `HttpClient` sin provider desde v21; con SSR, sin `withXhr()` en el servidor (§5.5, §5.9).
+    - Transiciones entre rutas (§13.30), `animate.leave` en hijos (§13.25) e i18n con
+      `$localize` (§10.11).
+    - Usos válidos de `effect()` (§2.7) y fases de `afterRenderEffect` (§2.8).
+    - Router (§9.6.4): guards funcionales con `UrlTree` / `RedirectCommand`, `canDeactivate` con
+      `dirty()` de Signal Forms, `withInMemoryScrolling`, `withPreloading`, `redirectTo` como
+      función, `routerOutletData`, `isActive()` y `lastSuccessfulNavigation()`. Cambio de v22:
+      `paramsInheritanceStrategy` en `'always'`.
+    - `strictUnclaimedEventNames` (v22.2) junto a `strictTemplates`.
+    - Título dinámico con `ResolveFn<string>` en lugar de una clase resolver (§12.8).
+  - Seguridad: con SSR, `allowedHosts` y `trustProxyHeaders` contra SSRF (§15.4).
+
 ## [1.32.3] - 2026-10-29
 
 ### Instalador

@@ -179,6 +179,9 @@ this._http.get<Data>('/api/poll', {
 
 ### 5.5 Registro en `app.config.ts` (el orden importa)
 
+Desde v21 `HttpClient` se inyecta sin registrar nada. `provideHttpClient(...)` solo hace falta para
+configurarlo: interceptores, `withXhr()`, XSRF. Con interceptores (este caso), siempre:
+
 ```ts
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -280,5 +283,9 @@ Para progreso de **bajada** alcanza `reportDownloadProgress` con el default (`fe
 
 Si el proyecto no sube archivos con barra de progreso, dejar el default (`fetch`): es la API más
 moderna y la que usan `httpResource`/`rxResource` internamente.
+
+Con SSR, nunca `withXhr()` en el servidor: está deprecado y se elimina en v23 (puede reenviar el
+header `Authorization` en redirects cross-origin). Si hace falta progreso de subida, registrar
+`withXhr()` solo en el `app.config.ts` del navegador.
 
 ---

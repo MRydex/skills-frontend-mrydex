@@ -233,11 +233,18 @@ ruta.
   ```ts
   // app.routes.ts
   export const routes: Routes = [
-    { path: 'items/:id', title: 'Detalle de item', loadComponent: () => import('./item-detalle/item-detalle') },
+    {
+      path: 'items/:id',
+      title: 'Detalle de item',
+      loadComponent: () => import('./item-detalle/item-detalle').then((m) => m.ItemDetalle),
+    },
   ];
   ```
-  Para un título **dinámico** (que dependa de datos cargados, ej. el número de item), Angular Router
-  acepta una clase que resuelve el título (`title: ItemTitleResolver`) o, para un prefijo/sufijo
+  Para un título **dinámico** (que dependa de la URL, ej. el número de item), `title` acepta un
+  `ResolveFn<string>`:
+  `` export const itemTitleResolver: ResolveFn<string> = (route) => `Item ${route.paramMap.get('id')}`; ``
+  Si depende de datos del back, el mismo `ResolveFn` devuelve un `Observable` o `Promise<string>`
+  (`inject(ItemsHttp).obtener(id).pipe(map((i) => i.nombre))`), sin `setTitle()` ni `effect()`. Para un prefijo/sufijo
   consistente en toda la app (ej. agregar siempre `" | Gestión"`), extender `TitleStrategy` una
   sola vez en `app.config.ts` en vez de repetir el sufijo ruta por ruta.
 - **`Meta`** (`@angular/platform-browser`) — lee/escribe `<meta>` tags, incluyendo Open Graph para
