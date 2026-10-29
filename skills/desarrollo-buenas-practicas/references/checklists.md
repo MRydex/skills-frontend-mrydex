@@ -212,7 +212,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿El cambio se limita a lo pedido (sin refactors "de paso")? (§11.5)
 - [ ] ¿Sin subcomponentes innecesarios? Solo se dividió por límite, reutilización o lógica propia. (§1.4)
 - [ ] ¿Sin sobreingeniería? Cada archivo, clase, input y parámetro nuevo tiene un uso hoy; nada "por si acaso". (§11.7.1)
-- [ ] ¿Auditoría pedida? ¿Cubrió calidad, eficiencia, duplicado y sin uso con tabla de cobertura, candidatos verificados y correcciones en tandas con build y prueba manual? ¿Vulnerabilidades de `npm audit` corregidas y `npm audit` repetido en limpio? (§11.9)
+- [ ] ¿Auditoría pedida? ¿Cubrió todas las áreas de §11.9 con tabla de cobertura, candidatos verificados y correcciones en tandas con build y prueba manual? ¿Vulnerabilidades de `npm audit` corregidas y `npm audit` repetido en limpio? (§11.9)
 - [ ] ¿Se delegó solo lo que bajaba el total de tokens (lecturas 3+ archivos, ediciones 8+ archivos) y lo chico se hizo directo? (§14.3.4)
 - [ ] ¿Respuestas al usuario en modo caveman (salvo excepciones de seguridad y artefactos persistidos)? (§14.1)
 

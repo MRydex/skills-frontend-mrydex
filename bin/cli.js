@@ -11,7 +11,7 @@ const path = require('path');
 const os = require('os');
 const readline = require('readline');
 const { spawnSync } = require('child_process');
-const { installSubagents } = require('./subagents');
+const { installSubagents, readClaudeSettings } = require('./subagents');
 
 // ANSI color helpers
 const colors = {
@@ -399,12 +399,8 @@ const logOk = (msg) => console.log(`  ${colors.green}✔${colors.reset} ${msg}`)
 
 // Chequeo de solo lectura: qué quedó instalado y qué falta. No escribe nada.
 function doctor(homeDir, repoRoot) {
-  let settings = {};
-  try {
-    settings = JSON.parse(fs.readFileSync(path.join(homeDir, '.claude', 'settings.json'), 'utf8'));
-  } catch {
-    // Sin settings.json: los chequeos de Claude Code salen en falta
-  }
+  // Sin settings.json válido: los chequeos de Claude Code salen en falta
+  const settings = readClaudeSettings(path.join(homeDir, '.claude', 'settings.json')) ?? {};
   const checks = [
     ['skill en ~/.claude/skills', fs.existsSync(path.join(homeDir, '.claude', 'skills', SKILL_NAME, 'SKILL.md'))],
     ['skill en ~/.agents/skills (Codex)', fs.existsSync(path.join(homeDir, '.agents', 'skills', SKILL_NAME, 'SKILL.md'))],
@@ -563,15 +559,10 @@ const runNpx = (npxArgs, cwd) => runNpmCli('npx', npxArgs, cwd);
 function enableClaudePlugins(homeDir, plugins) {
   const settingsPath = path.join(homeDir, '.claude', 'settings.json');
   if (!fs.existsSync(path.join(homeDir, '.claude'))) return;
-  let settings = {};
-  if (fs.existsSync(settingsPath)) {
-    try {
-      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-      if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw new Error();
-    } catch {
-      console.log(`  ${colors.yellow}⚠${colors.reset} ~/.claude/settings.json no es JSON válido: no se activaron plugins`);
-      return;
-    }
+  const settings = readClaudeSettings(settingsPath);
+  if (!settings) {
+    console.log(`  ${colors.yellow}⚠${colors.reset} ~/.claude/settings.json no es JSON válido: no se activaron plugins`);
+    return;
   }
   // Un plugin ya activo desde otro marketplace no se duplica (mismo nombre antes de '@')
   const enabledNames = Object.entries(settings.enabledPlugins ?? {})
@@ -800,12 +791,8 @@ function installClaudePlugins(homeDir) {
   }
   // Un plugin ya activo desde otro marketplace no se duplica (mismo nombre antes de '@', otro id).
   // El mismo id se reinstala igual: puede estar activo sin descargar.
-  let enabled = {};
-  try {
-    enabled = JSON.parse(fs.readFileSync(path.join(homeDir, '.claude', 'settings.json'), 'utf8')).enabledPlugins ?? {};
-  } catch {
-    // Sin settings.json válido no hay plugins previos que respetar
-  }
+  // Sin settings.json válido no hay plugins previos que respetar
+  const enabled = readClaudeSettings(path.join(homeDir, '.claude', 'settings.json'))?.enabledPlugins ?? {};
   const fromOtherMarketplace = (id) => Object.keys(enabled)
     .some((key) => enabled[key] === true && key !== id && key.split('@')[0] === id.split('@')[0]);
   runShell('claude plugin marketplace update', homeDir);
@@ -907,15 +894,10 @@ function installSessionStartHook(homeDir) {
   const claudeDir = path.join(homeDir, '.claude');
   if (!fs.existsSync(claudeDir)) return;
   const settingsPath = path.join(claudeDir, 'settings.json');
-  let settings = {};
-  if (fs.existsSync(settingsPath)) {
-    try {
-      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-      if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw new Error();
-    } catch {
-      console.log(`  ${colors.yellow}⚠${colors.reset} ~/.claude/settings.json no es JSON válido: no se instaló el hook SessionStart`);
-      return;
-    }
+  const settings = readClaudeSettings(settingsPath);
+  if (!settings) {
+    console.log(`  ${colors.yellow}⚠${colors.reset} ~/.claude/settings.json no es JSON válido: no se instaló el hook SessionStart`);
+    return;
   }
 
   const hookDir = path.join(claudeDir, 'hooks', HOOK_MARKER);

@@ -133,6 +133,9 @@ revisarlo: la revisión no agrega features.
   cambia, elegir la opción razonable, seguir y mencionarla en el reporte final.
 - No preguntar por algo que el agente puede resolver solo con la información del repo: convención ya
   usada en un archivo similar, tipo ya definido, patrón ya aplicado en otro módulo.
+- Reporte de bug con evidencia (error, log, pasos en la UI, pipeline que falla): ir directo a
+  reproducirlo y a la causa raíz (§11.7), sin pedir guía. Preguntar solo si no hay forma de
+  reproducirlo. Si el arreglo resulta grande, igual lleva el plan de §11.2.
 - Preguntar cuando: la decisión es de negocio o producto (qué debe mostrar la UI, qué regla aplica),
   hay ambigüedad real entre dos caminos técnicos válidos sin una convención del equipo que desempate, o
   la acción es irreversible/riesgosa (borrar datos, `push --force`, romper un contrato público de API).
@@ -175,6 +178,12 @@ usuario lo pide. Nunca antes.
 - ¿Un dev nuevo entiende el cambio en 5 minutos?
 - ¿Cada archivo, clase, input y parámetro nuevo tiene un uso hoy?
 - ¿Se puede borrar algo y sigue funcionando? Entonces sobra: borrarlo.
+- ¿Hay una forma más simple o más clara, sabiendo ahora todo lo que se sabe? Solo en cambios no
+  triviales: un arreglo obvio no se rediseña.
+- ¿Lo aprobaría un staff engineer al revisar el diff?
+- ¿Qué se rompe primero (dato vacío o nulo, volumen x10, red o servicio caído)? Cubierto, o
+  avisado en una línea.
+- ¿Hubo corrección del usuario? Entonces `tasks/lessons.md` actualizado (§11.8).
 
 Si la solución simple tiene un límite real (rendimiento, seguridad), elegir la simple igual y avisar
 el límite en una línea. El usuario decide si vale la complejidad extra.
@@ -184,7 +193,7 @@ el límite en una línea. El usuario decide si vale la complejidad extra.
 - Después de una corrección del usuario (rechazó un enfoque, señaló un error, pidió deshacer algo),
   registrar en `tasks/lessons.md` solo lo que ayudaría a sesiones futuras: qué se hizo mal y la regla
   concreta. Un tropiezo puntual de esta sesión no se vuelve regla.
-- Formato de cada lección, 4 líneas cortas:
+- Formato de cada lección, 5 líneas cortas:
 
   ```markdown
   ## <tema corto, estable: si el tema vuelve, se actualiza esta entrada>
@@ -192,6 +201,7 @@ el límite en una línea. El usuario decide si vale la complejidad extra.
   - Por qué: <causa>
   - Dónde: <archivo, comando o área>
   - Regla: <qué hacer la próxima vez>
+  - Chequeo: <cómo detectarlo antes la próxima vez>
   ```
 - Revisar `tasks/lessons.md` al arrancar una sesión nueva sobre el mismo proyecto, antes de planificar.
 - Iterar sobre las lecciones ya escritas: si una regla no bajó la tasa de errores, reformularla en vez
@@ -199,7 +209,7 @@ el límite en una línea. El usuario decide si vale la complejidad extra.
 
 ---
 
-### 11.9 Auditoría de calidad: eficiencia, duplicado y código sin uso
+### 11.9 Auditoría de calidad: legibilidad, escalabilidad, eficiencia, duplicado y sin uso
 
 Todo pedido de auditoría que no sea solo de seguridad hace esta pasada completa y corrige lo que
 encuentra. Vale para la app completa, una feature, una carpeta o el diff. Sin alcance en el pedido: la
@@ -218,11 +228,14 @@ motivo). Ninguna se saltea en silencio.
 
 | Área | Qué se busca | Herramienta |
 | :--- | :--- | :--- |
-| Calidad | Bugs de lógica, errores sin manejar, convenciones de la skill ([checklists.md](./checklists.md)), legibilidad, sobreingeniería (§11.7.1) | `code-review-and-quality`, `ponytail-audit`, `revisor-checklist` |
-| Eficiencia | Bundle fuera de budget (§9.8), rutas no lazy (§9.6), falta de `@defer` (§9.3), `@for` sin `track` estable (§9.4), `computed` caro o funciones en el template (§9.10), leaks (§9.11), imágenes sin `NgOptimizedImage` (§9.5), listas largas sin virtual scroll (§9.9), requests repetidas o en cascada | `performance-optimization`, `ng build --stats-json`, Lighthouse |
+| Calidad | Bugs de lógica, errores sin manejar, convenciones de la skill ([checklists.md](./checklists.md)), sobreingeniería (§11.7.1) | `code-review-and-quality`, `ponytail-audit`, `revisor-checklist` |
+| Legibilidad y mantenimiento | Nombres que no dicen qué hacen, funciones largas o con más de 3 niveles de anidación, archivos fuera del límite de §1.4, `any` y tipos débiles, números mágicos, comentarios desactualizados o que repiten el código, imports circulares, features que importan internos de otra en vez de su API pública | `npx madge --circular --extensions ts src`; con ESLint en el proyecto: `npx eslint src --rule "complexity: [warn, 10]" --rule "max-depth: [warn, 3]"`; lectura del código |
+| Escalabilidad | Lo que se rompe cuando crecen los datos, los usuarios o el equipo: listas o tablas que traen todo sin paginar o sin virtual scroll (§9.9), algoritmos O(n²) sobre colecciones que crecen (§9.10), estado global para datos de una sola pantalla, polling donde hace falta push (§16), features no lazy que agrandan el bundle inicial (§9.6), límites entre microfrontends (§17) | `graphify query` sobre los flujos con más datos, budgets de `ng build` (§9.8), lectura del código |
+| Eficiencia | Bundle fuera de budget (§9.8), rutas no lazy (§9.6), falta de `@defer` (§9.3), `@for` sin `track` estable (§9.4), `computed` caro o funciones en el template (§9.10), leaks (§9.11), imágenes sin `NgOptimizedImage` (§9.5), requests repetidas o en cascada, búsquedas dentro de loops en caminos calientes (§9.10) | `performance-optimization`, `ng build --stats-json`, Lighthouse |
 | Código duplicado | Componentes, lógica, templates y estilos copiados | `npx jscpd src --min-tokens 50 --reporters console` |
 | Dependencias | Vulnerabilidades (runtime y dev), paquetes deprecados o sin uso | `npm audit --omit=dev`, `npm audit`, `npm outdated` (informativo), `npx knip` |
 | Código sin uso | Archivos, exports, componentes, servicios, dependencias, imports standalone, variables, parámetros, clases SCSS | `npx knip`, `ng build` (diagnóstico `unusedStandaloneImports`), `npx tsc --noEmit -p tsconfig.app.json --noUnusedLocals --noUnusedParameters`, `grep` de cada clase del `.scss` en su template |
+| Instrucciones de agentes | `CLAUDE.md`, `AGENTS.md`, `.claude/` (rules, skills, commands, agents): reglas pensadas para modelos viejos, referencias a archivos o comandos que no existen, instrucciones que se contradicen (el modelo elige una al azar), `CLAUDE.md` de más de 200 líneas. N/A si el repo no los tiene | `/doctor prompt-audit` en Claude Code 2.1.283+ (solo reporta, no edita); en otros agentes, la misma revisión a mano |
 
 **Pasos:**
 
@@ -247,7 +260,12 @@ motivo). Ninguna se saltea en silencio.
    - Duplicados: unificar con la forma de §1.5 (componente, directiva, pipe, servicio o capa ITCSS),
      reemplazar todas las copias y borrar las viejas.
    - Eficiencia: aplicar la regla de §9 que corresponde, la solución más simple (§11.7.1). Medir antes
-     y después cuando se pueda (tamaño del bundle, Lighthouse).
+     y después cuando se pueda (tamaño del bundle, Lighthouse). Priorizar por impacto medido
+     (camino caliente, tamaño, frecuencia); una micro-optimización que empeora la legibilidad sin
+     ganancia medible no se aplica.
+   - Legibilidad y mantenimiento: renombrar, aplanar anidación (early return) y partir solo lo que
+     supera el límite de §1.4, sin cambiar comportamiento. Imports circulares: mover lo
+     compartido a `shared/` (§1.1).
    - Preguntar antes, todo junto y una sola vez (§11.6): cambios que el usuario ve, API pública de una
      librería o `exposes` de un microfrontend, refactors de más de ~400 líneas.
    - Pedido de solo lectura ("solo revisá", "no toques nada"): solo el reporte.

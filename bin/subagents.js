@@ -201,19 +201,26 @@ function upsertBlock(filePath, block) {
   fs.writeFileSync(filePath, `${current}${separator}${block}\n`);
 }
 
+// Lee ~/.claude/settings.json: {} si no existe, null si no es un objeto JSON válido.
+function readClaudeSettings(settingsPath) {
+  if (!fs.existsSync(settingsPath)) return {};
+  try {
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    return settings && typeof settings === 'object' && !Array.isArray(settings) ? settings : null;
+  } catch {
+    return null;
+  }
+}
+
 // Claude Code pide aprobación en cada `graphify`; se permite solo ese comando.
 const GRAPHIFY_PERMISSIONS = ['Bash(graphify:*)', 'PowerShell(graphify:*)'];
 
 function allowGraphifyInClaude(homeDir, log) {
   const settingsPath = path.join(homeDir, '.claude', 'settings.json');
-  let settings = {};
-  if (fs.existsSync(settingsPath)) {
-    try {
-      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    } catch {
-      log('~/.claude/settings.json no es JSON válido: no se agregaron permisos de graphify');
-      return;
-    }
+  const settings = readClaudeSettings(settingsPath);
+  if (!settings) {
+    log('~/.claude/settings.json no es JSON válido: no se agregaron permisos de graphify');
+    return;
   }
   settings.permissions ??= {};
   settings.permissions.allow ??= [];
@@ -257,4 +264,4 @@ function installSubagents({ homeDir, isDryRun, only, log }) {
   }
 }
 
-module.exports = { installSubagents };
+module.exports = { installSubagents, readClaudeSettings };
