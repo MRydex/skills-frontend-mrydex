@@ -5,6 +5,15 @@ Para actualizar en un proyecto: `npx skills-frontend-mrydex@latest`.
 
 ## [Unreleased]
 
+### Instalador
+
+- `-t <ruta>` ya no borra una carpeta con contenido que no es una instalación de la skill (ej. `-t .`).
+- `--bridge` no pisa un `CLAUDE.md`, `AGENTS.md` o `.cursorrules` propio del proyecto.
+- El bloque de `~/.claude/CLAUDE.md` con un marcador sin su par no se toca (antes podía borrar texto).
+- README: árbol de referencias completo.
+
+## [1.32.2] - 2026-10-29
+
 ### Skill `desarrollo-buenas-practicas`
 
 - Auditoría de calidad (§11.9, regla 10): suma las áreas Legibilidad y mantenimiento (`madge

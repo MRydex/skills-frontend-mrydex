@@ -111,6 +111,8 @@ skills/desarrollo-buenas-practicas/
     ├── 13-css3-layouts-animations.md # Grid, @layer, :has(), animaciones
     ├── 14-agent-efficiency.md        # Caveman, subagentes, graphify
     ├── 15-security.md                # Red / Blue Team, OWASP
+    ├── 16-websocket-signalr.md       # Tiempo real: WebSocket y SignalR
+    ├── 17-microfrontends.md          # Native Federation, shell y remotes
     └── checklists.md                 # Checklists de entrega
 ```
 

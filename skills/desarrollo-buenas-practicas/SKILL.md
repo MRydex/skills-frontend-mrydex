@@ -118,7 +118,7 @@ Rige toda la sesión desde que la skill se carga. Para sesiones que no tocan Ang
 - **`OnPush` default desde v22**; `Default` se renombró a **`Eager`** (deprecada). Regla 4.
 - **TypeScript 6** estricto (`strict`, `noImplicitAny`, `strictTemplates`); TS 5.9 no soportado. Node 26 sí, Node 20 no.
 - **`HttpClient` usa `FetchBackend`** por defecto: `withFetch()` innecesario y deprecado. Progreso de subida: `withXhr()` (§5.9).
-- **Sin tests**: nunca `*.spec.ts` ni ningún archivo de test; `skipTests: true` en schematics; verificar con build, lint y prueba manual. Ver [08](./references/08-sin-tests.md).
+- **Sin tests**: nunca `*.spec.ts` ni ningún archivo de test por cuenta propia (si el usuario los pide explícitamente, se hacen); `skipTests: true` en schematics; verificar con build, lint y prueba manual. Ver [08](./references/08-sin-tests.md).
 - Incremental Hydration activa por defecto con `provideClientHydration()`. Imágenes estáticas con `NgOptimizedImage`.
 - Accesibilidad: AXE limpio + WCAG **AA** mínimo; primitivas headless con **`@angular/aria`** (v22+).
 - **Librería de componentes** (mirar `package.json`): **NG-ZORRO** si está; si no, **Angular Material**; si no, **controles propios**. Nunca mezclar dos ni instalar una para un solo control. §6.10.

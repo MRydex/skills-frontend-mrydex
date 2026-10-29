@@ -169,6 +169,11 @@ function copyBridgeFiles(projectRoot) {
     const srcFile = path.join(templatesDir, b.src);
     const destFile = path.join(projectRoot, b.dest);
     if (fs.existsSync(srcFile) && !isLinkedRepoPath(projectRoot, destFile)) {
+      // Un archivo propio del proyecto (sin el nombre de la skill) no se pisa
+      if (fs.existsSync(destFile) && !fs.readFileSync(destFile, 'utf8').includes(SKILL_NAME)) {
+        console.log(`  ${colors.yellow}⚠${colors.reset} ${b.dest} ya existe y no es de la skill: no se reemplazó`);
+        continue;
+      }
       if (isDryRun) {
         console.log(`${colors.dim}[dry-run] Crear ${b.dest} (${b.desc})${colors.reset}`);
       } else {
@@ -380,6 +385,11 @@ function setupGraphifyProject(projectRoot) {
 
 function installTarget(destDir, label) {
   const isUpdate = fs.existsSync(destDir);
+  // Solo se borra una instalación previa de la skill, nunca otra carpeta (ej. `-t .`)
+  if (isUpdate && fs.readdirSync(destDir).length > 0 && !fs.existsSync(path.join(destDir, 'SKILL.md'))) {
+    console.error(`${colors.red}✖ ${destDir} no está vacía y no es una instalación de la skill: no se toca.${colors.reset}`);
+    process.exit(1);
+  }
   const actionText = isUpdate ? 'Actualizando' : 'Instalando';
   console.log(`\n${colors.cyan}${actionText} para ${colors.bold}${label}${colors.reset}...`);
   console.log(`  Destino: ${colors.dim}${destDir}${colors.reset}`);

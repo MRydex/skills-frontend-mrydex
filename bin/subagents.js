@@ -196,6 +196,11 @@ function upsertBlock(filePath, block) {
     fs.writeFileSync(filePath, current.slice(0, start) + block + current.slice(end + BLOCK_END.length));
     return;
   }
+  // Un marcador sin su par (editado a mano): reemplazar borraría texto del usuario
+  if (start !== -1 || end !== -1) {
+    console.log(`  ⚠ ${filePath}: bloque de la skill incompleto, no se actualizó`);
+    return;
+  }
   let separator = '';
   if (current) separator = current.endsWith('\n') ? '\n' : '\n\n';
   fs.writeFileSync(filePath, `${current}${separator}${block}\n`);
