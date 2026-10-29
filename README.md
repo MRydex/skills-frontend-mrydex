@@ -14,6 +14,12 @@ Requisitos: Node.js 18+. Python 3.10+ para graphify (si falta, el instalador avi
 # Interactivo (pregunta agente y destino)
 npx github:MRydex/skills-frontend-mrydex
 
+# Si da error:
+npx --allow-git github:MRydex/skills-frontend-mrydex
+
+# Y luego nuevamente:
+npx github:MRydex/skills-frontend-mrydex
+
 # Todos los agentes en el proyecto actual
 npx github:MRydex/skills-frontend-mrydex -a all -w -b
 
