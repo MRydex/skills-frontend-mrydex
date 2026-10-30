@@ -85,6 +85,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Landmarks (`<main>`, `<header>`, `<nav>`, `<section>`) y `aria-*` solo donde el HTML nativo no alcanza?
 - [ ] ¿Clases con **BEM** estricto?
 - [ ] ¿Control flow nativo (`@if`, `@for` con `track` por identidad, `@switch`, `@empty`, `@let`, `@defer`)? Únicas excepciones: `*cdkVirtualFor` y `nz-virtual-scroll` de `nz-table` ([09](./09-performance-zoneless.md) §9.9)
+- [ ] ¿`<ng-template>` que recibe datos (`let-x`) tipado con `ngTemplateContextGuard`? ¿Estado interno de un componente con slots en `viewProviders`? (§3.13, §3.15)
 - [ ] ¿**Sin `[ngClass]` ni `[ngStyle]`** (usar `[class.x]` / `[style.x]`)?
 - [ ] ¿Templates simples, sin llamadas a métodos del `.ts` ni lógica compleja (usar `computed` / `@let`)? (§3.5)
 - [ ] ¿`NgOptimizedImage` para imágenes estáticas? ¿`priority` en la imagen LCP?

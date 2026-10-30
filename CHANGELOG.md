@@ -3,7 +3,16 @@
 Cambios de la skill `desarrollo-buenas-practicas` y del instalador `skills-frontend-mrydex`.
 Para actualizar en un proyecto: `npx skills-frontend-mrydex@latest`.
 
-## [Unreleased]
+## [1.34.0] - 2026-10-29
+
+### Skill `desarrollo-buenas-practicas`
+
+- `<ng-template>` tipado con `ngTemplateContextGuard` (§3.15) y `viewProviders` para el estado
+  interno de componentes con slots (§3.13).
+- Lecciones: línea opcional `Skill:` en `tasks/lessons.md` para marcar las que sirven a la skill
+  del equipo (§11.8).
+
+## [1.33.0] - 2026-10-29
 
 ### Instalador
 

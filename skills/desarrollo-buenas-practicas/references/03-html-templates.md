@@ -692,7 +692,10 @@ un "componente Dios" (§1.5). Proyectar el contenido: el padre decide qué va ad
 - Fallback de un slot vacío (v18+): contenido entre las etiquetas de `<ng-content>` se muestra
   cuando el padre no proyecta nada.
 - Si el slot necesita datos del hijo (ej. una celda que recibe la fila), usar `TemplateRef` +
-  `ngTemplateOutlet` en vez de `<ng-content>`.
+  `ngTemplateOutlet` en vez de `<ng-content>`. Para que ese template quede tipado: §3.15.
+- Estado interno de un componente con slots (ej. abierto/cerrado de un panel): servicio en
+  `viewProviders`, no en `providers`. Así lo inyecta solo la vista propia del componente; el
+  contenido proyectado no lo ve (`NG0201`) y no puede acoplarse a ese estado.
 - Ojo con `@boundary` (§3.12): no atrapa errores del contenido proyectado.
 
 ### 3.14 Eventos: `$event.stopPropagation()` en el template, sin directiva
@@ -743,6 +746,36 @@ export class TextoTruncado {
 - **Evento custom reutilizable** (ej. `(ctrl.click)`): un `EventManagerPlugin` registrado en
   `EVENT_MANAGER_PLUGINS`, no una directiva con `output()` que hay que importar en cada lugar.
 - Sin `standalone: true` (default desde v19) ni `public` explícito (§2.2).
+
+**Contexto tipado de un `<ng-template>`**: sin guard, `let-fila` es `any` y `strictTemplates` no
+controla nada adentro. Una directiva sobre el template declara el tipo con
+`ngTemplateContextGuard`:
+
+```ts
+@Directive({ selector: 'ng-template[filaTabla]' })
+export class FilaTabla<T> {
+  readonly filas = input.required<T[]>({ alias: 'filaTabla' }); // solo para inferir T
+  readonly template = inject(TemplateRef);
+
+  static ngTemplateContextGuard<T>(
+    _dir: FilaTabla<T>,
+    ctx: unknown,
+  ): ctx is { $implicit: T; index: number } {
+    return true;
+  }
+}
+```
+
+```html
+<app-tabla [items]="productos()">
+  <ng-template [filaTabla]="productos()" let-producto let-i="index">
+    {{ i + 1 }}. {{ producto.nombre }} <!-- producto: Producto, i: number -->
+  </ng-template>
+</app-tabla>
+```
+
+La tabla lo toma con `readonly fila = contentChild.required(FilaTabla);` y lo renderiza con
+`<ng-container [ngTemplateOutlet]="fila().template" [ngTemplateOutletContext]="{ $implicit: item, index: $index }" />`.
 
 ### 3.16 Íconos de NG-ZORRO: `<nz-icon>`
 

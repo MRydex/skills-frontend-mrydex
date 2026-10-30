@@ -193,7 +193,7 @@ el límite en una línea. El usuario decide si vale la complejidad extra.
 - Después de una corrección del usuario (rechazó un enfoque, señaló un error, pidió deshacer algo),
   registrar en `tasks/lessons.md` solo lo que ayudaría a sesiones futuras: qué se hizo mal y la regla
   concreta. Un tropiezo puntual de esta sesión no se vuelve regla.
-- Formato de cada lección, 5 líneas cortas:
+- Formato de cada lección, 5 líneas cortas (más una opcional):
 
   ```markdown
   ## <tema corto, estable: si el tema vuelve, se actualiza esta entrada>
@@ -202,7 +202,10 @@ el límite en una línea. El usuario decide si vale la complejidad extra.
   - Dónde: <archivo, comando o área>
   - Regla: <qué hacer la próxima vez>
   - Chequeo: <cómo detectarlo antes la próxima vez>
+  - Skill: <§ donde iría>  ← solo si vale para cualquier proyecto, no solo para este repo
   ```
+- La línea `Skill:` marca candidatas para subir a la skill del equipo. Buscarlas con
+  `grep -n "^- Skill:" tasks/lessons.md`; el usuario decide cuáles se suman.
 - Revisar `tasks/lessons.md` al arrancar una sesión nueva sobre el mismo proyecto, antes de planificar.
 - Iterar sobre las lecciones ya escritas: si una regla no bajó la tasa de errores, reformularla en vez
   de acumular reglas redundantes o contradictorias.
