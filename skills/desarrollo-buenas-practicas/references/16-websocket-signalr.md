@@ -370,7 +370,7 @@ readonly cotizaciones = rxResource({
 
 ### 16.11 Verificación manual
 
-Sin tests ([08](./08-sin-tests.md)). Antes de dar por terminado:
+Sin archivos de test ([08](./08-sin-tests.md)), pero probado. Antes de dar por terminado:
 
 1. DevTools → Network → WS: una sola conexión por hub, también al navegar entre pantallas.
 2. Network en *Offline* 40 s y volver: estado "reconectando", reconecta, se reúne a los grupos y

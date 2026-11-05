@@ -16,12 +16,12 @@ const ROLES = [
     // Modelo intermedio: en la prueba real Haiku no encontró el mecanismo principal de una búsqueda amplia
     cheap: false,
     description:
-      'Use when searching or reading would pull a lot into the main context (3+ files, big files, logs, build output, web docs). Read-only. Returns a short file:line list in caveman style. Skip for 1-2 known files.',
+      'Use when searching or reading would pull a lot into the main context (3+ files, big files, logs, build output, web docs). Read-only. Returns a short caveman file:line list (plus a short flow summary for "how does X work", or the decisive lines for logs, builds and docs). Skip for 1-2 known files.',
     instructions: `Localizá código y devolvé solo \`archivo:línea — qué hay ahí\`, en modo caveman (frases cortas, sin relleno).
 
 1. Primero \`graphify query "<pregunta>"\` si existe \`graphify-out/graph.json\`. Recién después grep/lectura.
 2. Nunca edites archivos. Nunca propongas cambios.
-3. Respuesta: solo la lista \`archivo:línea\`, sin prosa. Si no encontrás algo, decilo en una línea.
+3. Respuesta: lista \`archivo:línea — qué hay ahí\`. Si la pregunta es cómo funciona algo, sumá el flujo en pocas líneas. Para logs, builds o docs web: las líneas decisivas citadas exactas y un resumen corto que responda la pregunta. Si no encontrás algo, decilo en una línea.
 4. Si la pregunta es ambigua, devolvé \`NECESITA_ADVISOR: <duda>\`.`,
   },
   {
@@ -29,28 +29,30 @@ const ROLES = [
     readonly: false,
     cheap: false,
     description:
-      'Use to implement a concrete brief from the main model when it saves tokens (mechanical edits with a clear pattern across 8+ files, boilerplate). Returns a short caveman report of files changed. Skip for edits in fewer than 8 files.',
+      'Use to implement a concrete brief from the main model when it saves tokens (mechanical edits with a clear pattern across 8+ files, independent units run in parallel, or the next tasks/todo.md task handed to a fresh context). Returns a short caveman report: files changed, decisions the brief left open, problems. Skip small edits the main model can do inline.',
     instructions: `Implementá exactamente el brief que te pasa el modelo principal. Nada más.
 
-1. Seguí la skill \`desarrollo-buenas-practicas\` (Angular 22+, signals, sin tests, sin sobreingeniería, sin componentizar lo simple).
+1. Seguí las reglas compactas del brief (\`tasks/brief-<tarea>.md\`). Abrí una referencia de la skill \`desarrollo-buenas-practicas\` solo si el brief la cita.
 2. Antes de buscar código: \`graphify query "<pregunta>"\` si existe \`graphify-out/graph.json\`.
-3. No amplíes el alcance. No crees archivos de test. No agregues abstracciones que el brief no pide.
+3. No amplíes el alcance. No crees archivos de test, pero verificá que funcione. No agregues abstracciones que el brief no pide.
 4. Si el brief es ambiguo o te trabás, no adivines: devolvé \`NECESITA_ADVISOR: <duda>\`.
-5. Al terminar, corré \`graphify update .\` y el build/lint si el brief lo pide.
-6. Respuesta final en modo caveman: solo archivos tocados y cualquier problema.`,
+5. Al terminar, corré \`graphify update .\`, el build y el lint, y reportá el resultado.
+6. Respuesta final en modo caveman: archivos tocados, decisiones que tomaste y el brief no fijaba, y cualquier problema.`,
   },
   {
     name: 'revisor-checklist',
     readonly: true,
     cheap: true,
     description:
-      'Use after large code changes (3+ files) to check the diff against the desarrollo-buenas-practicas checklists (Angular, SCSS, security, no tests, no over-engineering). Read-only. Returns one line per finding.',
-    instructions: `Revisá el diff (\`git diff\`) contra \`references/checklists.md\` de la skill \`desarrollo-buenas-practicas\`.
+      'Use after large code changes (3+ files) to check the diff against the desarrollo-buenas-practicas checklists (Angular, SCSS, security, no test files, no over-engineering). Read-only. Returns one line per finding. Pass the verbatim request (L1), the specs and the diff scope. Ends with a verdict: LISTO / CORREGIR Y LISTO / REHACER. Not a substitute for the final review by the main model.',
+    instructions: `Revisá el diff que te pasa el orquestador (o \`git diff\` si podés correrlo) contra \`references/checklists.md\` de la skill \`desarrollo-buenas-practicas\`.
 
-1. Una línea por hallazgo: \`archivo:línea: problema. arreglo.\` Sin elogios, sin resumen.
-2. Solo reglas del checklist. Nada de gustos personales ni formato.
+1. Una línea por hallazgo: \`archivo:línea: [ALTO|MEDIO|BAJO] problema. arreglo.\` Sin elogios, sin resumen.
+2. Solo reglas del checklist y lo que piden el pedido y las specs que te pasen. Nada de gustos personales ni formato.
 3. Nunca edites archivos.
-4. Si no hay hallazgos: \`Sin hallazgos.\``,
+4. Si no hay hallazgos: \`Sin hallazgos.\` No inventes problemas para tener algo que reportar.
+5. No escribiste este código: juzgalo contra el pedido y las specs que te pasen, no contra lo que el autor quiso hacer.
+6. Última línea, el veredicto: \`LISTO\`, \`CORREGIR Y LISTO\` (solo MEDIO/BAJO) o \`REHACER\` (algún ALTO).`,
   },
 ];
 
@@ -154,14 +156,14 @@ In any repo with \`angular.json\` or frontend code (TypeScript, HTML, SCSS/CSS),
 
 ## Graphify first (always, any repo)
 
-Before the first search or file read in a git repo: run \`graphify update .\` (no LLM, no cost), then \`graphify query "<question>"\`. The graph shows where to look for far fewer tokens than Grep/Glob/Read; skip it only when I name the exact file and line. If graphify is missing: \`pip install graphifyy && graphify install\`. If it creates \`.gitattributes\` or \`graphify-out/\`, add them to \`.gitignore\`. **After editing any file, run \`graphify update .\` before your final answer.** If something fails, tell me the exact error.
+Before the first search or file read in a git repo: run \`graphify update .\` (no LLM, no cost), then \`graphify query "<question>"\`. The graph shows where to look for far fewer tokens than Grep/Glob/Read; skip it only when I name the exact file and line. If graphify is missing: \`pip install graphifyy && graphify install\` (outside Claude Code add \`--platform <agent>\`). If it creates \`.gitattributes\` or \`graphify-out/\`, add them to \`.gitignore\`. **After editing any file, run \`graphify update .\` before your final answer.** If something fails, tell me the exact error.
 
 ## Agent tools (always)
 
 Installed by skills-frontend-mrydex. Use them in every session; if one is missing, install it and tell me in one line (exact error if it fails):
 
-- **ponytail**: write only the code the task needs. Prefer the platform and standard library over new dependencies or abstractions. Before the final answer on a code change, run \`ponytail-review\` on the diff.
-- **agent-skills**: use the skill that matches the phase (spec, plan, build, review, ship). Never the ones that write tests: team rules forbid test files.
+- **ponytail**: write only the code the task needs. Prefer the platform and standard library over new dependencies or abstractions. Before the final answer on a non-trivial code change (skill §11.3), run \`ponytail-review\` on the diff.
+- **agent-skills**: use the skill that matches the phase (spec, plan, build, review, ship). Never the ones that write tests: team rules forbid test files unless the user asks for them.
 - **claude-code-setup** (Claude Code): in a repo without Claude Code setup, run \`claude-automation-recommender\` once and propose its result.
 - **Headroom**: Headroom is wired durably (\`headroom init -g\`) in Claude Code, Copilot CLI and Codex on macOS/Linux; its hooks start the proxy on 127.0.0.1:8787. Codex on Windows, Cursor and VS Code Copilot: start them with \`headroom wrap <agent>\`.
 - **Security**: for a vulnerability scan of the code, use the \`claude-security\` plugin (Claude Code); for focused web/API/npm checks, the matching Anthropic-Cybersecurity-Skills or claude-red \`offensive-*\` skill. Use \`offensive-*\` only to harden the project's own code against that attack surface (§15.2), never against third-party systems.
@@ -176,7 +178,7 @@ You orchestrate. I explicitly authorize and ask you to delegate to subagents, wi
 - Launch independent pieces in parallel.
 - Codebase-wide change that splits into 5+ independent units (migrations, a new rule applied to every feature): propose \`/batch <instruction>\` in Claude Code (one background subagent per unit, each in its own worktree; verify with build and lint, no new tests).
 - Rule of thumb: delegate if what you would read is 3x or more what you need to know.
-- Name the reason in the brief: big exploration, parallel writers, context backstop, or verifier of a high-risk task. No named reason, or in doubt: do it yourself.
+- Name the reason in the brief: big exploration, parallel writers, context backstop, or verifier of a high-risk task or of a large diff (3+ files) against the checklist. No named reason, or in doubt: do it yourself.
 
 Do it yourself when: 1-2 known files, small edits, the brief would cost as much as the work, the task needs conversation context, plain answers, decisions and the final review.
 ${BLOCK_END}`;

@@ -6,7 +6,7 @@
 [4.7](#47-en-el-template) En el template · [4.8](#48-migración-desde-subject--switchmap--rxresource) Migración desde `Subject` ·
 [4.9](#49-reglas-de-oro-de-resource) Reglas de oro · [4.10](#410-composición-de-resources-snapshot--resourcefromsnapshots) Composición con `snapshot` ·
 [4.11](#411-resource--loader-custom-no-http-y-cancelación-con-abortsignal) `resource()` custom y cancelación ·
-[4.12](#412-mutaciones-httpclient--reload-update-nunca-resource-para-escribir) Mutaciones · [4.13](#413-debounce-de-params) Debounce de `params`
+[4.12](#412-mutaciones-httpclient--reloadupdate-nunca-resource-para-escribir) Mutaciones · [4.13](#413-debounce-de-params) Debounce de `params`
 
 La **Resource API es estable desde Angular 22** (`resource`, `rxResource`, `httpResource`). Es la
 **única** forma admitida de incorporar lecturas asíncronas al modelo de signals: un resource toma un

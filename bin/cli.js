@@ -990,7 +990,7 @@ const AUTOCOMPACT_PCT = 40;
 const SECRET_DENY = ['Read(~/.ssh/**)', 'Read(~/.aws/credentials)', 'Read(**/.env)', 'Read(**/.env.*)',
   'Read(**/*.pem)', 'Read(**/*.key)', 'Read(**/*.pfx)', 'Read(**/secrets/**)'];
 
-// Hook SessionStart: levanta Headroom si hace falta. Claude Code pasa por Headroom solo si `headroom`
+// Hook SessionStart: levanta Headroom si hace falta y carga tasks/lessons.md del proyecto. Claude Code pasa por Headroom solo si `headroom`
 // funciona y no hay otra ANTHROPIC_BASE_URL; compacta al 40% del contexto.
 function installSessionStartHook(homeDir) {
   const claudeDir = path.join(homeDir, '.claude');
@@ -1039,7 +1039,7 @@ function installSessionStartHook(homeDir) {
 
   writeFileSafe(settingsPath, `${JSON.stringify(settings, null, 2)}
 `);
-  logOk('Claude Code: hook SessionStart (Headroom)');
+  logOk('Claude Code: hook SessionStart (Headroom + tasks/lessons.md)');
   if (settings.env.ANTHROPIC_BASE_URL === HEADROOM_URL) logOk(`Claude Code: modelo vía Headroom (${HEADROOM_URL})`);
   else if (ownRoute) console.log(`  ${colors.dim}Ya hay otra ruta al modelo (ANTHROPIC_BASE_URL, Bedrock o Vertex): no se cambió${colors.reset}`);
   logOk(`Claude Code: autocompactación al ${settings.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE}% del contexto`);

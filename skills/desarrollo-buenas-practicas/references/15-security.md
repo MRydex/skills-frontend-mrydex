@@ -239,8 +239,8 @@ this._router.navigateByUrl(destino);
   sanitizados antes de usarlos.
 - Uploads: validar tipo y tamaño en el front (UX) **y** en el backend (seguridad). Nunca renderizar
   un SVG subido por el usuario con `[innerHTML]`.
-- **El agente no lee secretos.** En Claude Code el instalador agrega a `permissions.deny` (solo si el
-  usuario no tiene su propia lista): `~/.ssh/**`, `~/.aws/credentials`, `.env`, `.env.*`, `*.pem`,
+- **El agente no lee secretos.** En Claude Code el instalador suma a `permissions.deny`, sin quitar las
+  reglas del usuario: `~/.ssh/**`, `~/.aws/credentials`, `.env`, `.env.*`, `*.pem`,
   `*.key`, `*.pfx` y `secrets/**`. Bloquea Read/Edit/Write, no `cat` por Bash: nunca leer esos
   archivos por otra vía. Si una tarea necesita un valor, pedírselo al usuario o usar un placeholder.
 
@@ -373,7 +373,8 @@ saltea en silencio, y la profundidad de cada una la decide el agente según lo q
 6. **Priorizar** por riesgo (crítico → bajo), mapeado a OWASP (§15.13). Una línea por hallazgo:
    archivo, línea, riesgo, fix propuesto. Triage de hallazgos dudosos o de scanners:
    `performing-web-application-vulnerability-triage`. Redacción: `offensive-reporting`.
-7. **Corregir.** Lo que está dentro del alcance se corrige; `high`/`critical` bloquean la entrega. Lo
+7. **Corregir.** Si el pedido es una pregunta o de solo lectura ("¿es seguro?", "solo revisá"), se
+   reporta con el fix propuesto, sin editar (§11.1). Si no, lo que está dentro del alcance se corrige; `high`/`critical` bloquean la entrega. Lo
    que queda fuera del alcance se reporta y se pregunta antes de tocarlo (§15.1). Nunca desactivar una
    protección para "arreglar".
 8. **Reverificar.** Tras cada fix, build + prueba manual (§15.12). Documentar la lección en

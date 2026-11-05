@@ -122,7 +122,8 @@ export class Users {
 - **No declarar `public`** explícito (es el default y genera ruido).
 - Declarar siempre `private` o `protected` cuando corresponda.
 - Las propiedades `private` llevan **prefijo `_`**.
-- Usar `protected` para lo que solo lee el template; `private _` para lo interno.
+- Usar `protected` para lo que solo lee el template; `private _` para lo interno. Si el template
+  lo lee, es `protected` (desde v22.2 compila también con `private`; la regla es de legibilidad).
 - **Encapsulación de estado escribible** (regla de oro del equipo): lo que deba estar protegido se
   guarda en un `private _signal` **escribible**, se expone una **`readonly` derivada**
   (`asReadonly()` / `computed`), y para mutarlo se ofrece un **método público** (`setX()` /
@@ -317,6 +318,15 @@ addItem(item: Item): void {
 
 // ✅ BIEN — linkedSignal: valor por defecto reactivo pero editable por el usuario
 selectedTab = linkedSignal(() => this.tabs()[0]?.id);
+
+// ✅ BIEN — tabs por proyección: contentChildren() + linkedSignal, sin @ContentChildren ni QueryList
+// <app-tabs> <app-tab label="Perfil">...</app-tab> <app-tab label="Ajustes">...</app-tab> </app-tabs>
+protected readonly tabs = contentChildren(Tab);
+protected readonly activa = linkedSignal<readonly Tab[], Tab | undefined>({
+  source: this.tabs,
+  // Si la tab activa sigue proyectada se conserva; si desapareció, vuelve a la primera
+  computation: (tabs, previa) => (previa?.value && tabs.includes(previa.value) ? previa.value : tabs[0]),
+});
 
 // ✅ BIEN — debouncing sin RxJS
 protected readonly filtro = signal<string>('');

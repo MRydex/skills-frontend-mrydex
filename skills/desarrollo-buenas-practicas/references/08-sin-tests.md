@@ -3,6 +3,11 @@
 **Regla**: el frontend **no tiene archivos de test**. Nunca generar `*.spec.ts`, `*.test.ts`,
 carpetas `tests/` / `__tests__/`, mocks de test ni configuración de test runner. Tampoco
 "de paso", ni aunque el ejemplo de una librería o de la documentación de Angular los incluya.
+Única excepción: el usuario los pide explícitamente; entonces se hacen.
+
+**Sin archivos de test no es sin probar.** Todo cambio se verifica funcionando antes de darlo por
+terminado: build, lint y la prueba del flujo en la app (§8.3). Lo único que no se hace es guardar
+tests en el repo.
 
 ### 8.1 Angular CLI: `skipTests` por defecto
 
@@ -31,19 +36,28 @@ carpetas `tests/` / `__tests__/`, mocks de test ni configuración de test runner
 
 ### 8.2 Proyectos con tests existentes
 
-- No crear ni actualizar ningún `*.spec.ts`.
+- No crear ni actualizar ningún `*.spec.ts` salvo pedido explícito del usuario.
 - Borrar specs, el target `test` de `angular.json` y las dependencias de test (`vitest`,
   `jasmine`, `karma`, `@angular/build:unit-test`) **solo si el usuario lo confirma**: es un cambio
   que afecta al equipo.
 - Si un cambio rompe un spec existente, avisar al usuario. No arreglar el spec por cuenta propia.
 
-### 8.3 Cómo se verifica sin tests
+### 8.3 Cómo se verifica sin archivos de test
 
-"Terminado" = compila, pasa lint y se probó en la app (§11.3):
+"Terminado" = compila, pasa lint y, salvo riesgo trivial (§11.3), se probó en la app:
 
 1. `ng build` sin errores ni warnings nuevos.
 2. Lint sin errores (`ng lint` o el linter del proyecto).
 3. Prueba manual en el navegador del flujo tocado: caso feliz, errores, estados vacío y de carga.
 4. Para seguridad: probar a mano los payloads de [15-security.md](./15-security.md) §15.12.
+
+Quién hace la prueba manual:
+
+- Si el agente tiene un navegador que puede manejar (Claude in Chrome, Playwright MCP, el navegador
+  integrado), la hace él: levanta `ng serve`, recorre el flujo y deja evidencia en el reporte
+  (captura de cada estado y consola sin errores). Manejar el navegador no es escribir tests: no se
+  guarda ningún script ni archivo de test en el repo.
+- Si no tiene navegador, lo dice en el reporte y le deja al usuario los pasos concretos a probar
+  (URL, datos, qué debería verse). Nunca reportar "probado" sin haberlo probado (§11.3).
 
 ---

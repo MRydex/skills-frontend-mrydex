@@ -133,8 +133,10 @@ $font-size-large:  clamp(1.5rem, -0.875rem + 8.333vw, 2.5rem);
 ```
 
 ```scss
-.lista__header-title    { font-size: var.$font-size-large; }
-.lista__header-subtitle { font-size: var.$font-size-medium; }
+.lista {
+  &__header-title    { font-size: var.$font-size-large; }
+  &__header-subtitle { font-size: var.$font-size-medium; }
+}
 ```
 
 > El término `IDEAL` con `rem` negativo es normal: sale de interpolar el tamaño entre dos anchos de

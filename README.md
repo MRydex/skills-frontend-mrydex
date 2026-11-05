@@ -65,10 +65,10 @@ Siempre instala todo; no hay flags para saltear partes.
   [ponytail](https://github.com/DietrichGebert/ponytail) y
   [agent-skills](https://github.com/addyosmani/agent-skills). Plugin `claude-code-setup` en Claude Code.
 - **[Headroom](https://github.com/chopratejas/headroom)**: proxy que comprime el contexto
-  (`headroom init -g`). En Claude Code, hook `SessionStart` y autocompactación al 40%.
+  (`headroom init -g`). En Claude Code, hook `SessionStart` (levanta Headroom y carga `tasks/lessons.md` del proyecto) y autocompactación al 40%.
   No funciona con Remote Control de Claude Code.
-- **Claude Code, extras** (cada uno solo si el usuario no lo configuró antes):
-  - `permissions.deny` para que el agente no lea secretos (`~/.ssh`, `.env*`, `*.pem`, `*.key`...).
+- **Claude Code, extras** (cada uno solo si el usuario no lo configuró antes, salvo `permissions.deny`, que se suma):
+  - `permissions.deny` para que el agente no lea secretos (`~/.ssh`, `.env*`, `*.pem`, `*.key`...); se suman a las reglas del usuario.
   - MCP [Context7](https://github.com/upstash/context7) (docs vigentes de librerías, gratis).
   - Subagentes con `effort` (`low` el revisor, `medium` el resto).
 - **`.gitignore`**: agrega los archivos de IA y agentes.

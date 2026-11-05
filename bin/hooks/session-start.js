@@ -2,7 +2,8 @@
 
 /**
  * Hook SessionStart de Claude Code (skills-frontend-mrydex).
- * Levanta el proxy de Headroom si no está corriendo.
+ * Levanta el proxy de Headroom si no está corriendo y carga `tasks/lessons.md` del proyecto
+ * (skill §11.8) como contexto, así las lecciones se aplican sin depender de que el agente lo lea.
  * Claude Code apunta al proxy por `env.ANTHROPIC_BASE_URL` en ~/.claude/settings.json.
  */
 
@@ -14,6 +15,7 @@ const { spawn, spawnSync } = require('child_process');
 
 const HEADROOM_PORT = 8787;
 const HEADROOM_WAIT_MS = 20000;
+const LESSONS_MAX_CHARS = 12000;
 
 function isUp(port, urlPath) {
   return new Promise((resolve) => {
@@ -65,7 +67,41 @@ function baseUrl() {
   }
 }
 
+// Claude Code manda el evento por stdin (incluye `cwd`); sin stdin, el directorio actual
+function readCwd() {
+  if (process.stdin.isTTY) return Promise.resolve(process.cwd());
+  return new Promise((resolve) => {
+    let data = '';
+    const done = () => {
+      try {
+        resolve(JSON.parse(data).cwd || process.cwd());
+      } catch {
+        resolve(process.cwd());
+      }
+    };
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (chunk) => { data += chunk; });
+    process.stdin.on('end', done);
+    process.stdin.on('error', done);
+  });
+}
+
+function lessonsContext(cwd) {
+  let text;
+  try {
+    text = fs.readFileSync(path.join(cwd, 'tasks', 'lessons.md'), 'utf8').trim();
+  } catch {
+    return '';
+  }
+  if (!text) return '';
+  const cut = text.length > LESSONS_MAX_CHARS;
+  return 'Lecciones de este proyecto (tasks/lessons.md). Aplicarlas en esta sesión; '
+    + 'si una no sirvió, reformularla ahí mismo:\n\n'
+    + (cut ? `${text.slice(0, LESSONS_MAX_CHARS)}\n\n[recortado: leer el resto en tasks/lessons.md]` : text);
+}
+
 async function main() {
+  const additionalContext = lessonsContext(await readCwd());
   const usesHeadroom = baseUrl().includes(`:${HEADROOM_PORT}`);
   let headroomUp = await isUp(HEADROOM_PORT, '/health');
   if (!headroomUp && usesHeadroom) {
@@ -78,12 +114,16 @@ async function main() {
     headroomUp = await waitUp(HEADROOM_PORT, '/health', HEADROOM_WAIT_MS);
   }
 
+  const output = {};
   // Sin proxy cada llamada al modelo falla: el aviso va al usuario, no al modelo
   if (usesHeadroom && !headroomUp) {
-    const systemMessage = `Headroom no responde en 127.0.0.1:${HEADROOM_PORT}: las llamadas al modelo van a fallar. `
+    output.systemMessage = `Headroom no responde en 127.0.0.1:${HEADROOM_PORT}: las llamadas al modelo van a fallar. `
       + `Correr "headroom proxy --port ${HEADROOM_PORT}" o quitar ANTHROPIC_BASE_URL del env de ~/.claude/settings.json.`;
-    process.stdout.write(JSON.stringify({ systemMessage }));
   }
+  if (additionalContext) {
+    output.hookSpecificOutput = { hookEventName: 'SessionStart', additionalContext };
+  }
+  if (Object.keys(output).length) process.stdout.write(JSON.stringify(output));
 }
 
 main();

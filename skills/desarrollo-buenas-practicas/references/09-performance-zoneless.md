@@ -11,11 +11,13 @@
   - [9.6.2 Router resources: datos de la ruta sin resolvers (v22.2+)](#962-router-resources-datos-de-la-ruta-sin-resolvers-v222)
   - [9.6.3 Navigation API del navegador (experimental)](#963-navigation-api-del-navegador-experimental)
   - [9.6.4 Guards y configuración del router](#964-guards-y-configuración-del-router)
+  - [9.6.5 Conservar una pantalla al ir y volver (lista → detalle)](#965-conservar-una-pantalla-al-ir-y-volver-lista--detalle)
 - [9.7 Hydration incremental y event replay](#97-hydration-incremental-y-event-replay)
   - [9.7.1 SSR: modo de render por ruta, tareas pendientes y transfer cache](#971-ssr-modo-de-render-por-ruta-tareas-pendientes-y-transfer-cache)
 - [9.8 Presupuestos de bundle y análisis](#98-presupuestos-de-bundle-y-análisis)
 - [9.9 Virtual scroll para listas largas](#99-virtual-scroll-para-listas-largas)
 - [9.10 `computed()` caro y funciones invocadas desde el template](#910-computed-caro-y-funciones-invocadas-desde-el-template)
+  - [9.10.1 Cálculo pesado en un Web Worker](#9101-cálculo-pesado-en-un-web-worker)
 - [9.11 Memory leaks: `DestroyRef` y `takeUntilDestroyed`](#911-memory-leaks-destroyref-y-takeuntildestroyed)
 - [9.12 Profiling: Chrome DevTools y Angular DevTools](#912-profiling-chrome-devtools-y-angular-devtools)
 - [9.13 Checklist rápida](#913-checklist-rápida)
@@ -411,6 +413,14 @@ provideRouter(
 
 - `withInMemoryScrolling`: vuelve arriba al navegar y restaura el scroll con atrás / adelante. Sin
   esto, la página nueva abre en la posición de scroll de la anterior.
+- **Anunciado para v22.3** (no verificado en una versión estable): un link que solo cambia un query
+  param (tabs por `?tab=`, filtros) no debe saltar arriba: `scroll="manual"` en ese `routerLink` y
+  el resto de los links sigue con la restauración global. Usarlo solo si el `@angular/router`
+  instalado lo tiene (si no, el template falla al compilar).
+
+```html
+<a routerLink="." [queryParams]="{ tab: 'resenas' }" scroll="manual">Reseñas</a>
+```
 - `withPreloading(PreloadAllModules)`: descarga los chunks lazy en segundo plano después del
   arranque. Con muchas features pesadas, una `PreloadingStrategy` propia que precargue solo las
   rutas marcadas (`data: { precargar: true }`).
@@ -442,6 +452,58 @@ provideRouter(
   `readonly enConfig = isActive('/config', this._router, { paths: 'exact' });`
 - `router.lastSuccessfulNavigation()` (signal desde v21) y `router.currentNavigation()` (ejemplo de uso: §10.4)
   reemplazan filtrar `router.events` para saber dónde se está o si hay una navegación en curso.
+
+#### 9.6.5 Conservar una pantalla al ir y volver (lista → detalle)
+
+Ir de una lista con búsqueda, filtros y scroll al detalle destruye la lista: al volver se pierde
+todo. Si la ruta lo amerita, marcarla con `data: { conservar: true }` y que la `RouteReuseStrategy`
+la guarde en vez de destruirla. Es la contracara de §9.6.1: **una sola estrategia por app**; si ya
+existe `RecrearRutaStrategy`, sumar estos métodos a esa clase.
+
+```ts
+// shared/services/routing/conservar-ruta-strategy.ts
+export class ConservarRutaStrategy extends BaseRouteReuseStrategy {
+  // Clave = la Route, no el path: dos rutas anidadas con el mismo path no chocan
+  private readonly _guardadas = new Map<Route, DetachedRouteHandle>();
+
+  override shouldDetach(ruta: ActivatedRouteSnapshot): boolean {
+    return ruta.routeConfig?.data?.['conservar'] === true;
+  }
+
+  override store(ruta: ActivatedRouteSnapshot, handle: DetachedRouteHandle | null): void {
+    if (!ruta.routeConfig) return;
+    if (handle) this._guardadas.set(ruta.routeConfig, handle);
+    else this._guardadas.delete(ruta.routeConfig);
+  }
+
+  override shouldAttach(ruta: ActivatedRouteSnapshot): boolean {
+    return !!ruta.routeConfig && this._guardadas.has(ruta.routeConfig);
+  }
+
+  override retrieve(ruta: ActivatedRouteSnapshot): DetachedRouteHandle | null {
+    return (ruta.routeConfig && this._guardadas.get(ruta.routeConfig)) ?? null;
+  }
+
+  // Logout: inject(RouteReuseStrategy) as ConservarRutaStrategy → limpiar()
+  limpiar(): void {
+    this._guardadas.clear();
+  }
+}
+
+// app.config.ts
+{ provide: RouteReuseStrategy, useClass: ConservarRutaStrategy }
+
+// productos.routes.ts
+{ path: '', loadComponent: () => import('./lista-productos/lista-productos').then((m) => m.ListaProductos), data: { conservar: true } }
+```
+
+- Una pantalla guardada **no se destruye**: sus `DestroyRef.onDestroy`, resources y conexiones
+  siguen vivos. Marcar solo pantallas de lista o búsqueda, nunca formularios con datos sensibles.
+- Al cerrar sesión, `limpiar()` desde el logout: si no, el próximo usuario ve la lista del
+  anterior. Navegar al login **antes** de limpiar, así la pantalla guardada ya no está montada.
+- Al volver, el componente no se recrea: no corren el constructor ni `ngOnInit`. Si el detalle
+  puede cambiar datos de la lista, al guardar sube un signal `version` del servicio de la feature y
+  la lista lo incluye en los `params` de su resource (§2.12): se recarga sola, sin `effect()`.
 
 ### 9.7 Hydration incremental y event replay
 
@@ -667,6 +729,46 @@ readonly conPedidos = computed(() => {
   return this.usuarios().filter((u) => ids.has(u.id));
 });
 ```
+
+#### 9.10.1 Cálculo pesado en un Web Worker
+
+Si un cálculo bloquea la UI más de ~50 ms aun optimizado (parseo de un archivo grande, export,
+cálculo sobre miles de filas), va a un Web Worker (`ng generate web-worker <nombre>`). Para
+emparejar cada pedido con su respuesta, `Promise.withResolvers()` en el servicio, sin `new Promise`
+anidados ni `Subject`:
+
+```ts
+// shared/services/calculo/calculo-worker.ts
+@Service()
+export class CalculoWorker {
+  private readonly _worker = new Worker(new URL('./calculo.worker', import.meta.url), { type: 'module' });
+  private readonly _pendientes = new Map<number, PromiseWithResolvers<Resultado>>();
+  private _proximoId = 0;
+
+  constructor() {
+    this._worker.onmessage = ({ data }: MessageEvent<{ id: number; resultado: Resultado }>) => {
+      this._pendientes.get(data.id)?.resolve(data.resultado);
+      this._pendientes.delete(data.id);
+    };
+    inject(DestroyRef).onDestroy(() => this._worker.terminate());
+  }
+
+  calcular(entrada: Entrada): Promise<Resultado> {
+    const id = this._proximoId++;
+    const pedido = Promise.withResolvers<Resultado>();
+    this._pendientes.set(id, pedido);
+    this._worker.postMessage({ id, entrada });
+    return pedido.promise;
+  }
+}
+```
+
+- El componente lo consume con `resource({ params, loader: ({ params }) => this._calculo.calcular(params) })`
+  (§4): el estado sigue en signals.
+- `Worker` no existe en el servidor: con SSR, el servicio se usa solo en el navegador (`@defer`,
+  `afterNextRender`) o crea el worker recién en el primer `calcular()`.
+- `onerror` del worker: rechazar todos los pendientes (`reject`) y vaciar el `Map`; si no, quedan
+  colgados para siempre.
 
 ### 9.11 Memory leaks: `DestroyRef` y `takeUntilDestroyed`
 

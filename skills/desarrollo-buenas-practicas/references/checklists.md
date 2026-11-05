@@ -4,7 +4,7 @@ Usar antes de entregar código o al revisar un PR. Cada ítem enlaza a la refere
 Un ítem en "no" bloquea la entrega salvo excepción justificada en el PR.
 
 Índice: Angular (TypeScript / Componente · Estructura y tamaño · Resource / HTTP · Interceptores ·
-Formularios · HTML / Template · SCSS · Sin tests · Performance / Zoneless · Tiempo real · Microfrontends) ·
+Formularios · HTML / Template · SCSS · Sin archivos de test · Performance / Zoneless · Tiempo real · Microfrontends) ·
 HTML5 / CSS3 · Seguridad ·
 Proceso del agente · Verificación rápida (Do & Don't).
 
@@ -108,7 +108,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿`:focus-visible` para foco accesible? ¿`prefers-reduced-motion` contemplado? (§7.7)
 - [ ] ¿Sin SCSS duplicado? Lo repetido extraído a su capa ITCSS (token, `@mixin`, `.o-*`, `.u-*`); sin `@extend`; el componente solo hace `@use` de `_index.scss` y de la carpeta de su módulo. (§7.10)
 
-### Sin tests ([08](./08-sin-tests.md))
+### Sin archivos de test ([08](./08-sin-tests.md))
 - [ ] ¿Ningún `*.spec.ts` / `*.test.ts` nuevo? ¿`angular.json` con `skipTests: true` en los schematics? (§8.1)
 - [ ] ¿Verificado con `ng build`, lint y prueba manual en la app? (§8.3)
 
@@ -209,6 +209,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿`.gitignore` del proyecto excluye todo lo de IA y agentes? (§10.9)
 - [ ] ¿Las dudas que cambian el resultado se preguntaron juntas, antes de empezar, con opción recomendada? (§11.6)
 - [ ] ¿Estado guardado en `tasks/todo.md` y compactación propuesta al cerrar cada fase? (§14.4)
+- [ ] ¿Corrección del usuario registrada en `tasks/lessons.md`? (§11.8)
 - [ ] ¿Paso 0 de graphify corrido al inicio de la sesión (instalado, versión al día, hooks, `graphify update .`)?
 - [ ] ¿Se consultó `graphify query` antes de buscar o leer archivos? ¿`graphify update .` al cerrar la tarea? (§14.5)
 - [ ] ¿Todo resultado de un ejecutor revisado por el modelo seleccionado antes de entregarlo? (§14.3.5)

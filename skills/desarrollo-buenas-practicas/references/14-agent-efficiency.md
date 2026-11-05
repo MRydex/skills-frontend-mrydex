@@ -142,7 +142,8 @@ ejecutores del equipo en la carpeta del agente (`.claude/agents/`, `.codex/agent
 `.agents/agents/`, `.cursor/agents/`, `.github/agents/`, `.gemini/agents/`):
 
 - `investigador` (nivel ejecutor): localiza código, devuelve `archivo:línea`. Solo lectura.
-- `ejecutor` (nivel ejecutor): implementa un brief y devuelve el diff.
+- `ejecutor` (nivel ejecutor): implementa un brief y devuelve archivos tocados, decisiones que el brief
+  no fijaba y problemas; el orquestador revisa el diff.
 - `revisor-checklist` (nivel rápido): revisa un diff contra [checklists.md](./checklists.md).
 
 La revisión final no se delega: la hace siempre el modelo seleccionado (§14.3.5).
@@ -195,7 +196,7 @@ en el brief. Sin motivo, o ante la duda: lo hace el orquestador.
 2. **Escritores en paralelo:** unidades independientes que no se pisan (`ejecutor` por unidad, `/batch`).
 3. **Respaldo de contexto:** la sesión está cargada y la próxima tarea del documento (§11.2) se le
    da a un subagente nuevo con el brief, en vez de seguir sumando contexto.
-4. **Verificador independiente:** solo para una tarea marcada de riesgo **alto** (§11.3).
+4. **Verificador independiente:** tarea de riesgo **alto** (§11.3), o diff grande (3+ archivos) contra el checklist (`revisor-checklist`).
 
 | Delegar | Lo hace el orquestador |
 | :--- | :--- |
@@ -229,6 +230,13 @@ aprobar. Después corre un subagente en background por unidad, cada uno en su pr
 implementa y publica su cambio. Requiere repo git. La instrucción debe pedir verificar con build y
 lint, nunca con tests nuevos (§8). Para un patrón mecánico en una sola sesión alcanza el `ejecutor`.
 
+**Pipeline con verificación por unidad: workflow (Claude Code, `Workflow`).** Si cada unidad necesita
+una verificación propia o un pipeline (revisar → verificar cada hallazgo, investigar N fuentes →
+resumir), un workflow corre los agentes por script y deja los resultados intermedios fuera del
+contexto del orquestador. Gasta bastantes más tokens que una conversación: solo si el usuario lo
+pide ("usá un workflow") o lo aceptó después de proponérselo con el costo estimado. Nunca por
+cuenta propia. Para cambios mecánicos por unidad, `/batch` es el default.
+
 **Delegar a un modelo barato cuando la tarea es** (y cumple la regla de decisión):
 - Búsqueda y localización de código ("¿dónde se define X?", "¿quién usa Y?").
 - Lectura/resumen de archivos grandes, logs o salida de builds.
@@ -256,7 +264,7 @@ lint, nunca con tests nuevos (§8). Para un patrón mecánico en una sola sesió
 Modelo seleccionado (orquestador + revisor)
 ├── plan + brief en tasks/brief-migracion.md
 ├── subagente rápido    → localizar usos de `ngModel` en src/          → tabla archivo:línea
-├── subagente ejecutor  → migrar form X a Signal Forms (06-signal-forms.md) → diff
+├── subagente ejecutor  → migrar form X a Signal Forms (06-signal-forms.md) → reporte
 ├── subagente rápido    → revisar diff contra checklists.md             → hallazgos
 └── revisión final del modelo seleccionado + respuesta al usuario
 ```
@@ -302,8 +310,9 @@ ejecutores:
    `SendMessage`; Codex: retomar el hilo desde `/agent`). Si no lo permite, relanza el ejecutor con el
    brief actualizado con la respuesta.
 3. **Momentos fijos de consulta al orquestador** (los que recomienda Anthropic para el advisor):
-   - **Después de la orientación, antes del trabajo sustantivo.** El ejecutor explora y devuelve lo
-     que encontró. El orquestador fija el enfoque antes de que se escriba nada.
+   - **Después de la orientación, antes del trabajo sustantivo.** Orienta el orquestador (graphify +
+     brief). Si el ejecutor ve que el brief no encaja con el código, devuelve `NECESITA_ADVISOR` antes
+     de escribir.
    - **Cuando el ejecutor se traba o quiere cambiar de enfoque** (punto 2).
    - **Antes de dar por terminado.** El ejecutor deja el resultado en disco (archivos escritos, build
      corrido). Después el orquestador revisa el diff y la salida del build.
@@ -482,7 +491,7 @@ Nunca seguir en silencio. Recién después seguir con búsqueda normal.
 | `warning: skill is from graphify X, package is Y` | `pip install --upgrade graphifyy && graphify install` |
 | `post-commit: not installed` (`graphify hook status`) | `graphify hook install` |
 | El agente no tiene la integración (Claude Code: sin `hook-guard` en `.claude/settings.json`) | `graphify <agente> install` (tabla del paso 2) |
-| `graphify update .` falla porque no hay grafo | `/graphify .` dentro del asistente (build completo) |
+| No existe `graphify-out/graph.json` | `/graphify .` dentro del asistente (build completo) |
 | La salida dice `Rebuild failed`, `worker failed` o `Nothing to update or rebuild failed` | Falló aunque el exit code sea 0: avisar (causas abajo) |
 
 Causas conocidas:
@@ -589,11 +598,12 @@ estas reglas para que rijan en todas las sesiones.
   - Respaldo de Headroom: si `ANTHROPIC_BASE_URL` apunta al puerto 8787 y el proxy no
     corre, lo levanta (en Windows con la tarea programada oculta) (6 s en frío, 0,1 s si ya está arriba). Si no levanta en 20 s, avisa al usuario con el
     comando para arreglarlo: sin proxy cada llamada al modelo reintenta ~3 min y falla (`ECONNREFUSED`).
-  - No inyecta texto al modelo: si el proxy anda (o no se usa), no escribe nada.
+  - Inyecta `tasks/lessons.md` del proyecto como contexto (tope 12.000 caracteres, §11.8). Si el
+    proxy anda (o no se usa), no agrega avisos.
 - Medido (Claude Code + Headroom, suscripción): la autenticación pasa sin API key; en una tarea
   chica que leyó 2 archivos, Headroom ahorró 63.204 tokens (casi todo en schemas de tools) y 24,4%
   del costo.
 - **Desactivar Headroom**: `headroom unwrap claude` (o quitar `ANTHROPIC_BASE_URL` del `env` de `~/.claude/settings.json`).
   **Desactivar el hook**: quitar la entrada `skills-frontend-mrydex` de `hooks.SessionStart`.
-- Las reglas del equipo ganan ante un conflicto: sin tests (§8), caveman, graphify primero y la
+- Las reglas del equipo ganan ante un conflicto: sin archivos de test, pero todo probado (§8), caveman, graphify primero y la
   delegación de §14.3 siguen vigentes.

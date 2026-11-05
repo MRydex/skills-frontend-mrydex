@@ -288,4 +288,8 @@ Con SSR, nunca `withXhr()` en el servidor: está deprecado y se elimina en v23 (
 header `Authorization` en redirects cross-origin). Si hace falta progreso de subida, registrar
 `withXhr()` solo en el `app.config.ts` del navegador.
 
+JSONP (`HttpClient.jsonp`, `HttpClientJsonpModule`) está deprecado desde v22.1: no usarlo en
+código nuevo, ni `withJsonpSupport()`, que solo sirve para eso. Una API de terceros que solo ofrece JSONP se consume a través
+del backend .NET, que la llama y expone JSON con CORS.
+
 ---

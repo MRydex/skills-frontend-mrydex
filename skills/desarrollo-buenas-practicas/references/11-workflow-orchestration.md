@@ -11,7 +11,8 @@ cómo verificar antes de decir "terminado" y cómo aprender de las correcciones.
 [11.5](#115-no-ampliar-el-alcance) No ampliar el alcance ·
 [11.6](#116-preguntar-todo-lo-necesario-una-sola-vez-antes-de-empezar) Preguntar todo antes de empezar ·
 [11.7](#117-causa-raíz-y-simplicidad) Causa raíz, simplicidad y sin sobreingeniería ·
-[11.8](#118-ciclo-de-auto-mejora-taskslessonsmd) Ciclo de auto-mejora.
+[11.8](#118-ciclo-de-auto-mejora-taskslessonsmd) Ciclo de auto-mejora ·
+[11.9](#119-auditoría-de-calidad-legibilidad-escalabilidad-eficiencia-duplicado-y-sin-uso) Auditoría de calidad.
 
 ### 11.1 Explorar antes de editar
 
@@ -52,6 +53,11 @@ L1: <pedido del usuario, literal, sin resumir>
 - [ ] T1 (S1): <unidad chica, con criterio de hecho> — riesgo: trivial | medio | alto
 - [ ] T2 (S2): ...
 
+## Estado
+- Revisión: <hash del último commit o "sin commit">
+- Siguiente acción: <una línea concreta>
+- Bloqueos: <qué falta y quién lo decide, o "ninguno">
+
 ## Log
 - <fecha> T1 hecho: <decisión tomada y su porqué, archivos tocados>
 ```
@@ -59,7 +65,12 @@ L1: <pedido del usuario, literal, sin resumir>
 - `L1` guarda el pedido literal: es la referencia para no ampliar el alcance (§11.5).
 - Cada tarea apunta a una spec y lleva su riesgo (§11.3). Se marca al completarla y se anota en `Log`;
   la lista no se reescribe entera.
-- Se implementa **tarea por tarea**: terminar, verificar y anotar una antes de la siguiente.
+- Se implementa **tarea por tarea**: terminar, verificar y anotar una antes de la siguiente. Cada
+  task se define con su criterio de hecho **antes** de programarla (un chequeo que se pueda correr
+  o mirar), y no se cierra hasta pasarlo.
+- `Estado` se actualiza al cerrar cada task. Al retomar en otra sesión, el documento no alcanza:
+  comparar `Revisión` con `git log` / `git status` y correr el build antes de seguir. Si no
+  coinciden, manda el repo y se corrige el documento.
 - Al cerrar la feature: todas las specs verificadas y el documento se vacía o se borra.
 - Un plan no trivial se relee de forma crítica (o se valida con el usuario cuando la tarea lo amerita)
   antes de arrancar la implementación: cambiar de rumbo después de escribir código sale más caro que
@@ -70,9 +81,20 @@ L1: <pedido del usuario, literal, sin resumir>
 ### 11.3 Verificación antes de dar por "terminado"
 
 - Nunca marcar una tarea como terminada sin probar que funciona: `ng build` y lint sin errores y, salvo en riesgo
-  trivial (§11.3), prueba manual del flujo en la app (ver [08-sin-tests.md](./08-sin-tests.md) §8.3). Sin tests.
+  trivial (§11.3), prueba manual del flujo en la app (ver [08-sin-tests.md](./08-sin-tests.md) §8.3). Sin archivos de test, pero siempre probado.
 - Si el bug o la feature tiene un caso reproducible (error en consola, log de producción, pasos en la
   UI), demostrar que ahora desaparece — no alcanza con "debería andar".
+- **Reportar lo que no se verificó.** "Build OK" es falso si se salteó lint o la prueba manual: cada
+  chequeo que no se corrió o no se pudo correr se dice en el reporte, con el motivo.
+- Un chequeo en verde prueba una sola cosa: el reporte dice qué cubrió y qué no (el build no prueba
+  el flujo en la UI; la prueba manual de un caso no prueba los demás). La evidencia va primero: el
+  comando que se corrió y su salida, después el resumen.
+- Errores preexistentes: el build y el lint se juzgan por los errores **nuevos** del cambio. Los
+  viejos se reportan en una línea, no se arreglan fuera de alcance (§11.5) y no sirven de excusa
+  para dejar uno nuevo.
+- Tope de reintentos: si el mismo error de build o lint sigue después de **3 intentos** de corrección, parar,
+  anotarlo en `Bloqueos` (§11.2) con el error exacto y lo probado, y reportarlo. No seguir probando
+  variantes a ciegas.
 - Ante un arreglo que se siente parche: preguntarse si resuelve la causa raíz (§11.7) o solo tapa el
   síntoma.
 - Antes de reportar el cambio, releer el diff completo (no solo el archivo pedido): código muerto,
@@ -88,6 +110,9 @@ revisarlo: la revisión no agrega features.
 | **Trivial** | No cambia comportamiento: textos visibles, estilos SCSS sin selectores ni mixins nuevos, HTML estático (sin bindings ni control flow), rename mecánico, comentarios, formato | Releer el diff + build/lint + tabla rápida de §15.2 |
 | **Medio** | Todo lo demás: lógica de componente o servicio, bindings, formularios, rutas, SCSS nuevo | Lo anterior + `ponytail-review` sobre el diff |
 | **Alto** | Auth, tokens, interceptores, permisos, datos sensibles, `package.json`, borrar o migrar datos | Lo anterior + revisor independiente (`revisor-checklist` o `/code-review`) + revisión ofensiva profunda con la skill del área (§15.14, tabla de skills) |
+
+- El revisor independiente recibe el pedido (`L1`), las specs y el diff; no el razonamiento de quien
+  lo escribió. Así juzga contra lo pedido y no hereda sus supuestos.
 
 - **Doble juez**, solo en riesgo alto con mucho en juego (auth,
   migración de datos, interceptor de tokens): dos revisores independientes en paralelo, que no ven el
@@ -131,6 +156,12 @@ revisarlo: la revisión no agrega features.
   `AskUserQuestion` (hasta 4 preguntas por llamada, con opciones).
 - Si durante la tarea aparece una duda nueva que cambia el resultado, parar y preguntar. Si no lo
   cambia, elegir la opción razonable, seguir y mencionarla en el reporte final.
+- Los supuestos se dicen, no se esconden: los que se tomaron sin preguntar van en una línea al
+  empezar (tarea grande: en `Specs`). El reporte final lista además las decisiones que tomó el
+  agente y el pedido no fijaba (defaults, qué quedó fuera de alcance, qué requisito interpretó).
+- Si dos fuentes se contradicen (el pedido y la skill, dos archivos de instrucciones, el código y la
+  documentación), mostrar las dos con su ubicación y preguntar. Nunca promediarlas ni elegir una en
+  silencio.
 - No preguntar por algo que el agente puede resolver solo con la información del repo: convención ya
   usada en un archivo similar, tipo ya definido, patrón ya aplicado en otro módulo.
 - Reporte de bug con evidencia (error, log, pasos en la UI, pipeline que falla): ir directo a
@@ -148,6 +179,9 @@ revisarlo: la revisión no agrega features.
   queda documentado como tal (comentario + motivo) y no se presenta como solución definitiva.
 - Cambio mínimo necesario: tocar solo lo que la tarea requiere. Reescribir alrededor "para dejarlo
   prolijo" es scope creep (§11.5), no una mejora gratis.
+- Lo que un comando puede responder lo responde el comando: contar, buscar usos, validar tipos,
+  formatear y comparar los resuelven `graphify query`, `grep`, el compilador o un script; el
+  modelo queda para las decisiones de criterio.
 - Los límites de tamaño de archivo y la regla anti-monolito (componentizar en vez de acumular
   responsabilidades) ya están definidos en [01-project-structure.md](./01-project-structure.md) §1.4: no
   se repiten acá.
@@ -206,7 +240,9 @@ el límite en una línea. El usuario decide si vale la complejidad extra.
   ```
 - La línea `Skill:` marca candidatas para subir a la skill del equipo. Buscarlas con
   `grep -n "^- Skill:" tasks/lessons.md`; el usuario decide cuáles se suman.
-- Revisar `tasks/lessons.md` al arrancar una sesión nueva sobre el mismo proyecto, antes de planificar.
+- Leer `tasks/lessons.md` al arrancar una sesión nueva sobre el mismo proyecto, antes de planificar. En
+  Claude Code lo carga automáticamente el hook `SessionStart` del instalador (también después de compactar); en
+  otros agentes, leerlo a mano.
 - Iterar sobre las lecciones ya escritas: si una regla no bajó la tasa de errores, reformularla en vez
   de acumular reglas redundantes o contradictorias.
 
@@ -238,7 +274,7 @@ motivo). Ninguna se saltea en silencio.
 | Código duplicado | Componentes, lógica, templates y estilos copiados | `npx jscpd src --min-tokens 50 --reporters console` |
 | Dependencias | Vulnerabilidades (runtime y dev), paquetes deprecados o sin uso | `npm audit --omit=dev`, `npm audit`, `npm outdated` (informativo), `npx knip` |
 | Código sin uso | Archivos, exports, componentes, servicios, dependencias, imports standalone, variables, parámetros, clases SCSS | `npx knip`, `ng build` (diagnóstico `unusedStandaloneImports`), `npx tsc --noEmit -p tsconfig.app.json --noUnusedLocals --noUnusedParameters`, `grep` de cada clase del `.scss` en su template |
-| Instrucciones de agentes | `CLAUDE.md`, `AGENTS.md`, `.claude/` (rules, skills, commands, agents): reglas pensadas para modelos viejos, referencias a archivos o comandos que no existen, instrucciones que se contradicen (el modelo elige una al azar), `CLAUDE.md` de más de 200 líneas. N/A si el repo no los tiene | `/doctor prompt-audit` en Claude Code 2.1.283+ (solo reporta, no edita); en otros agentes, la misma revisión a mano |
+| Instrucciones de agentes | `CLAUDE.md`, `AGENTS.md`, `.claude/` (rules, skills, commands, agents): reglas pensadas para modelos viejos, referencias a archivos o comandos que no existen, instrucciones que se contradicen (el modelo elige una al azar), `CLAUDE.md` de más de 200 líneas. N/A si el repo no los tiene | `/claude-api prompt-audit` en Claude Code (informe + diff propuesto; aplica solo si se pide); en otros agentes, la misma revisión a mano |
 
 **Pasos:**
 

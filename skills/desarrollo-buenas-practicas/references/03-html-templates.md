@@ -359,12 +359,14 @@ contenido completo en un tooltip **solo si efectivamente se truncaron**, se usa 
 ```
 
 ```scss
-.content-instruccion__titulo {
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
+.content-instruccion {
+  &__titulo {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
 }
 ```
 
@@ -384,14 +386,15 @@ import { afterNextRender, DestroyRef, Directive, ElementRef, inject, signal } fr
 export class OverflowDetector {
   private readonly _el = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  readonly isOverflowing = signal(false);
+  private readonly _isOverflowing = signal(false);
+  readonly isOverflowing = this._isOverflowing.asReadonly();
 
   constructor() {
     const destroyRef = inject(DestroyRef);
 
     afterNextRender(() => {
       const el = this._el.nativeElement;
-      const check = () => this.isOverflowing.set(el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth);
+      const check = () => this._isOverflowing.set(el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth);
 
       check();
 
