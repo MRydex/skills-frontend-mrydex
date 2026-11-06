@@ -11,7 +11,8 @@ Constructor vs `ngOnInit` vs `afterNextRender` · [2.9](#29-rxjs--fuera-del-cód
 fuera de la app · [2.10](#210-servicios) Servicios · [2.11](#211-null-safety-contrato-con-el-backend-y-mapeo)
 Null safety, contrato con el back y mapeo · [2.12](#212-comunicación-entre-componentes-hermanos--servicio-con-signals)
 Comunicación entre hermanos · [2.13](#213-apis-del-navegador-en-servicios-ejemplo-notifications)
-APIs del navegador en servicios.
+APIs del navegador en servicios · [2.14](#214-servicios-lazy-con-injectasync) Servicios lazy con
+`injectAsync`.
 
 ### 2.1 Strict typing
 
@@ -192,7 +193,8 @@ private _agregarElemento(): void { /* ... */ }
     provider. No hace falta migrar servicios existentes de golpe.
 - Carga perezosa de servicios pesados: **`injectAsync()`** (+ `prefetch: onIdle` cuando conviene
   precargar el bundle en un hueco de inactividad del navegador). El servicio inyectado así debe ser
-  auto-provided (`@Service()` o `providedIn: 'root'`).
+  auto-provided (`@Service()` o `providedIn: 'root'`). Cuándo sí y cuándo no, loaders y prefetch:
+  §2.14.
 
 ```ts
 // ❌ MAL
@@ -851,5 +853,72 @@ export class DesktopNotifier {
 > Requisitos: contexto **HTTPS**, **gesto del usuario** para pedir permiso, ícono opcional en
 > `assets/`. No usar `setTimeout` para "forzar" el prompt: en zoneless no aporta nada y el navegador
 > igual exige el gesto.
+
+---
+
+### 2.14 Servicios lazy con `injectAsync`
+
+`inject()` exige un `import` estático: el servicio y todo lo que importa viajan en el chunk del
+componente, aunque la ruta sea lazy. `injectAsync()` cambia ese import por un `import()` dinámico: el
+servicio queda en un chunk aparte que se baja la primera vez que se llama la función; las llamadas
+siguientes reutilizan la misma promesa.
+
+| Usar `injectAsync` | Usar `inject` |
+| :--- | :--- |
+| Servicio con librería pesada (PDF, Excel, markdown, gráficos, editor) | Servicio chico usado en toda la app |
+| Acción que usa una minoría (exportar, previsualizar, imprimir) | Servicio necesario en el primer render |
+| Bajar el bundle inicial | Estado leído de forma síncrona (stores, spinner, notificador de errores) |
+
+No aplicarlo a todo: si el servicio se necesita síncrono o en el render inicial, solo agrega un
+`await` sin ganancia.
+
+**Reglas**
+
+- Devuelve una **función** `() => Promise<T>`, no el servicio: `await this._exportador()` antes de
+  usarlo. Se llama en contexto de inyección (inicializador de campo o constructor), igual que
+  `inject()`.
+- El servicio tiene que ser auto-provided: `@Service()` o `@Injectable({ providedIn: 'root' })`. Con
+  `@Service({ autoProvided: false })`, `@Injectable()` sin `providedIn` o provisto en `providers`,
+  Angular no puede construirlo después de bajar el chunk.
+- Ningún otro archivo lo importa de forma estática: un solo `import` estático lo fusiona con el
+  bundle. Si solo hace falta el tipo, `import type`.
+- La carga la dispara un handler `on*` o el `prefetch`, nunca un `effect()` (§2.7).
+- Verificar en el build que aparece el chunk separado.
+
+**Loader según el export**
+
+| Export | Loader |
+| :--- | :--- |
+| Nombrado | `() => import('./reporte-exportador').then((m) => m.ReporteExportador)` |
+| `export default` | `() => import('./reporte-exportador')` (Angular toma `default`) |
+
+**Prefetch**: adelanta la descarga sin meter el servicio en el bundle inicial. `onIdle` espera a que
+el navegador quede ocioso; en páginas que nunca quedan ociosas, acotar la espera:
+
+```ts
+import { injectAsync, onIdle } from '@angular/core';
+
+private readonly _exportador = injectAsync(
+  () => import('./reporte-exportador'),
+  { prefetch: () => onIdle({ timeout: 1_000 }) },
+);
+```
+
+Un trigger (`PrefetchTrigger`) es cualquier función que devuelve una `Promise`; cuando resuelve,
+Angular dispara el loader. Trigger propio, por ejemplo al pasar el puntero:
+
+```ts
+import { PrefetchTrigger } from '@angular/core';
+
+export function alPasarPuntero(el: HTMLElement): PrefetchTrigger {
+  return () =>
+    new Promise<void>((resolve) => {
+      el.addEventListener('pointerenter', () => resolve(), { once: true });
+    });
+}
+```
+
+**Qué lazy-loadear con qué**: vistas parciales → `@defer` (§9.3); servicios → `injectAsync`;
+funciones, clases o constantes sin DI → `import()` dinámico estándar.
 
 ---

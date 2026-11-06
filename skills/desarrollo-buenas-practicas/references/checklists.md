@@ -119,7 +119,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Guards funcionales que redirigen devolviendo `UrlTree` / `RedirectCommand`, sin `router.navigate()` adentro? ¿`canDeactivate` en formularios editables? (§9.6.4)
 - [ ] ¿`withInMemoryScrolling` en `provideRouter`? Al migrar a v22: ¿params de hijos que chocan con los del padre (`paramsInheritanceStrategy: 'always'`)? (§9.6.4)
 - [ ] ¿Links a la misma ruta recrean el componente (`shouldReuseRoute = () => false` + `onSameUrlNavigation: 'reload'`) en vez de limpiar estado a mano? ¿Estrategia restaurada en `onDestroy`? (§9.6.1)
-- [ ] ¿Servicios pesados con `injectAsync()` (+ `prefetch: onIdle` si corresponde)?
+- [ ] ¿Servicios pesados con `injectAsync()` (+ `prefetch: onIdle` si corresponde)? ¿Auto-provided, sin `import` estático en ningún archivo y con el chunk separado en el build? (§2.14)
 - [ ] ¿Listas largas con virtual scroll (`*cdkVirtualFor` o `nz-table` con `nzVirtualItemSize`)? (§9.9)
 - [ ] ¿Subscripciones inevitables cerradas con `takeUntilDestroyed()` / `DestroyRef`? (§9.11)
 - [ ] ¿Sin `withExperimentalPlatformNavigation()` en producción? (§9.6.3)

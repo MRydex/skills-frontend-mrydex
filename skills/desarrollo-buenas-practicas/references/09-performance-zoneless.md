@@ -121,7 +121,7 @@ render "lazy" con un prefetch más agresivo:
 ```
 
 Para servicios pesados (no componentes), usar `injectAsync()` en vez de `@defer` (ver
-[02-typescript-signals.md](./02-typescript-signals.md) §2.4).
+[02-typescript-signals.md](./02-typescript-signals.md) §2.14).
 
 Cuándo `@defer` **no** separa el código (el componente termina igual en el bundle inicial):
 

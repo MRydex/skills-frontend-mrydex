@@ -217,7 +217,7 @@ usuario lo pide. Nunca antes.
 - ¿Lo aprobaría un staff engineer al revisar el diff?
 - ¿Qué se rompe primero (dato vacío o nulo, volumen x10, red o servicio caído)? Cubierto, o
   avisado en una línea.
-- ¿Hubo corrección del usuario? Entonces `tasks/lessons.md` actualizado (§11.8).
+- ¿Hubo una corrección del usuario que sirva a sesiones futuras? Entonces `tasks/lessons.md` actualizado (§11.8).
 
 Si la solución simple tiene un límite real (rendimiento, seguridad), elegir la simple igual y avisar
 el límite en una línea. El usuario decide si vale la complejidad extra.

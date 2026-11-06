@@ -542,7 +542,7 @@ Con muchas opciones (personas, organismos), el select no filtra en el front: bus
 3. **Ramas `@if` / `@switch` extensas**:
    - Si el template supera el límite, las ramas extensas del `@if` son las primeras candidatas a subcomponente (`<app-user-empty-state>`, `<app-user-detail-view>`).
 4. **Uso de `@defer` para subcomponentes que no se ven de inmediato**:
-   - Diálogos, drawers de detalle, paneles de auditoría o modales deben estar en subcomponentes y diferirse con `@defer (on interaction)` o `@defer (when isOpen())`:
+   - Diálogos, drawers de detalle, paneles de auditoría o modales con estado o lógica propia (un form, datos que cargan) van en subcomponentes y se difieren con `@defer (on interaction)` o `@defer (when isOpen())`. Un modal chico de solo markup (confirmar Sí / No) se queda en el padre ([01](./01-project-structure.md) §1.4):
    ```html
    <!-- ✅ Carga diferida del subcomponente pesado -->
    @if (showDetails()) {
