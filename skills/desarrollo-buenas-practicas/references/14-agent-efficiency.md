@@ -11,7 +11,7 @@ ejemplos: traducirlos al agente y a los modelos en uso (§14.7).
 [14.4](#144-autocompactación-del-contexto) Autocompactación del contexto ·
 [14.5](#145-graphify-consultar-el-grafo-antes-de-leer-archivos) Graphify · [14.6](#146-regla-de-oro) Regla de oro ·
 [14.7](#147-adaptación-al-agente-y-al-modelo-en-uso) Adaptación al agente y al modelo en uso ·
-[14.8](#148-herramientas-del-agente-instalar-y-usar-siempre) Herramientas del agente.
+[14.8](#148-herramientas-del-agente-instalar-y-usar-siempre) Herramientas del agente · [14.9](#149-skills-externas-por-área) Skills externas por área.
 
 ---
 
@@ -145,12 +145,21 @@ ejecutores del equipo en la carpeta del agente (`.claude/agents/`, `.codex/agent
 - `ejecutor` (nivel ejecutor): implementa un brief y devuelve archivos tocados, decisiones que el brief
   no fijaba y problemas; el orquestador revisa el diff.
 - `revisor-checklist` (nivel rápido): revisa un diff contra [checklists.md](./checklists.md).
+- `migrador-angular` (nivel ejecutor): migra un proyecto legacy paso a paso según §20, solo si el
+  usuario lo pide.
+- `auditor-contrato-api` (nivel ejecutor, solo lectura): compara el OpenAPI o los DTOs del backend con
+  los modelos Request/Response del front.
+- `revisor-auth` (nivel ejecutor, solo lectura): revisa OIDC, guards, interceptores de auth y dónde se
+  guarda el token (§15).
+
+`auditor-contrato-api` y `revisor-auth` son los mismos que instala la skill de backend (mismo nombre y
+texto): sirven para los dos lados.
 
 La revisión final no se delega: la hace siempre el modelo seleccionado (§14.3.5).
 
 **El instalador los crea en todos los agentes.** La opción global genera `investigador` (modelo
 intermedio, solo lectura: en una prueba real el modelo barato se perdía en búsquedas amplias),
-`ejecutor` y `revisor-checklist` (barato, solo lectura) desde una sola definición
+`ejecutor`, `revisor-checklist` (barato, solo lectura) y los tres especializados desde una sola definición
 (`bin/subagents.js`), en el formato de cada agente instalado en la máquina:
 
 | Agente | Carpeta global | Modelo barato / ejecutor | ¿Delega solo? |
@@ -196,7 +205,7 @@ en el brief. Sin motivo, o ante la duda: lo hace el orquestador.
 2. **Escritores en paralelo:** unidades independientes que no se pisan (`ejecutor` por unidad, `/batch`).
 3. **Respaldo de contexto:** la sesión está cargada y la próxima tarea del documento (§11.2) se le
    da a un subagente nuevo con el brief, en vez de seguir sumando contexto.
-4. **Verificador independiente:** tarea de riesgo **alto** (§11.3), o diff grande (3+ archivos) contra el checklist (`revisor-checklist`).
+4. **Verificador independiente:** tarea de riesgo **alto** (§11.3), o diff grande (3+ archivos) contra el checklist (`revisor-checklist`), o un cambio que dispara un verificador especializado (`revisor-auth`, `auditor-contrato-api`).
 
 | Delegar | Lo hace el orquestador |
 | :--- | :--- |
@@ -568,7 +577,7 @@ estas reglas para que rijan en todas las sesiones.
 
 | Herramienta | Qué hace | Instalación (si falta) | Uso obligatorio |
 | :--- | :--- | :--- | :--- |
-| [ponytail](https://github.com/DietrichGebert/ponytail) | Reglas de código mínimo: menos líneas, plataforma antes que dependencias | `npx skills add DietrichGebert/ponytail --skill '*' -g` | Escribir solo el código necesario; `ponytail-review` sobre el diff en todo cambio que no sea trivial (§11.3) |
+| [ponytail](https://github.com/DietrichGebert/ponytail) | Reglas de código mínimo: menos líneas, plataforma antes que dependencias | `npx skills add DietrichGebert/ponytail --skill '*' -g` | Escribir solo el código necesario; `ponytail-review` sobre el diff en todo cambio que no sea trivial (§11.3); `ponytail-help` y `ponytail-gain` solo las pide el usuario |
 | [agent-skills](https://github.com/addyosmani/agent-skills) | Skills de ingeniería por fase (spec, plan, build, review, ship) | `npx skills add addyosmani/agent-skills -g --skill <todas menos test-driven-development y browser-testing-with-devtools>` (lista en `bin/cli.js`) | Usar la skill de la fase en curso. Las de tests no se instalan (§8) |
 | [claude-code-setup](https://github.com/anthropics/claude-plugins-official) | Recomienda hooks, subagentes, skills y MCP para el repo (Claude Code) | `/plugin install claude-code-setup@claude-plugins-official` | En un repo sin setup de Claude Code: correr `claude-automation-recommender` una vez y proponer el resultado |
 | [Headroom](https://github.com/chopratejas/headroom) | Proxy local que comprime el contexto de entrada | `uv tool install --python 3.13 "headroom-ai[all]"` (o `pip install "headroom-ai[all]"`) | Automático por agente (tabla de abajo). Si un agente quedó sin integrar: `headroom init -g <agente>` o `headroom wrap <agente>` |
@@ -605,5 +614,51 @@ estas reglas para que rijan en todas las sesiones.
   del costo.
 - **Desactivar Headroom**: `headroom unwrap claude` (o quitar `ANTHROPIC_BASE_URL` del `env` de `~/.claude/settings.json`).
   **Desactivar el hook**: quitar la entrada `skills-frontend-mrydex` de `hooks.SessionStart`.
+- **Hooks de edición en Claude Code** (`guard-spec`, `guard-secrets`, `format-prettier`): ver §10.12.
 - Las reglas del equipo ganan ante un conflicto: sin archivos de test, pero todo probado (§8), caveman, graphify primero y la
   delegación de §14.3 siguen vigentes.
+
+### 14.9 Skills externas por área
+
+Además de las reglas de esta skill, el agente carga la skill externa del área que toca la tarea
+(instaladas por §14.8, §15.14 y el instalador). Primero la regla del repo, después la skill externa como
+método o checklist. Si chocan, gana la regla del repo de la última columna. Si una skill de la tabla no está instalada: avisar en una línea, instalarla con el
+instalador (solo lectura: solo avisar) y mientras tanto seguir con las reglas del repo.
+
+| Área o momento | Skill externa | Manda en caso de conflicto |
+| :--- | :--- | :--- |
+| Pedido vago o idea sin forma | `interview-me`, `idea-refine` | §11.6: preguntar todo junto, una sola vez |
+| Feature no trivial: spec y plan | `spec-driven-development`, `planning-and-task-breakdown` | §11.2 (`tasks/todo.md`) |
+| Implementar en pasos chicos | `incremental-implementation` | §11.4 y §11.5: commits chicos, sin ampliar el alcance |
+| Fijar la vara de calidad o evitar que se baje | `constraint-driven-development` | §8: nunca crear archivos de test para cumplir una vara |
+| Pantalla o componente nuevo con layout no trivial, pulido visual | `frontend-ui-engineering` (pantalla nueva sin otra parecida en el repo para copiar su patrón; sus ejemplos React/Tailwind y su lista de tests no aplican: Angular, SCSS y §8), `emil-design-eng` (pulido visual; si la tarea es solo animación, alcanza `animate`) | §01, §03, §07 (BEM), §12 (WCAG AA), librería de UI del proyecto |
+| Animación nueva | `animate` | §13: `transform` / `opacity`, `prefers-reduced-motion`, sin librerías nuevas |
+| Revisar o auditar animaciones | `review-animations` (una), `improve-animations` (todo el proyecto) | §13 |
+| Dónde sumar movimiento, cómo se llama un efecto | `find-animation-opportunities`, `animation-vocabulary` | §13 |
+| Probar una pantalla que muestra datos de usuario o listas | `break-ui` (UI sin datos variables, como un indicador de estado: los casos límite son sus estados y transiciones; en una implementación sin navegador, casos razonados sin toggle y arreglos en la misma tarea) | §8: los datos demo no se entregan ni quedan como archivo de test; se quitan antes de cerrar |
+| Elegir librería de UI | `pick-ui-library`, solo en proyecto nuevo sin librería o si el usuario lo pide | §11.5: con librería instalada no se cambia ni se suma otra; setup en §10.10 |
+| Prototipo descartable | `prototype`, solo si el usuario lo pide | §11.5: no se mezcla con código productivo |
+| Contrato con la API, modelos Request / Response | `api-and-interface-design` | §02, §05 |
+| Bug, build roto, comportamiento inesperado | `debugging-and-error-recovery` | §11.7: causa raíz |
+| Rendimiento | `performance-optimization` | §09 |
+| Simplificar o limpiar código | `code-simplification`, `ponytail`, `ponytail-debt` (lista los `shortcut:` pendientes en una auditoría o limpieza) | §11.9, §11.5 |
+| Migración de versión, deprecar algo | `deprecation-and-migration` | §20 (subagente `migrador-angular`) |
+| API de una librería que no conocés bien | `source-driven-development` | §14.2: otro agente abierto, después Context7 |
+| Decisión de arquitectura que hay que dejar escrita | `documentation-and-adrs`, solo si el repo documenta decisiones o el usuario lo pide | §11.5 |
+| Decisión de riesgo alto o irreversible que se va a ejecutar | `doubt-driven-development`, sin revisión cross-model paga; no en pedidos de solo lectura ni dentro de un subagente | §11.3 y §14.3.5 |
+| Revisar el diff antes de entregar | `ponytail-review` en riesgo medio; `code-review-and-quality` suma en riesgo alto | §11.3, [checklists](./checklists.md) |
+| Seguridad | `security-and-hardening` y las skills de §15.14 | §15 (subagente `revisor-auth`) |
+| Logs y errores en producción | `observability-and-instrumentation` | §5.3 (interceptor de errores), §15: nada sensible en logs |
+| Pipeline, build de despliegue | `ci-cd-and-automation`, `shipping-and-launch` | §10.13 |
+| Commits, ramas, changelog | `git-workflow-and-versioning`, solo si el usuario pide commitear | §11.4 |
+| Reglas del agente, `CLAUDE.md`, contexto | `context-engineering` | §14 |
+| No sabés qué skill usar | `using-agent-skills` | Esta tabla |
+
+- Las skills de tests (`test-driven-development`, `browser-testing-with-devtools`) no se instalan: §8.
+- Los subagentes de solo lectura no pueden cargar skills: el orquestador carga la del área antes de
+  delegar y pasa en el brief lo que haga falta.
+- Un subagente nombrado en la tabla que no está instalado: se aplica su checklist directo (§15.2 y
+  §15.5 para `revisor-auth`, §20 para `migrador-angular`).
+- Una skill se carga cuando aporta a la tarea: en un cambio de un archivo, la de revisión alcanza
+  (`ponytail-review`); las de proceso (`incremental-implementation`, `planning-and-task-breakdown`)
+  son para tareas de varios pasos.

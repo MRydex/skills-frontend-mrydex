@@ -16,6 +16,7 @@
   - [9.7.1 SSR: modo de render por ruta, tareas pendientes y transfer cache](#971-ssr-modo-de-render-por-ruta-tareas-pendientes-y-transfer-cache)
 - [9.8 Presupuestos de bundle y análisis](#98-presupuestos-de-bundle-y-análisis)
 - [9.9 Virtual scroll para listas largas](#99-virtual-scroll-para-listas-largas)
+  - [9.9.1 Listas que crecen en vivo (chat, logs, feeds)](#991-listas-que-crecen-en-vivo-chat-logs-feeds)
 - [9.10 `computed()` caro y funciones invocadas desde el template](#910-computed-caro-y-funciones-invocadas-desde-el-template)
   - [9.10.1 Cálculo pesado en un Web Worker](#9101-cálculo-pesado-en-un-web-worker)
 - [9.11 Memory leaks: `DestroyRef` y `takeUntilDestroyed`](#911-memory-leaks-destroyref-y-takeuntildestroyed)
@@ -196,7 +197,7 @@ import { NgOptimizedImage } from '@angular/common';
 
 ```ts
 // app.config.ts: loader del CDN (preconnect automático al dominio pasado como literal)
-providers: [provideImgixLoader('https://imagenes.ejemplo.com/')],
+providers: [provideImgixLoader('https://img.example.com/')],
 ```
 
 - Con loader, `ngSrcset="100w, 200w"` o `"1x, 2x"` arma el `srcset` (sin nombres de archivo).
@@ -398,7 +399,10 @@ export const cambiosSinGuardarGuard: CanDeactivateFn<ConFormulario> = (component
 
 - Después de guardar, `reset()` del form ([06](./06-signal-forms.md) §6.8) para que el guard no vuelva a preguntar.
 - No cubre cerrar la pestaña ni recargar: para eso, `beforeunload` solo mientras haya cambios
-  ([16](./16-websocket-signalr.md) §16.5).
+  ([16](./16-websocket-signalr.md) §16.5). Sin `effect`: `host: { '(window:beforeunload)': 'onBeforeUnload($event)' }` y, adentro,
+  `if (this.hayCambios()) event.preventDefault();` (el navegador muestra su aviso, no se personaliza).
+- Botón atrás: `withRouterConfig({ canceledNavigationResolution: 'computed' })` en `provideRouter`, para que el historial
+  quede bien cuando el guard cancela. v20 sin Signal Forms: `dirty` es el `computed` de la alternativa de §6 (intro).
 
 **Configuración** (`app.config.ts`):
 
@@ -691,6 +695,45 @@ protected readonly trackById = (_: number, item: Item) => item.id;
 Para listas moderadas que no justifican virtualización completa, `content-visibility: auto` en el
 contenedor sigue siendo una mejora barata (el navegador se salta el layout/paint de lo que está fuera
 del viewport).
+
+#### 9.9.1 Listas que crecen en vivo (chat, logs, feeds)
+
+Síntoma típico: escribir en el input se pone lento a medida que llegan ítems. Cuatro arreglos, en orden:
+
+1. **Id estable al recibir.** Ítem sin id del server: asignar uno incremental en el servicio, y `track item.id`
+   (nunca `$index`, §9.4).
+2. **Aislar la lista en un hijo.** Un evento del template (cada tecla del input) refresca la vista del
+   componente donde ocurre. Con la lista en esa misma vista, cada tecla vuelve a revisar todos los ítems.
+   La lista va a un hijo con `input()` (OnPush según la regla 4): con el input sin cambios, Angular lo
+   saltea. Es un motivo válido para dividir aunque el padre esté dentro del límite de líneas (§1.4).
+3. **`content-visibility` por ítem**, con alto estimado para que el scroll no salte.
+4. **Ventana de N ítems** en el servicio. Cambia lo que ve el usuario: preguntar antes. Si el alto es
+   variable y hacen falta miles, virtual scroll con `autosize` de `@angular/cdk-experimental` (experimental).
+
+```ts
+// Servicio: id estable al recibir; slice solo si el usuario aceptó la ventana
+private _siguienteId = 0;
+private readonly _mensajes = signal<Mensaje[]>([]);
+readonly mensajes = this._mensajes.asReadonly();
+
+agregar(recibido: MensajeRecibido): void {
+  this._mensajes.update((lista) => [...lista, { ...recibido, id: ++this._siguienteId }].slice(-MAX_MENSAJES));
+}
+```
+
+```html
+<!-- chat.html: el input queda en el padre; la lista, en el hijo -->
+<app-lista-mensajes [mensajes]="mensajes()" />
+```
+
+```scss
+.lista-mensajes {
+  &__item {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 64px; // alto estimado de un ítem
+  }
+}
+```
 
 ### 9.10 `computed()` caro y funciones invocadas desde el template
 

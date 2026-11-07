@@ -681,8 +681,8 @@ los pseudo-elementos de **CSS Overflow Level 5** para los controles — sin ning
 ```
 
 - En Angular, centralizar este reset una sola vez a nivel global y, en componentes, envolver
-  transiciones puntuales con el mixin del equipo (ver
-  [07-styles-scss.md](./07-styles-scss.md) §7.7) en vez de repetir la media query.
+  transiciones puntuales con el mixin del proyecto si existe (ver
+  [07-styles-scss.md](./07-styles-scss.md) §7.7: si no existe, se crea al segundo uso).
 - **Tipografía**: `text-wrap: balance;` (títulos equilibrados) y `text-wrap: pretty;` (evita
   palabras huérfanas al final del párrafo).
 - **Performance**: animar preferentemente `transform` y `opacity` (compositor/GPU); evitar animar

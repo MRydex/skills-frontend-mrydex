@@ -53,9 +53,13 @@ Siempre instala todo; no hay flags para saltear partes.
 - **graphify**: CLI y skill, integración en cada agente, hooks git `post-commit` / `post-checkout`
   y grafo inicial (`graphify update .`, sin costo de tokens). Claude Code queda en modo estricto:
   consulta el grafo antes de leer archivos.
-- **Subagentes** `investigador`, `ejecutor` y `revisor-checklist` en el formato de cada agente.
+- **Subagentes** `investigador`, `ejecutor`, `revisor-checklist`, `migrador-angular`,
+  `auditor-contrato-api` y `revisor-auth` en el formato de cada agente.
   Bloque global en `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` y `~/.gemini/GEMINI.md`: cargar
   siempre la skill y delegar solo cuando baja el total de tokens.
+- **Hooks de Claude Code**: `guard-spec` (pide confirmación antes de crear specs en repos Angular),
+  `guard-secrets` (bloquea escribir secretos con Edit/Write) y `format-prettier` (Prettier local
+  sobre el archivo editado, solo si el proyecto ya lo usa).
 - **caveman**: respuestas cortas (sin él salen 33% más largas).
 - **Seguridad**: [security-audit](https://github.com/cloudflare/security-audit-skill),
   25 skills de [Anthropic-Cybersecurity-Skills](https://github.com/mukul975/Anthropic-Cybersecurity-Skills)
@@ -113,6 +117,9 @@ skills/desarrollo-buenas-practicas/
     ├── 15-security.md                # Red / Blue Team, OWASP
     ├── 16-websocket-signalr.md       # Tiempo real: WebSocket y SignalR
     ├── 17-microfrontends.md          # Native Federation, shell y remotes
+    ├── 18-librerias-angular.md       # Librerías Angular propias (ng-packagr)
+    ├── 19-archivos-pdf-excel-editor.md # PDF, Excel y editores (si ya se usan)
+    ├── 20-migracion-angular.md       # Migración de versiones paso a paso
     └── checklists.md                 # Checklists de entrega
 ```
 

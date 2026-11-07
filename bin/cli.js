@@ -510,6 +510,7 @@ function doctor(homeDir, repoRoot) {
     ['graphify', runCommand('graphify', ['--help']).ok],
     ['headroom', runCommand('headroom', ['--help']).ok],
     ['hook SessionStart', JSON.stringify(settings.hooks?.SessionStart ?? []).includes(HOOK_MARKER)],
+    ['hooks de edición', EDIT_HOOKS.every(({ event, file }) => JSON.stringify(settings.hooks?.[event] ?? []).includes(file))],
     ['permissions.deny', Array.isArray(settings.permissions?.deny)],
     ['MCP context7', runShell('claude mcp get context7', homeDir).ok],
   ];
@@ -726,6 +727,11 @@ ${colors.bold}${colors.cyan}Caveman:${colors.reset} instalando el plugin para lo
 }
 
 // Skills de terceros: `skills add` clona el repo en cada instalación, así que siempre queda la última versión
+// Gentleman-Programming/Gentleman-Skills (revisado en 2026-11) no se instala: angular-core, angular-forms,
+// angular-architecture, angular-performance y typescript se activan en las mismas tareas que esta skill y la
+// contradicen (Reactive Forms en producción, effect() para llamadas HTTP, uniones de tipos prohibidas); lo útil
+// (Scope Rule, NgOptimizedImage, @defer) ya está en las referencias. No trae nada de .NET. github-pr se
+// superpone con git-workflow-and-versioning.
 const EXTERNAL_SKILLS = [
   { repo: 'cloudflare/security-audit-skill', skills: ['security-audit'] },
   {
@@ -828,7 +834,7 @@ ${colors.bold}${colors.cyan}Herramientas del agente:${colors.reset} Headroom y c
   if (isDryRun) {
     console.log(`${colors.dim}[dry-run] pip install --upgrade "headroom-ai[all]"${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: activar ${CLAUDE_PLUGINS.map(({ id }) => id).join(', ')}${colors.reset}`);
-    console.log(`${colors.dim}[dry-run] Claude Code: hook SessionStart + ANTHROPIC_BASE_URL=${HEADROOM_URL} + CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=${AUTOCOMPACT_PCT}${colors.reset}`);
+    console.log(`${colors.dim}[dry-run] Claude Code: hooks SessionStart, guard-spec, guard-secrets, format-prettier + ANTHROPIC_BASE_URL=${HEADROOM_URL} + CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=${AUTOCOMPACT_PCT}${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: permissions.deny de secretos, MCP context7${colors.reset}`);
     return;
   }
@@ -987,6 +993,12 @@ const HEADROOM_URL = 'http://127.0.0.1:8787';
 const HOOK_MARKER = 'skills-frontend-mrydex';
 const SIBLING_HOOK_MARKERS = ['skills-frontend-mrydex', 'skills-backend-mrydex'];
 const AUTOCOMPACT_PCT = 40;
+// Hooks de edición (§08, §10, §15). `shared`: lo instalan las dos skills y queda una sola entrada.
+const EDIT_HOOKS = [
+  { event: 'PreToolUse', matcher: 'Write', file: 'guard-spec.js', timeout: 10 },
+  { event: 'PreToolUse', matcher: 'Edit|Write|MultiEdit', file: 'guard-secrets.js', timeout: 10, shared: true },
+  { event: 'PostToolUse', matcher: 'Edit|Write|MultiEdit', file: 'format-prettier.js', timeout: 40 },
+];
 const SECRET_DENY = ['Read(~/.ssh/**)', 'Read(~/.aws/credentials)', 'Read(**/.env)', 'Read(**/.env.*)',
   'Read(**/*.pem)', 'Read(**/*.key)', 'Read(**/*.pfx)', 'Read(**/secrets/**)'];
 
@@ -1016,6 +1028,17 @@ function installSessionStartHook(homeDir) {
   const command = `node "${hookPath.replaceAll('\\', '/')}"`;
   settings.hooks.SessionStart = [...others, { hooks: [{ type: 'command', command, timeout: 30 }] }];
 
+  // Hooks de edición: reinstalar reemplaza solo la entrada propia (o la de la skill hermana si es compartido)
+  for (const hook of EDIT_HOOKS) {
+    const target = path.join(hookDir, hook.file);
+    fs.copyFileSync(path.join(__dirname, 'hooks', hook.file), target);
+    const markers = hook.shared ? SIBLING_HOOK_MARKERS : [HOOK_MARKER];
+    const own = (entry) => entry.hooks?.some((h) => markers.some((marker) => h.command?.includes(`${marker}/${hook.file}`)));
+    const rest = (settings.hooks[hook.event] ?? []).filter((entry) => !own(entry));
+    const hookCommand = `node "${target.replaceAll('\\', '/')}"`;
+    settings.hooks[hook.event] = [...rest, { matcher: hook.matcher, hooks: [{ type: 'command', command: hookCommand, timeout: hook.timeout }] }];
+  }
+
   // Hooks de caveman sueltos que versiones anteriores dejaban junto al plugin (cada evento se
   // inyectaba dos veces). El de subagentes se queda: el plugin no lo trae.
   const cavemanPlugin = settings.enabledPlugins?.['caveman@caveman'] === true;
@@ -1040,6 +1063,7 @@ function installSessionStartHook(homeDir) {
   writeFileSafe(settingsPath, `${JSON.stringify(settings, null, 2)}
 `);
   logOk('Claude Code: hook SessionStart (Headroom + tasks/lessons.md)');
+  logOk('Claude Code: hooks guard-spec, guard-secrets y format-prettier');
   if (settings.env.ANTHROPIC_BASE_URL === HEADROOM_URL) logOk(`Claude Code: modelo vía Headroom (${HEADROOM_URL})`);
   else if (ownRoute) console.log(`  ${colors.dim}Ya hay otra ruta al modelo (ANTHROPIC_BASE_URL, Bedrock o Vertex): no se cambió${colors.reset}`);
   logOk(`Claude Code: autocompactación al ${settings.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE}% del contexto`);

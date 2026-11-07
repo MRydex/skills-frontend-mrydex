@@ -12,7 +12,7 @@ La **Resource API es estable desde Angular 22** (`resource`, `rxResource`, `http
 **única** forma admitida de incorporar lecturas asíncronas al modelo de signals: un resource toma un
 **signal de entrada (params)**, ejecuta un **loader** cuando ese signal cambia, **cancela
 automáticamente** la petición anterior en vuelo (mismo efecto que `switchMap`, pero sin streams a
-mano) y expone el resultado como signals de estado.
+mano) y expone el resultado como signals de estado. Diferencias de API por versión: §20.8.
 
 ### 4.1 Cuándo usar cada uno
 
@@ -366,6 +366,6 @@ protected readonly resultados = httpResource<Resultado[]>(() => {
 ```
 
 No mezclar el debounce con lógica de carga dentro del `loader`/callback de `httpResource`: el resource
-debe reaccionar a un signal ya estable, no decidir cuándo dispararse.
+debe reaccionar a un signal ya estable, no decidir cuándo dispararse. En v21 o menor no hay `debounced()`: §20.8.
 
 ---

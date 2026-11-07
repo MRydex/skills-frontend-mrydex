@@ -41,7 +41,7 @@
   <meta name="description" content="Resumen…">  <!-- snippet de buscadores -->
   <meta name="theme-color" content="#0099ff">   <!-- color nativo de la barra del navegador -->
   <link rel="icon" type="image/png" href="/favicon.png"> <!-- si se omite, busca /favicon.ico -->
-  <link rel="canonical" href="https://sitio.com/pagina"> <!-- URL principal; evita duplicados -->
+  <link rel="canonical" href="https://www.example.com/pagina"> <!-- URL principal; evita duplicados -->
 </head>
 ```
 
@@ -88,7 +88,7 @@
   (input); al hacer clic en el texto, el foco salta al campo.
   ```html
   <label for="correo-usuario">Correo electrónico:</label>
-  <input type="email" id="correo-usuario" name="email" placeholder="ejemplo@mail.com">
+  <input type="email" id="correo-usuario" name="email" placeholder="nombre@example.com">
   ```
 - **`<picture>` + `<source>` + `<img>`** — imágenes adaptables. `<source>` da opciones según la
   pantalla; **siempre** cerrar con un `<img>` de respaldo.

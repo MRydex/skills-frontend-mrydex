@@ -7,7 +7,9 @@
 [10.8](#108-ai--mcp-server-de-angular-cli) MCP Server de Angular CLI ·
 [10.9](#109-archivos-de-ia-en-gitignore) Archivos de IA en `.gitignore` ·
 [10.10](#1010-librería-de-ui-setup-de-ng-zorro-22-y-angular-material) Setup de NG-ZORRO 22 y Material ·
-[10.11](#1011-i18n-de-angular-solo-apps-multi-idioma) i18n de Angular.
+[10.11](#1011-i18n-de-angular-solo-apps-multi-idioma) i18n de Angular ·
+[10.12](#1012-hooks-de-claude-code-que-instala-el-paquete) Hooks de Claude Code ·
+[10.13](#1013-despliegue-basehref-configuraciones-https-local-y-docker) `baseHref`, configuraciones, HTTPS local y Docker.
 
 ### 10.1 Crear o actualizar un proyecto con los schematics del equipo
 
@@ -18,7 +20,7 @@ Abrir una terminal en la carpeta donde se quiere instalar:
 npm install -g @angular-devkit/schematics-cli
 
 # 2) Template del equipo desde el registry interno (placeholder: usar el registry real del equipo)
-npm install @TU-ORGANIZACION/angular-template-schematic --registry http://TU-REGISTRY-NPM-INTERNO:4873
+npm install @TU-ORGANIZACION/angular-template-schematic --registry https://TU-REGISTRY-NPM-INTERNO
 
 # 3) Generar el proyecto
 npx schematics @TU-ORGANIZACION/angular-template-schematic:angular-template-schematic --no-dry-run
@@ -162,7 +164,8 @@ página), comprimir la respuesta y cachear agresivamente solo los archivos con h
 - **Fechas en ISO 8601**: `System.Text.Json` serializa `DateTime`/`DateTimeOffset` en ISO 8601 por
   defecto (`"2026-05-01T14:30:00Z"`); `DateOnly` serializa como `"2026-05-01"`. El front nunca parsea
   fechas con formato regional (`dd/MM/yyyy`): siempre `new Date(iso)` o el parser de la librería de
-  fechas del proyecto sobre el string ISO tal cual llega.
+  fechas del proyecto sobre el string ISO tal cual llega. Excepción: `DateOnly` (`yyyy-MM-dd`) se
+  mantiene como `string` y no se parsea con `new Date('yyyy-MM-dd')` (UTC; 05 §5.10).
 - **Nunca devolver `null`** en campos que el front va a mostrar o calcular: siempre el valor por
   defecto del tipo (§2.11).
 - **Un tipo por operación, con el mismo nombre en C# y en TypeScript**: `<Accion><Entidad>Request`
@@ -319,6 +322,24 @@ Reglas del equipo:
   igual que el código humano antes de mergear.
 - No commitear código generado sin revisar imports y tipos. Nunca generar archivos de test (§8).
 
+**MCPs por proyecto (opcional).** Si el proyecto los necesita, se declaran en un `.mcp.json` local
+(ignorado por §10.9; no se commitea), **nunca globales** y solo en proyectos que los usen:
+
+```json
+{
+  "mcpServers": {
+    "angular-cli": { "command": "npx", "args": ["ng", "mcp"] },
+    "playwright": { "command": "npx", "args": ["-y", "@playwright/mcp@<versión exacta>"] }
+  }
+}
+```
+
+- **Angular CLI MCP**: usa el `@angular/cli` del propio proyecto (`ng mcp`), sin bajar nada con `npx -y`. Contexto del workspace (buenas prácticas, documentación, migraciones).
+- **Playwright MCP**: para que el agente recorra la app y deje evidencia (§8.3). Fijá la **versión
+  exacta**, nunca `@latest` (supply chain, §15.10). Manejar el navegador no es escribir tests: no se
+  guarda ningún script en el repo.
+- Si el proyecto no los usa, no los agregues.
+
 ### 10.9 Archivos de IA en `.gitignore`
 
 **Regla**: todo lo relacionado con IA y agentes queda fuera del repositorio. Al empezar a trabajar
@@ -445,5 +466,79 @@ App en un solo idioma: `LOCALE_ID` fijo (§10.10) y nada más. Multi-idioma:
 - El build compila un bundle por idioma (`"localize": true` en `angular.json`): en IIS, una carpeta
   por locale. Cambiar de idioma recarga la app, no hay cambio en runtime.
 - NG-ZORRO sigue al `LOCALE_ID` con la forma factory de `provideNzI18n` (§10.10).
+
+### 10.12 Hooks de Claude Code que instala el paquete
+
+Solo en Claude Code. El instalador agrega tres hooks globales (los copia a
+`~/.claude/hooks/skills-frontend-mrydex/` y los registra en `~/.claude/settings.json`; se instalan
+fuera del repo; `format-prettier` sí reescribe el archivo editado). Saber qué hacen evita pelearse con ellos:
+
+| Hook | Qué hace |
+| :--- | :--- |
+| `guard-spec` | Pide confirmación antes de crear `*.spec.ts` / `*.test.ts` en repos Angular (§8). Aprobar **solo** si el usuario pidió tests |
+| `guard-secrets` | Bloquea escribir secretos: claves privadas, tokens de npm, connection strings, `"Password"` en JSON, valores literales entre comillas de `Password` / `ApiKey` de 8+ caracteres, claves y tokens de formatos conocidos; ignora valores con `(` o `[` (regex o código). Revisa solo Edit / Write / MultiEdit (no Bash); no revisa `.md` / `.mdx`; acepta placeholders (`${VAR}`, `#{token}#`, `<valor>`, `{0}`, `%VAR%`) |
+| `format-prettier` | Corre el `prettier` **local** sobre el archivo editado, busca la config y `prettier` en `node_modules` subiendo hasta la raíz del repo (sirve para librerías en `projects/`). Si el archivo está versionado y en HEAD no pasaba `prettier --check`, no lo formatea (no ensucia el diff). Nunca descarga nada |
+
+- Si `guard-secrets` bloquea, el contenido es un secreto de verdad o lo parece: sacarlo a una variable
+  de entorno o al secreto del pipeline (§15.8). No se "desactiva" el hook.
+- `format-prettier` no crea la config de prettier: sin ella, no formatea.
+
+### 10.13 Despliegue: `baseHref`, configuraciones, HTTPS local y Docker
+
+**`baseHref` por app (IIS como sub-aplicación).** Si la app se publica bajo `https://host/mi-app/`,
+el build necesita su `baseHref` y el `web.config` reescribe a ese `index.html`:
+
+```bash
+ng build --base-href /mi-app/        # o "baseHref": "/mi-app/" en la configuración de build
+```
+
+```xml
+<!-- web.config dentro de la carpeta de la sub-aplicación -->
+<action type="Rewrite" url="/mi-app/index.html" />
+```
+
+Rutas siempre relativas en `fetch('appsettings.json')` y assets (§10.4); el `baseHref` las resuelve.
+
+**Configuraciones de build extra** (`uat`, `studio`, `design` con mocks, etc.): **usá las que el repo
+ya tiene** en `angular.json` (`ng build -c uat`). No inventes configuraciones nuevas ni agregues mocks
+por tu cuenta; si hace falta una, pedirla al usuario. Una configuración de pre-producción hereda de
+`production` los controles de seguridad (§15.4).
+
+**HTTPS local con `ng serve`.** Solo si el backend o el IdP lo exigen:
+
+```json
+// angular.json → serve.options
+"ssl": true,
+"sslCert": ".certs/localhost.pem",
+"sslKey": ".certs/localhost-key.pem"
+```
+
+Los certificados se generan en cada máquina (por ejemplo con `mkcert`), viven en `.certs/` y **fuera
+de git** (`.gitignore`). Nunca commitear la clave privada (`.certs/` en `.gitignore`; `guard-secrets` solo frena que el agente la escriba con Edit/Write).
+
+**Docker (multi-stage para la SPA).** **Aplica solo si el proyecto despliega con contenedores.** Si
+despliega en IIS, no agregues un Dockerfile.
+
+```dockerfile
+FROM node:<versión exacta>-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npx ng build
+
+FROM nginxinc/nginx-unprivileged:<versión exacta>-alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist/mi-app/browser /usr/share/nginx/html
+EXPOSE 8080
+```
+
+- Versiones de imagen **fijas con tag exacto** (no `latest`; verificá el tag vigente en Docker Hub) y la de Node igual a la del proyecto. `npm ci`, no
+  `npm install`.
+- Nada de secretos en el `Dockerfile`, en `ARG` ni en la imagen (todo lo del bundle es público, §15.8).
+- La imagen `nginx-unprivileged` escucha en **8080**: `listen 8080;` en `nginx.conf` y mapear ese puerto.
+- `nginx.conf` con `try_files $uri /index.html;`, las cabeceras de §15.9 y sin cache para
+  `index.html`/`appsettings.json`.
+- Ajustá el path de `dist/` al nombre real del proyecto (`angular.json` → `outputPath`).
 
 ---

@@ -41,6 +41,12 @@ tests en el repo.
   `jasmine`, `karma`, `@angular/build:unit-test`) **solo si el usuario lo confirma**: es un cambio
   que afecta al equipo.
 - Si un cambio rompe un spec existente, avisar al usuario. No arreglar el spec por cuenta propia.
+- Proyecto que **ya tiene** config de Karma o Vitest, o specs: no borrar la config ni los specs salvo
+  que el usuario lo pida, y no sumar specs nuevos. Verificá el estado de los tests antes de empezar
+  (§11.3); si tu cambio rompe uno, avisá, no lo arregles por tu cuenta.
+- En Claude Code, el hook `guard-spec` ([10](./10-environment-tooling.md) §10.12) le pide confirmación
+  al usuario antes de crear `*.spec.ts` / `*.test.ts` en repos Angular. Si el usuario no pidió tests,
+  no intentar crearlos.
 
 ### 8.3 Cómo se verifica sin archivos de test
 

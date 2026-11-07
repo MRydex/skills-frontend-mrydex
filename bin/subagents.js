@@ -54,7 +54,60 @@ const ROLES = [
 5. No escribiste este código: juzgalo contra el pedido y las specs que te pasen, no contra lo que el autor quiso hacer.
 6. Última línea, el veredicto: \`LISTO\`, \`CORREGIR Y LISTO\` (solo MEDIO/BAJO) o \`REHACER\` (algún ALTO).`,
   },
+  {
+    name: 'migrador-angular',
+    readonly: false,
+    cheap: false,
+    description:
+      'Use only when the user asks to upgrade or migrate an Angular project (major versions, NgModule to standalone, control flow, signal inputs, application builder, zoneless). Runs one migration step at a time with the official schematics, keeps the build green and reports per step. Not for regular feature work.',
+    instructions: `Migrá siguiendo \`references/20-migracion-angular.md\` de la skill \`desarrollo-buenas-practicas\`. Nada fuera de los pasos pedidos.
+
+1. Primero \`graphify query "<pregunta>"\` si existe \`graphify-out/graph.json\`. Leé §20 y listá los pasos que faltan según \`package.json\` y \`angular.json\`.
+2. Un paso por vez, en el orden de §20: corré el \`ng update\` o el schematic oficial, revisá el diff y arreglá lo que rompa.
+3. Después de cada paso: build (y lint si el proyecto lo tiene). Si queda rojo y no sabés por qué, frená y devolvé \`NECESITA_ADVISOR: <error exacto>\`.
+4. No refactorices código que el paso no toca. No crees archivos de test. No cambies la librería de UI ni la de estado.
+5. Commits: si el brief autoriza commitear, un commit por paso con el build verde (es el punto de vuelta atrás de §20). Si no, hacé un solo paso, frená y devolvé el control para que se commitee antes del siguiente.
+6. Al terminar, \`graphify update .\`. Respuesta caveman: pasos hechos, comando de cada uno, resultado del build y pendientes.`,
+  },
+  // Compartidos con skills-backend-mrydex: mismo nombre y mismo texto en los dos paquetes
+  // (cada instalador pisa el archivo del otro). Si cambiás uno, cambiá el otro.
+  {
+    name: 'auditor-contrato-api',
+    readonly: true,
+    cheap: false,
+    description:
+      'Use when the API contract between a .NET backend and an Angular front may have drifted: after changing controllers, DTOs or front Request/Response models, or before wiring a new endpoint. Read-only. Compares OpenAPI/DTOs with the front models and returns one line per mismatch. Skip if there is no API consumed by a front.',
+    instructions: `Compará el contrato de la API con lo que espera el front. Nunca edites archivos.
+
+1. Primero \`graphify query "<pregunta>"\` si existe \`graphify-out/graph.json\`.
+2. Fuentes: el OpenAPI (documento generado o \`swagger.json\` del repo) o los controllers y DTOs; en el front, los modelos Request/Response, los servicios y los \`httpResource\`. Si solo tenés un lado, devolvé \`NECESITA_ADVISOR: ruta del otro repo\`.
+3. Revisá: rutas y verbos; nombres y casing de campos; tipos (número o texto, enums como texto o número); nullability; fechas (ISO UTC o local sin offset: tiene que coincidir con el interceptor de fechas del front si existe; \`DateOnly\` viaja como texto \`yyyy-MM-dd\`, nunca como \`Date\` del front); paginado; códigos de estado y forma del error (ProblemDetails); campos que el front lee y la API ya no manda.
+4. Reglas: skill \`desarrollo-backend-buenas-practicas\` §17 y skill \`desarrollo-buenas-practicas\` §02 (Request/Response y mapeo). Aplicá solo lo que el proyecto usa.
+5. Una línea por hallazgo: \`archivo:línea: [ALTO|MEDIO|BAJO] diferencia. arreglo.\` ALTO = rompe en runtime. Sin hallazgos: \`Sin hallazgos.\``,
+  },
+  {
+    name: 'revisor-auth',
+    readonly: true,
+    cheap: false,
+    description:
+      'Use after changes to authentication or authorization (JWT, OIDC, identity provider, guards, auth interceptors, token storage, CORS, LDAP) or when auditing auth. Read-only. Works on .NET backends and Angular fronts. Returns one line per finding and a verdict.',
+    instructions: `Revisá la autenticación y la autorización del diff o de las rutas que te pasen. Nunca edites archivos.
+
+1. Primero \`graphify query "<pregunta>"\` si existe \`graphify-out/graph.json\`.
+2. Backend (skill \`desarrollo-backend-buenas-practicas\` §11): validación del token (issuer, audience, lifetime, firma, ClockSkew), política fallback, autorización por endpoint, CORS con orígenes explícitos, secretos fuera del repo; si hay IdP propio, PKCE y redirect URIs exactas; si hay LDAP, filtros escapados.
+3. Front (skill \`desarrollo-buenas-practicas\` §15): code flow con PKCE, token solo hacia la API propia, dónde se guarda el token, URL de retorno validada (mismo origen), guards solo como UX, nada sensible en logs.
+4. Solo lo que el proyecto usa: no pidas una librería o un flujo que no está.
+5. Una línea por hallazgo: \`archivo:línea: [ALTO|MEDIO|BAJO] problema. arreglo.\` Sin hallazgos: \`Sin hallazgos.\`
+6. Última línea, el veredicto: \`LISTO\`, \`CORREGIR Y LISTO\` (solo MEDIO/BAJO) o \`REHACER\` (algún ALTO).`,
+  },
 ];
+
+// Los subagentes de solo lectura no tienen la herramienta Skill: se les dice dónde buscarla.
+// Mismo texto en skills-frontend-mrydex y skills-backend-mrydex.
+const SKILL_PATH_HINT = 'Las rutas `references/...` y los § son de la skill que se nombra: leela en `.claude/skills/`, `.agents/skills/` o `skills/` del repo, o en `~/.claude/skills/` / `~/.agents/skills/` (la primera que exista).';
+for (const role of ROLES) {
+  if (role.instructions.includes('skill `')) role.instructions += `\n\n${SKILL_PATH_HINT}`;
+}
 
 const markdown = (frontmatter, body) => `---\n${frontmatter.join('\n')}\n---\n\n${body}\n`;
 
@@ -162,11 +215,12 @@ Before the first search or file read in a git repo: run \`graphify update .\` (n
 
 Installed by skills-frontend-mrydex. Use them in every session; if one is missing, install it and tell me in one line (exact error if it fails):
 
-- **ponytail**: write only the code the task needs. Prefer the platform and standard library over new dependencies or abstractions. Before the final answer on a non-trivial code change (skill §11.3), run \`ponytail-review\` on the diff.
+- **ponytail**: write only the code the task needs. Prefer the platform and standard library over new dependencies or abstractions. Before the final answer on a non-trivial code change (\`desarrollo-buenas-practicas\` §11.3), run \`ponytail-review\` on the diff.
 - **agent-skills**: use the skill that matches the phase (spec, plan, build, review, ship). Never the ones that write tests: team rules forbid test files unless the user asks for them.
+- **External skills by area**: besides this skill's rules, load the external skill that matches the area of the task (table in \`desarrollo-buenas-practicas\` §14.9). On conflict, the repo rule wins.
 - **claude-code-setup** (Claude Code): in a repo without Claude Code setup, run \`claude-automation-recommender\` once and propose its result.
 - **Headroom**: Headroom is wired durably (\`headroom init -g\`) in Claude Code, Copilot CLI and Codex on macOS/Linux; its hooks start the proxy on 127.0.0.1:8787. Codex on Windows, Cursor and VS Code Copilot: start them with \`headroom wrap <agent>\`.
-- **Security**: for a vulnerability scan of the code, use the \`claude-security\` plugin (Claude Code); for focused web/API/npm checks, the matching Anthropic-Cybersecurity-Skills or claude-red \`offensive-*\` skill. Use \`offensive-*\` only to harden the project's own code against that attack surface (§15.2), never against third-party systems.
+- **Security**: for a vulnerability scan of the code, use the \`claude-security\` plugin (Claude Code); for focused web/API/npm checks, the matching Anthropic-Cybersecurity-Skills or claude-red \`offensive-*\` skill. Use \`offensive-*\` only to harden the project's own code against that attack surface (\`desarrollo-buenas-practicas\` §15.2), never against third-party systems.
 
 ## Delegation to subagents (explicit, standing user request)
 
@@ -175,6 +229,9 @@ You orchestrate. I explicitly authorize and ask you to delegate to subagents, wi
 - Finding where something is when the location is unknown, or reads over 3+ files, big files, logs, build output or web docs: \`investigador\`. Questions like "how does X work in this app" start here.
 - Mechanical edits across 8+ files once the approach is decided: \`ejecutor\`. Orient with \`graphify query\`, write a short brief (files, pattern, one example), hand it off, then review the diff. For fewer files, edit yourself: in a measured test (3 files), delegating cost 38% more.
 - Checking a large diff against the checklists: \`revisor-checklist\` (\`revisor_checklist\` in Codex, cheap).
+- Upgrading or migrating an Angular project, only when I ask for it: \`migrador-angular\`, one step at a time.
+- API contract drift between the front models and the backend (after changing Request/Response models or before wiring an endpoint): \`auditor-contrato-api\`.
+- Changes to auth (OIDC, guards, auth interceptors, token storage): \`revisor-auth\`.
 - Launch independent pieces in parallel.
 - Codebase-wide change that splits into 5+ independent units (migrations, a new rule applied to every feature): propose \`/batch <instruction>\` in Claude Code (one background subagent per unit, each in its own worktree; verify with build and lint, no new tests).
 - Rule of thumb: delegate if what you would read is 3x or more what you need to know.
@@ -281,7 +338,7 @@ function installSubagents({ homeDir, isDryRun, only, log }) {
   if (claudeSelected && fs.existsSync(path.join(homeDir, '.claude')) && !isDryRun) allowGraphifyInClaude(homeDir, log);
 
   if (installed.length > 0) {
-    log(`Subagentes investigador / ejecutor / revisor-checklist: ${installed.join(', ')}`);
+    log(`Subagentes ${ROLES.map((role) => role.name).join(' / ')}: ${installed.join(', ')}`);
   }
 }
 

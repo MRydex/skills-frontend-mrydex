@@ -148,6 +148,14 @@ increment(): void {                          // única vía de mutación
 }
 ```
 
+#### Prefijos de naming ya existentes en el proyecto
+
+Si el proyecto **ya usa** una convención de prefijos consistente para signals o miembros privados
+(por ejemplo `$$items` para signals, `_service` para servicios inyectados), **seguila en el código
+nuevo** aunque difiera de este archivo. **No la introduzcas** en proyectos que no la usan y **no
+renombres** código existente: renombrar ensucia el diff y no es el pedido. Si conviven dos
+convenciones en el mismo archivo, reportarlo; no unificar por tu cuenta.
+
 #### Naming de handlers de eventos: prefijo `on`
 
 Toda función (pública o privada) **atada a un evento del usuario** comienza con `on`, para que sea
@@ -293,7 +301,8 @@ onClickGuardar(): void {
 - Estado derivado de async: `resource()` / `httpResource()` / `rxResource()` (ver §4).
 - Debouncing sobre signals: `debounced(signal, ms)` (`@angular/core`, **experimental** desde v22) —
   devuelve un `Resource`; su `status()` indica si el valor todavía está dentro de la ventana de
-  espera. Nada de `debounceTime` a mano. Ejemplo combinado con `httpResource` en §2.9.
+  espera. Nada de `debounceTime` a mano. Ejemplo combinado con `httpResource` en §2.9. En v21 o menor,
+  la alternativa de §20.8.
 
 ```ts
 // ✅ BIEN — encapsulación de estado escribible (§2.3): privado escribible + readonly derivado
@@ -546,11 +555,11 @@ async onClickGuardar(): Promise<void> {
 
 - Un servicio = **una responsabilidad**.
 - HTTP puro va en `*-http.ts`. Lógica/orquestación va en `*.ts`.
-- Singletons nuevos: `@Service()`. Ubicación según §1.1 (alcance).
+- Singletons nuevos: `@Service()` (v22+; antes, `@Injectable({ providedIn: 'root' })`). Ubicación según §1.1 (alcance).
 - `inject()` también dentro de servicios, nunca constructor injection.
 - Estado compartido entre componentes → **servicio con signals** (`asReadonly()` para exponer).
 - Los servicios **no** conocen la librería de UI (modales, toasts): eso se aísla en una fachada
-  (§5.3).
+  (§5.3). Los componentes sí pueden inyectar el servicio de modal o de mensajes de la librería.
 
 ```ts
 // users-http.ts — solo HTTP
@@ -690,6 +699,8 @@ Cómo, para que un cambio del back se arregle en un solo lugar:
 export interface Item { id: number; nombre: string; monto: number; fechaAlta: Date; }
 
 // items-mappers.ts — funciones puras
+// Fechas con hora: new Date(iso). `DateOnly` (yyyy-MM-dd) se deja como string; si hace falta un Date,
+// new Date(y, m - 1, d): new Date('yyyy-MM-dd') es medianoche UTC (día anterior en UTC-3). Ver 05 §5.10.
 export const toItem = (response: ItemResponse): Item => ({
   ...response,
   fechaAlta: new Date(response.fechaAlta),

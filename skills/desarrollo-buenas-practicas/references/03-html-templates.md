@@ -272,6 +272,9 @@ Si hay que aplicar `flex` u otros estilos de bloque a celdas `<td>`, hacerlo en 
 > `highlightSearch` devuelve HTML: tiene que escapar el texto y la búsqueda antes de marcar
 > coincidencias, y nunca usar `bypassSecurityTrustHtml`. Ver [15-security.md](./15-security.md) §15.3.
 
+Si el back devuelve la lista completa, `nz-table` pagina sola (`nzFrontPagination` por defecto) y el
+índice de página va a un `linkedSignal` que vuelve a 1 cuando cambia la búsqueda.
+
 #### `nz-table` con paginado, orden y filtro en el servidor
 
 Si el back pagina, la tabla no pagina en el front: `[nzFrontPagination]="false"` y el total viene

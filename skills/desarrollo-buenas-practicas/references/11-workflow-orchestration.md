@@ -86,6 +86,8 @@ L1: <pedido del usuario, literal, sin resumir>
   UI), demostrar que ahora desaparece — no alcanza con "debería andar".
 - **Reportar lo que no se verificó.** "Build OK" es falso si se salteó lint o la prueba manual: cada
   chequeo que no se corrió o no se pudo correr se dice en el reporte, con el motivo.
+- Build que no corre por el entorno (no por el código): `npx ngc -p tsconfig.app.json --noEmit`
+  chequea tipos y templates; se reporta el bloqueo con el error exacto.
 - Un chequeo en verde prueba una sola cosa: el reporte dice qué cubrió y qué no (el build no prueba
   el flujo en la UI; la prueba manual de un caso no prueba los demás). La evidencia va primero: el
   comando que se corrió y su salida, después el resumen.
@@ -252,15 +254,18 @@ el límite en una línea. El usuario decide si vale la complejidad extra.
 
 Todo pedido de auditoría que no sea solo de seguridad hace esta pasada completa y corrige lo que
 encuentra. Vale para la app completa, una feature, una carpeta o el diff. Sin alcance en el pedido: la
-app completa (`src/`), sin preguntar.
+app completa (`src/`; en un workspace de librerías, `projects/<lib>/src` y `tsconfig.lib.json` en lugar de
+`tsconfig.app.json`), sin preguntar.
 
 **Qué corre según el pedido:**
 
 | Pedido | Corre |
 | :--- | :--- |
 | Auditoría a secas ("auditá", "auditá la app", "revisá todo") | Esta pasada completa + auditoría de seguridad completa red + blue + network (§15.14) |
-| Solo seguridad ("auditá la seguridad", "¿es seguro?", "pentest", "hardening") | Solo §15.14 |
+| Solo seguridad ("auditá la seguridad", "¿es segura la app?", "pentest", "hardening") | Solo §15.14 |
+| Pregunta de seguridad sobre algo concreto ("¿es seguro X?") | Solo lectura: `security-audit` en modo guía, sin auditoría completa (§15.14 pasos 5 y 7) |
 | Solo calidad ("optimizá", "limpiá", "qué sobra", "auditá la calidad / performance") | Esta pasada + seguridad base (tabla de §15.2 y `npm audit`, §15.10) |
+| Calidad y seguridad juntas ("auditá la calidad y la seguridad", con o sin alcance) | Esta pasada + §15.14, sobre el alcance pedido (igual que auditoría a secas) |
 
 **Áreas.** Cada una termina en **OK** (con evidencia `archivo:línea`), **hallazgo** o **N/A** (con
 motivo). Ninguna se saltea en silencio.

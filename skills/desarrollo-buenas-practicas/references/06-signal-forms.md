@@ -12,8 +12,17 @@
 > **Regla del equipo: todos los formularios se hacen con Signal Forms
 > (`@angular/forms/signals`).** Nada de Reactive Forms (`FormGroup` / `FormControl` /
 > `FormBuilder`), nada de template-driven (`ngModel`), nada de `valueChanges` /
-> `statusChanges`. Signal Forms es **estable desde Angular 22** y es el stack de formularios oficial
-> del equipo.
+> `statusChanges`. Signal Forms es **estable desde Angular 22** (experimental en v21: se usa igual) y
+> es el stack de formularios oficial del equipo.
+>
+> **v20 o menor** (no existe `@angular/forms/signals`): `signal` por campo + `computed` de errores +
+> `[value]` / `(input)` nativos, sin `FormsModule`, con los errores accesibles de §6.7. `touched` = signal que se
+> marca en `(blur)`; `dirty` = `computed` que compara con el valor inicial; reset = volver a setear los signals. Datos que llegan
+> async: `linkedSignal` sobre el resource, sin `effect`, con estado de error y reintentar si el GET falla.
+> Pocos campos: escritos en el template, sin array de configuración + `@for`. Sin `FormsModule`, `(submit)` llama a `event.preventDefault()`
+> o el navegador recarga la página.
+> Los ítems del checklist de formularios con `[formField]` / `form().valid()` se juzgan con estos equivalentes. Si el formulario
+> ya está en Reactive Forms, se sigue en Reactive Forms hasta migrar (§20).
 
 Los formularios existentes en Reactive Forms se pueden dejar como están, pero **todo formulario nuevo
 o refactorizado va en Signal Forms**. Si hay que convivir con controles legacy (un `FormGroup` que no
@@ -298,12 +307,16 @@ validateHttp(path.email, {
     [attr.aria-describedby]="registroForm.email().invalid() ? 'email-error' : null"
   />
   @if (registroForm.email().touched() && registroForm.email().invalid()) {
-    <p id="email-error" class="error" role="alert">{{ registroForm.email().errors()[0].message }}</p>
+    <p id="email-error" class="error">{{ registroForm.email().errors()[0].message }}</p>
   }
   ```
-- **`role="alert"`** (o `aria-live="polite"`) en el contenedor del mensaje para que se anuncie cuando
+- El error de campo se asocia con `aria-describedby` + `aria-invalid`, sin `role="alert"` por campo (al enviar
+  dispararía varias alertas juntas). Al enviar con errores: un resumen con `role="alert"` y foco en el primer
+  campo inválido. `aria-live="polite"` en el contenedor del mensaje solo si se valida mientras se escribe, para que se anuncie cuando
   aparece dinámicamente (al perder foco, al fallar el submit), sin esperar a que el usuario vuelva a
   navegar hacia ahí.
+- Error del guardado: si el interceptor global ya lo muestra (modal o toast), no repetirlo inline;
+  para mostrarlo solo inline, `SKIP_ERROR_HANDLER` en esa request (§5.4).
 - **Resumen de errores en submit fallido**: `f().errorSummary()` da la lista completa de errores del
   form con su `fieldTree()`, útil para un bloque "revisá estos campos" al principio del formulario
   además de mover el foco (§6.2).
@@ -360,7 +373,8 @@ validateHttp(path.email, {
 ### 6.10 Formulario reutilizable con campos envoltorio (patrón del equipo)
 
 Patrón para formularios que se reutilizan en varias pantallas o dentro de un modal NG-ZORRO
-(ejemplo: alta/edición de un contacto). Tres piezas:
+(ejemplo: alta/edición de un contacto). Un formulario usado en una sola pantalla no lo necesita: campos
+directos en su template (§1.4). Tres piezas:
 
 1. **Campo envoltorio** (`app-campo`): un solo componente genérico que pone etiqueta, asterisco de
    obligatorio y mensaje de error alrededor de **cualquier** control proyectado (`<input>`,
@@ -468,7 +482,7 @@ export class Campo {
 </label>
 <ng-content select="[campoNota]" />
 @if (mostrarError()) {
-  <p class="campo__error" role="alert">{{ mensajeError() }}</p>
+  <p class="campo__error">{{ mensajeError() }}</p>
 }
 ```
 

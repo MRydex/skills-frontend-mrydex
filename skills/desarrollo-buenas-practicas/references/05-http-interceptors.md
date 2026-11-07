@@ -4,7 +4,8 @@
 [5.2](#52-spinner--interceptor--servicio-con-contador-de-peticiones) Spinner · [5.3](#53-errores--interceptor--fachada-de-modal-lib-agnóstica) Errores ·
 [5.4](#54-opt-out-por-request-con-httpcontext-tokens) `HttpContext` opt-out · [5.5](#55-registro-en-appconfigts-el-orden-importa) Registro y orden ·
 [5.6](#56-cómo-se-combina-con-la-resource-api) Combinación con Resource API · [5.7](#57-retries) Retries ·
-[5.8](#58-funcionales-vs-basados-en-clase-di) Funcionales vs. basados en clase (DI) · [5.9](#59-withxhr-vs-fetch-y-progreso-de-subida) `withXhr` vs. fetch
+[5.8](#58-funcionales-vs-basados-en-clase-di) Funcionales vs. basados en clase (DI) · [5.9](#59-withxhr-vs-fetch-y-progreso-de-subida) `withXhr` vs. fetch ·
+[5.10](#510-interceptor-de-fechas-solo-si-el-contrato-lo-pide) Interceptor de fechas
 
 > **Regla del equipo:** spinner global, manejo global de errores, headers de auth, retries y logging
 > son **concerns transversales** y van en **interceptores funcionales** (`HttpInterceptorFn`),
@@ -177,6 +178,10 @@ this._http.get<Data>('/api/poll', {
 });
 ```
 
+Pantalla que muestra el error inline (con Reintentar) en un repo cuyo interceptor ya abre un modal:
+si el token no existe, el error queda avisado dos veces. Proponer el token en una línea y no agregarlo
+sin pedido si toca un interceptor compartido.
+
 ### 5.5 Registro en `app.config.ts` (el orden importa)
 
 Desde v21 `HttpClient` se inyecta sin registrar nada. `provideHttpClient(...)` solo hace falta para
@@ -291,5 +296,60 @@ header `Authorization` en redirects cross-origin). Si hace falta progreso de sub
 JSONP (`HttpClient.jsonp`, `HttpClientJsonpModule`) está deprecado desde v22.1: no usarlo en
 código nuevo, ni `withJsonpSupport()`, que solo sirve para eso. Una API de terceros que solo ofrece JSONP se consume a través
 del backend .NET, que la llama y expone JSON con CORS.
+
+### 5.10 Interceptor de fechas (solo si el contrato lo pide)
+
+**Aplica solo si** el contrato con el backend espera fechas **locales sin offset**
+(`yyyy-MM-ddTHH:mm:ss`), acordado con el equipo de backend. Si la API usa ISO UTC o `DateTimeOffset`
+(el `Date` se serializa solo con `toISOString()`), **no agregues este interceptor**.
+
+`JSON.stringify` convierte un `Date` a UTC (`toISOString()`), y el backend que espera hora local
+recibe un desfase. El interceptor convierte los `Date` del body **antes** de serializar:
+
+```ts
+// interceptors/date-interceptor.ts
+const pad = (n: number): string => String(n).padStart(2, '0');
+
+const toLocalIso = (d: Date): string =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+  `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+const isPlain = (v: unknown): v is Record<string, unknown> =>
+  v !== null && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype;
+
+const convert = (value: unknown): unknown => {
+  if (value instanceof Date) return toLocalIso(value);
+  if (Array.isArray(value)) return value.map(convert);
+  if (isPlain(value)) {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, convert(v)]));
+  }
+  return value;   // dayjs, Luxon, clases con toJSON, etc.: tal cual, JSON.stringify decide
+};
+
+const isPlainJsonBody = (body: unknown): boolean => Array.isArray(body) || isPlain(body);
+// solo objetos planos y arrays: saltea FormData, Blob, ArrayBuffer, typed arrays, streams,
+// HttpParams, URLSearchParams y strings
+
+export const dateInterceptor: HttpInterceptorFn = (req, next) => {
+  const hasBody = req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH';
+  if (!hasBody || !isPlainJsonBody(req.body)) return next(req);
+  return next(req.clone({ body: convert(req.body) }));   // copia: nunca muta el body original
+};
+```
+
+- **Solo POST / PUT / PATCH con body JSON.** Se saltean `FormData`, `Blob`, `ArrayBuffer`,
+  `HttpParams` y `URLSearchParams` (subidas, descargas, formularios `x-www-form-urlencoded`).
+- **Copia recursiva, sin mutar**: el objeto del componente (y el `model` de un Signal Forms) sigue con
+  sus `Date`.
+- **Posición en el orden** (§5.5): antes de los que miran el body (logging) y independiente del
+  resto; típicamente después de `authInterceptor`. Registrarlo en `withInterceptors([...])` como los
+  demás.
+- **`DateOnly` del backend (`yyyy-MM-dd`) viaja como `string`**, nunca como `Date`: el interceptor la
+  mandaría como `...T00:00:00` y `System.Text.Json` la rechaza. Tampoco `new Date('yyyy-MM-dd')`: es
+  medianoche UTC y en UTC-3 muestra el día anterior. Si hace falta un `Date` para mostrar, armarlo con
+  componentes: `new Date(y, m - 1, d)`. Solo si el contrato del backend usa `DateOnly`.
+- Solo toca el **envío**. Las fechas que llegan en la respuesta son `string`: convertirlas en el mapeo
+  Response a modelo ([02](./02-typescript-signals.md) §2.11), no en este interceptor.
+- Para `GET`, las fechas en query params se formatean donde se arma la URL, no acá.
 
 ---

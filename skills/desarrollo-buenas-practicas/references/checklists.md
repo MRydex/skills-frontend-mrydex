@@ -1,7 +1,9 @@
 ## Checklists de verificación y code review
 
 Usar antes de entregar código o al revisar un PR. Cada ítem enlaza a la referencia que lo explica.
-Un ítem en "no" bloquea la entrega salvo excepción justificada en el PR.
+Un ítem en "no" bloquea la entrega salvo excepción justificada en el PR. Los ítems de una API de v21/v22
+(`debounced()`, Signal Forms, `@Service()`, `@angular/aria`) se juzgan según la versión del proyecto (tabla de §20.8):
+en una versión previa, la alternativa de esa tabla no es hallazgo.
 
 Índice: Angular (TypeScript / Componente · Estructura y tamaño · Resource / HTTP · Interceptores ·
 Formularios · HTML / Template · SCSS · Sin archivos de test · Performance / Zoneless · Tiempo real · Microfrontends) ·
@@ -29,7 +31,8 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Lecturas dentro de `computed()` que no deben recalcular envueltas en `untracked()`? (§2.5)
 - [ ] **¿CERO `effect()` fuera de las excepciones de §2.7?** ¿Cada caso resuelto con computed / linkedSignal / resource / interceptor?
 - [ ] **¿CERO `Observable` / `Subject` / `BehaviorSubject` / `subscribe` guardado como estado?**
-- [ ] ¿Debounce con `debounced()` (leído con `.value()`), no con `debounceTime` a mano?
+- [ ] ¿Debounce con `debounced()` (leído con `.value()`), no con `debounceTime` a mano? (v21 o menor: §20.8)
+- [ ] ¿Toda carga de datos tiene estado de carga, de error (con reintentar; si el interceptor global ya muestra el mensaje, inline solo el botón) y vacío, también la carga inicial de una pantalla de edición?
 - [ ] ¿Orden de declaraciones: injects → inputs/outputs → variables → signals → constructor → ngOnInit → públicas (onXxx primero) → privadas? (§2.6)
 - [ ] ¿Imports ordenados: Angular → terceros → propios (core → shared → feature)?
 - [ ] ¿Contrato con el back en `models/dtos/`: `<Accion><Entidad>Request` lo enviado, `<Entidad>Response` lo recibido, uno por operación y con el mismo nombre que en C#? ¿Se mapea a un modelo del front solo si la vista necesita otra forma, con `to<Destino>()` en `[feature]-mappers.ts`? ¿El servicio HTTP desenvuelve `ApiResponse<T>` cuando viene y devuelve siempre el `Response`? ¿Nulos del backend controlados antes de calcular? (§2.11)
@@ -99,7 +102,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Directivas con selector sobre lo existente, exclusión con `:not([x])`, alias en el input homónimo y estilos por `host: {}`? (§3.15)
 
 ### SCSS ([07](./07-styles-scss.md))
-- [ ] ¿`@use` / `@forward`, nunca `@import`? ¿`@use` sin ruta relativa (`@use 'modulo/modulo-parte' as x`, vía `includePaths`)? ¿Partials en `assets/styles/<modulo>/`? (§7.1)
+- [ ] ¿`@use` / `@forward`, nunca `@import`? ¿`@use` sin ruta relativa (`@use 'modulo/modulo-parte' as x`, vía `includePaths`; si el repo no lo tiene configurado, su convención)? ¿Partials en `assets/styles/<modulo>/`? (§7.1)
 - [ ] ¿Colores, breakpoints y tamaños desde tokens globales? ¿Tipografía fluida con `clamp()`? (§7.2)
 - [ ] ¿Estilos anidados bajo el bloque BEM, máximo 3 niveles? (§7.3)
 - [ ] ¿Elementos y modificadores con `&__` / `&--`, sin reescribir la clase completa ni juntar `&__elemento--modificador`? (§7.3)
@@ -152,6 +155,23 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Clase de overlay en todo overlay del remote? ¿Íconos nuevos en la librería, no en una copia del remote? (§17.9)
 - [ ] ¿Widget expuesto cargado con `resource` + `loadRemoteModule`, contrato por inputs/outputs, modo embebido que no toca título, favicon, tema ni sesión del shell? (§17.6.1)
 - [ ] ¿`remoteEntry.json` y manifest sin cache, CORS con origen exacto? (§17.11)
+
+### Librerías Angular ([18](./18-librerias-angular.md)) (si aplica)
+- [ ] (si aplica) ¿Entry points importados por nombre de paquete (sin rutas relativas entre ellos ni ciclos)? ¿Angular en `peerDependencies`? (§18.2, §18.3)
+- [ ] (si aplica) ¿Librería sin lógica de negocio: contratos abstractos con `provide`/`useClass` en la app y config por `provideUiLib()`? (§18.5, §18.6)
+- [ ] (si aplica) ¿`.npmrc` con HTTPS y `${NPM_TOKEN}` (sin token commiteado), versión SemVer, CHANGELOG y `npm pack` probado? (§18.7 a §18.9)
+
+### Archivos y exportación ([19](./19-archivos-pdf-excel-editor.md)) (si aplica)
+- [ ] (si aplica) ¿Descarga con `Blob` + `revokeObjectURL`, `Content-Disposition` leído con `observe: 'response'`, sin librería nueva? (§19.2)
+- [ ] (si aplica) ¿Subida con `<input type="file">` accesible y validación del backend (la del cliente es UX)? (§19.3)
+- [ ] (si aplica) ¿`exceljs` / `pdfjs-dist` con import dinámico, y celdas saneadas contra CSV injection? ¿HTML del editor sin `bypassSecurityTrustHtml`? (§19.4 a §19.7)
+
+### Auth OIDC y firma digital ([15](./15-security.md) §15.5.1, §15.5.2) (si aplica)
+- [ ] (si aplica) ¿Code + PKCE, init con timeout y ruta de error, `returnUrl` validado como ruta interna y token solo a las URLs de la API propia?
+- [ ] (si aplica) ¿PIN nunca guardado ni logueado y limpiado tras usarlo? ¿Sin `crypto-js` nuevo? ¿Firma validada en el backend?
+
+### Migración ([20](./20-migracion-angular.md)) (si aplica)
+- [ ] (si aplica) ¿Migración pedida por el usuario, un commit por paso con el build en verde, un major de Angular por vez y zoneless al final de los pasos con schematic (4-8)? (§20.1, §20.2)
 
 ---
 

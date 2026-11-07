@@ -13,7 +13,7 @@ Estructura **por zona de acceso** (la del proyecto base del equipo):
   negocio (vertical slice). En esta guía, "feature" y "módulo" son lo mismo: una carpeta dentro de
   `private/`.
 - **`interceptors/`**: concerns HTTP transversales y providers globales (locale).
-- **`shared/`**: lo que usan **varios** módulos, sin lógica de negocio de ninguno.
+- **`shared/`**: lo que usan **varios** módulos, sin lógica de negocio de ninguno ("Scope Rule": lo que usa un solo módulo vive en ese módulo).
 
 Los módulos no dependen entre sí; usan `shared/`. **Las dependencias van de `private/` → `shared/`,
 nunca al revés.**

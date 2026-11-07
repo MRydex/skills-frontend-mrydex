@@ -3,6 +3,52 @@
 Cambios de la skill `desarrollo-buenas-practicas` y del instalador `skills-frontend-mrydex`.
 Para actualizar en un proyecto: `npx skills-frontend-mrydex@latest`.
 
+## [Unreleased]
+
+### Skill `desarrollo-buenas-practicas`
+
+Todo lo nuevo aplica solo si el proyecto ya usa esa tecnología o el usuario lo pide.
+
+- §14.9 skills externas por área: cada área (UI, animaciones, bugs, rendimiento, seguridad, migración,
+  CI, git...) nombra la skill externa que la acompaña y la regla del repo que gana si chocan. Regla 7
+  de SKILL.md, templates y bloque global apuntan a §14.9.
+- Repo con front y back: cada skill rige sus archivos y el Paso 0 corre una vez (también en `desarrollo-backend-buenas-practicas`).
+  §14.9 suma `ponytail-debt` en auditorías y limpieza; `ponytail-help` / `ponytail-gain` solo las pide el usuario.
+  Gentleman-Skills revisado y no instalado: sus skills de Angular contradicen esta y no trae .NET (motivo en `bin/cli.js`).
+- Seguridad: "¿es seguro X?" es pregunta de solo lectura (guía, sin auditoría completa); STRIDE de una línea por
+  amenaza; en solo lectura se profundiza solo lo sensible o con hallazgo. `bypassSecurityTrust` admite `blob:` propias.
+- v20: debounce y checklist remiten a §20.8; Reactive Forms existentes en v19 o menor se respetan. CSV con `;`,
+  BOM y escape de fórmulas; "Excel" sin `exceljs` = CSV avisado. Build ya roto: `ngc --noEmit`.
+- Guard de cambios sin guardar: `beforeunload` por `host` sin `effect`, `canceledNavigationResolution: 'computed'`
+  para el botón atrás y `dirty` en v20. Cierre de un cambio de riesgo alto: la fila completa de §11.3.
+- Lo legacy se moderniza solo en las líneas que el pedido cambia. "Scope Rule" nombrada en §1.
+- "Antes de entregar" en SKILL.md: autorevisión de 6 puntos (alcance, corrección, seguridad, escalabilidad,
+  accesibilidad y legibilidad, verificación); la revisión de riesgo alto es parte de terminar (sin subagentes:
+  `checklists.md` completo) y lo que marque el revisor (MEDIO o más) se corrige antes de entregar.
+  El parser de datos del back o del socket valida cada campo usado, y ningún `catch` traga en silencio.
+- Formularios en v20: precarga async con `linkedSignal` y `preventDefault` en `(submit)`; error del guardado
+  sin duplicar el aviso del interceptor global. `.gitignore` creado de cero con `node_modules/`, `dist/`, `.angular/`.
+- Índice de SKILL.md: 14 y 15 ya no son lectura "siempre"; se lee la sección que cita la regla.
+- §8: el hook `guard-spec` le pregunta al usuario, no al agente. §10: ejemplo de registry con HTTPS.
+- Subagentes: los que citan la skill reciben dónde buscarla; el bloque global nombra la skill en cada §.
+
+- `18-librerias-angular.md`: librerías ng-packagr con entry points secundarios, contratos abstractos
+  inyectados por la app, estilos distribuidos, registry privado con token por variable de entorno.
+- `19-archivos-pdf-excel-editor.md`: descargas y subidas sin dependencias extra, Excel con import
+  diferido, CSV injection, visor PDF con `pdfjs-dist`, editor TipTap.
+- `20-migracion-angular.md`: migración de proyectos legacy paso a paso con los schematics oficiales.
+- §5.10 interceptor de fechas (solo con contrato de fechas locales), §15.5.1 auth OIDC en la SPA,
+  §15.5.2 firma digital en el cliente, §8.2 proyectos con tests ya configurados, §10.12 hooks,
+  §10.13 `baseHref`, configuraciones, HTTPS local y Docker, §10.8 MCP por proyecto, prefijos de
+  naming existentes en §02.
+
+### Instalador
+
+- Hooks de Claude Code `guard-spec`, `guard-secrets` (compartido con la skill de backend) y
+  `format-prettier`.
+- Subagentes `migrador-angular`, `auditor-contrato-api` y `revisor-auth` (los dos últimos,
+  compartidos con la skill de backend).
+
 ## [1.34.0] - 2026-10-29
 
 ### Skill `desarrollo-buenas-practicas`

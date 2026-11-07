@@ -38,7 +38,7 @@ Steyer (*streaming resources* con WebSockets).
 
 ### 16.2 Un servicio por hub, una conexión por pestaña
 
-- **Un servicio singleton por hub** (`@Service()`), en la carpeta de la feature o en `shared/` si lo usan
+- **Un servicio singleton por hub** (`@Service()` en v22+, `providedIn: 'root'` antes), en la carpeta de la feature o en `shared/` si lo usan
   varias features ([01](./01-project-structure.md) §1.1). El nombre dice el hub: `ChatHub`,
   `NotificacionesHub`, `PresenciaHub`.
 - **Una sola conexión por hub y por pestaña.** Nunca proveer el servicio en `providers` de un componente
@@ -350,7 +350,18 @@ Solo si el servidor no es SignalR. Usar `webSocket()` de `rxjs/webSocket` dentro
 llevarlo a signal con `rxResource` (RxJS solo como flujo, regla 2):
 
 ```ts
-private readonly _socket = webSocket<unknown>(this._settings.cotizacionesWsUrl());
+private readonly _settings = inject(AppSettings);
+private readonly _estado = signal<'conectando' | 'conectado' | 'reconectando'>('conectando');
+readonly estado = this._estado.asReadonly(); // el indicador de conexión lee esta signal
+
+private readonly _socket = webSocket<unknown>({
+  url: this._settings.cotizacionesWsUrl(),
+  // JSON inválido no corta la conexión: llega null y parsearCotizacion lo descarta
+  deserializer: ({ data }) => { try { return JSON.parse(data); } catch { return null; } },
+  openObserver: { next: () => this._estado.set('conectado') },
+  // también corre al desuscribir (destroy, reload): el estado solo se muestra mientras la vista vive
+  closeObserver: { next: () => this._estado.set('reconectando') },
+});
 
 readonly cotizaciones = rxResource({
   stream: () =>
@@ -359,6 +370,8 @@ readonly cotizaciones = rxResource({
       filter((c): c is Cotizacion => c !== null),
       // retry antes de scan: reconectar no vacía la lista. resetOnSuccess: el backoff vuelve a 1 s.
       retry({ delay: (_, intento) => timer(Math.min(30_000, 1_000 * 2 ** (intento - 1))), resetOnSuccess: true }),
+      // Cierre limpio del server: el subject completa sin error y retry no actúa; repeat reconecta igual
+      repeat({ delay: () => timer(5_000) }),
       scan((acc, c) => [...acc, c].slice(-100), [] as Cotizacion[]),
     ),
   defaultValue: [],
@@ -366,7 +379,16 @@ readonly cotizaciones = rxResource({
 ```
 
 - Nunca `new WebSocket(...)` en el constructor con URL fija y `onmessage` + `JSON.parse` sin
-  validar: sin reconexión, sin validación, sin baja.
+  validar: sin reconexión, sin validación, sin baja. En un bug de reconexión o de mensajes, pasar a
+  `webSocket()` es arreglar la causa raíz (§11.7), no ampliar el alcance. En un pedido que no toca la
+  conexión, no migrar por iniciativa propia: agregar lo pedido y proponer la migración en una línea.
+- Enviar: `this._socket.next(msg)` con el socket cerrado queda en buffer y sale al reconectar. Solo
+  enviar con `_estado()` en `conectado`; lo que el server necesita al conectar (identificarse, unirse a
+  grupos) va en `openObserver`, que corre también en cada reconexión.
+- Listas que crecen con cada mensaje (chat, feed): id estable al recibir, lista aislada en un hijo y
+  ventana acotada solo si el usuario la acepta (§9.9.1).
+- `scan` no se vacía al reconectar: si la lista se tiene que vaciar (logout, cambio de usuario),
+  `params: () => this._usuario()` en el `rxResource`: si cambia, el stream reinicia y `scan` arranca vacío.
 
 ### 16.11 Verificación manual
 
@@ -381,11 +403,16 @@ Sin archivos de test ([08](./08-sin-tests.md)), pero probado. Antes de dar por t
 6. Ir a otra página y volver con "atrás" (bfcache): reconecta.
 7. Payload inválido desde el back (o mock): se descarta sin romper la vista.
 
+Con WebSocket nativo (§16.10) aplican los pasos 1, 2, 3, 6 y 7, sin grupos ni hub.
+
+Sin navegador (agente sin browser): script de Node con `rxjs` contra un mock del server para los
+pasos 2, 3 y 7, y el reporte dice qué pasos quedaron sin probar (§11.3).
+
 ### 16.12 Antipatrones
 
 | Antipatrón | En su lugar |
 | :--- | :--- |
-| Servicio del hub en `providers` de un componente repetido | Singleton `@Service()`, una conexión por pestaña |
+| Servicio del hub en `providers` de un componente repetido | Singleton (`@Service()` en v22+, `providedIn: 'root'` antes), una conexión por pestaña |
 | `withAutomaticReconnect()` default | Política propia sin rendirse, con jitter (§16.3) |
 | `hub.on` en cada `start()` | Registrar una vez por instancia de hub |
 | Handler de componente sin `off` | `escuchar()` devuelve la baja (§16.8) |

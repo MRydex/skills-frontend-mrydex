@@ -6,7 +6,7 @@
 - 15.2 Revisión Red Team de cada cambio (pensar como atacante)
 - 15.3 XSS: sanitización de Angular, `innerHTML` y `DomSanitizer`
 - 15.4 CSP y Trusted Types
-- 15.5 Autenticación, tokens y autorización
+- 15.5 Autenticación, tokens y autorización (15.5.1 OIDC en la SPA, 15.5.2 Firma digital en el cliente)
 - 15.6 CSRF / XSRF
 - 15.7 Navegación, redirects y links externos
 - 15.8 Datos sensibles y secretos en el front
@@ -95,7 +95,8 @@ Esa protección se pierde cuando se esquiva el framework.
 - **Siempre interpolación** para texto. `[innerHTML]` solo cuando hace falta marcado, y con datos
   ya escapados.
 - **Nunca `bypassSecurityTrustHtml` / `Url` / `ResourceUrl` / `Script` / `Style` con datos del
-  usuario o del backend.** Solo con constantes del propio código, con comentario que justifique.
+  usuario o del backend.** Solo con constantes del propio código o una URL `blob:` que la app creó con
+  `URL.createObjectURL` (§19.6), con comentario que justifique.
 - **Nunca** `ElementRef.nativeElement.innerHTML`, `document.write`, `insertAdjacentHTML`,
   `eval`, `new Function` ni `setTimeout('string')`. Usar `Renderer2` o el template.
 - **Nunca construir templates en runtime** con texto del usuario (compilación JIT dinámica).
@@ -168,7 +169,7 @@ this.html = this._sanitizer.bypassSecurityTrustHtml(respuesta.descripcion);
 - Si se usa bearer token (OIDC/OAuth con PKCE), guardarlo **en memoria** (signal de un servicio),
   nunca en `localStorage`/`sessionStorage`. Refresh token solo en cookie `HttpOnly`.
 - El `authInterceptor` agrega el header **solo** si la request va al origen de la API propia.
-  Comparar orígenes con `URL`, nunca con `startsWith` (`https://api.example.com.evil.com` pasaría):
+  Comparar orígenes con `URL`, nunca con `startsWith` (`https://api.example.com.attacker.example` pasaría):
 
 ```ts
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
@@ -186,6 +187,62 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 - En logout: limpiar signals de sesión, stores con datos del usuario y cualquier storage propio.
 - 401 → sesión vencida: redirigir a login. 403 → sin permiso: mostrar mensaje. Nunca reintentar
   automáticamente con otras credenciales.
+
+#### 15.5.1 Auth OIDC en la SPA
+
+**Aplica solo si** el proyecto ya usa `angular-oauth2-oidc`, `angular-auth-oidc-client` o MSAL
+(`@azure/msal-angular`). **Si no lo usa, no lo agregues**: la autenticación se acuerda con el backend
+(§15.5, cookie `HttpOnly` / BFF). Esto endurece lo que ya existe; no cambia de librería.
+
+- **Authorization Code + PKCE**, nunca flujo implícito ni `password` (grant ROPC). Si la config
+  existente usa implícito, reportarlo (§15.1) y proponer el cambio; no migrarlo en silencio.
+- **Inicialización** en `provideAppInitializer`, con **timeout** y **ruta de error** si el IdP no
+  responde: una SPA que queda en blanco esperando al IdP es un incidente de disponibilidad.
+
+```ts
+provideAppInitializer(async () => {
+  const auth = inject(AuthBootstrap);
+  const router = inject(Router);
+  const ok = await Promise.race([
+    auth.init().catch(() => false),                     // discovery + procesar el callback
+    new Promise<false>((r) => setTimeout(() => r(false), 10_000)),
+  ]);
+  if (!ok) await router.navigateByUrl('/error/auth');   // pantalla estática, sin llamar a la API
+}),
+```
+
+- **`returnUrl`**: guardarlo antes de ir al IdP y, al volver, **validar que sea una ruta relativa del
+  mismo origen** con `esRutaInterna` (§15.7). Open redirect clásico del callback.
+- **Roles en el guard = UX.** `canMatch` oculta rutas; el backend autoriza cada endpoint (§15.5).
+- **El access token va solo a la API propia**: configurar `allowedUrls` (angular-auth-oidc-client:
+  `secureRoutes`; angular-oauth2-oidc: `sendAccessToken` + `allowedUrls`; MSAL: `protectedResourceMap`)
+  con orígenes exactos. Nunca a APIs de terceros ni con wildcards amplios.
+- **Storage del token**: memoria primero (§15.5). Si la librería ya guarda en `sessionStorage` o
+  `localStorage` (varias lo hacen por defecto), **avisar** que un XSS lo lee; no cambiar el storage
+  en silencio, que puede romper el login. Proponer la alternativa y que el usuario decida.
+- **MSAL**: `MsalInterceptor` es un interceptor **de clase**. Mantenerlo con
+  `provideHttpClient(withInterceptorsFromDi())` y registrar los funcionales con `withInterceptors`
+  en el mismo `provideHttpClient`; no reescribirlo (§5.8). Verificá el orden resultante.
+- **Decodificar el JWT en el cliente** (`@auth0/angular-jwt`, `jwt-decode`) sirve para mostrar el
+  nombre o saber cuándo vence: es **UX**. No verifica la firma ni autoriza nada; todo valor del
+  token que decida acceso se vuelve a validar en el backend.
+- Logout: cerrar sesión en el IdP (`end_session_endpoint`) además de limpiar signals y storage (§15.5).
+
+#### 15.5.2 Firma digital en el cliente
+
+**Aplica solo si** el proyecto ya firma en el navegador o con un firmador local (token USB, agente
+de escritorio). Si no, no agregues firma en el front.
+
+- **Criptografía con WebCrypto** (`crypto.subtle`), no con librerías JS. **`crypto-js` está
+  discontinuado: no lo agregues**; si el proyecto ya lo usa, reportarlo y proponer WebCrypto.
+- **El PIN o la contraseña del certificado nunca se guarda, loguea ni persiste** (ni `localStorage`, ni
+  `console`, ni signal de larga vida, ni query string). Se lee en un campo `type="password"`, se usa y
+  se **limpia del signal** apenas termina la operación (`this._pin.set('')`), también en el error.
+- Parseo de certificados con `@peculiar/x509` o `pkijs` **solo si ya están** en el proyecto.
+- **La validación de la firma es del backend**: cadena de confianza, vigencia, revocación y que el
+  documento firmado sea el esperado. Que el front "verifique" es solo información para el usuario.
+- La clave privada no sale del dispositivo ni del firmador; el front envía el documento (o su hash)
+  y recibe la firma.
 
 ### 15.6 CSRF / XSRF
 
@@ -239,6 +296,8 @@ this._router.navigateByUrl(destino);
   sanitizados antes de usarlos.
 - Uploads: validar tipo y tamaño en el front (UX) **y** en el backend (seguridad). Nunca renderizar
   un SVG subido por el usuario con `[innerHTML]`.
+- Exportar a CSV (o fórmulas XLSX con datos del usuario): sanear celdas que empiezan con `=`, `+`, `-`, `@` (CSV injection), en
+  [19](./19-archivos-pdf-excel-editor.md) §19.5.
 - **El agente no lee secretos.** En Claude Code el instalador suma a `permissions.deny`, sin quitar las
   reglas del usuario: `~/.ssh/**`, `~/.aws/credentials`, `.env`, `.env.*`, `*.pem`,
   `*.key`, `*.pfx` y `secrets/**`. Bloquea Read/Edit/Write, no `cat` por Bash: nunca leer esos
@@ -323,7 +382,7 @@ Sin archivos de test (§8). Antes de entregar, probar a mano en la app:
 - Todo componente o pipe que renderiza datos externos: cargar `<img src=x onerror="alert(1)">` como
   dato. Debe verse como texto, sin `<img>` en el DOM (DevTools → Elements) y sin alerta.
 - `authInterceptor`: en DevTools → Network, el header `Authorization` **no** viaja a orígenes externos.
-- Validador de `returnUrl`: `//evil.com`, `/\evil.com`, `https://evil.com` y `javascript:alert(1)`
+- Validador de `returnUrl`: `//attacker.example`, `/\attacker.example`, `https://attacker.example` y `javascript:alert(1)`
   terminan en la ruta por defecto.
 
 ### 15.13 Mapa OWASP Top 10 (2025)
@@ -345,7 +404,7 @@ Sin archivos de test (§8). Antes de entregar, probar a mano en la app:
 
 §15.1–15.2 cubren **cada cambio**. Esta auditoría corre con todo pedido de auditoría a secas
 ("auditá", "auditá la app"), junto con la pasada de calidad de §11.9, y sola cuando el pedido es solo
-de seguridad ("auditá la seguridad", "¿es seguro?", "pentest", "hardening"). El alcance es **todo el código tocado o el que se indique**, no solo el
+de seguridad ("auditá la seguridad", "¿es segura la app?", "pentest", "hardening"). El alcance es **todo el código tocado o el que se indique**, no solo el
 último diff. Para el equipo la seguridad es prioridad: se revisan **todas las áreas**, ninguna se
 saltea en silencio, y la profundidad de cada una la decide el agente según lo que encuentra.
 
@@ -354,8 +413,12 @@ saltea en silencio, y la profundidad de cada una la decide el agente según lo q
 2. **Orientar con graphify** (`graphify query`) para ubicar entradas, interceptores, render de datos
    externos, auth, uploads, llamadas a terceros y límites de confianza. Una sola pasada alimenta a
    todas las herramientas. Alcance feature o repo: modelo de amenazas primero
-   (`performing-threat-modeling-with-owasp-threat-dragon`) para ordenar qué se ataca.
-3. **Revisión base de todas las áreas.** Recorrer la tabla de abajo completa. Cada área termina en
+   (`performing-threat-modeling-with-owasp-threat-dragon`) para ordenar qué se ataca. En una pregunta
+   o un pedido de solo lectura, STRIDE inline (`security-and-hardening`; una línea por amenaza: dónde, control o hueco), sin Threat Dragon (genera archivos). Pregunta sobre una parte (por ejemplo, el manejo de errores): sin modelo de amenazas. Alcance sin superficie
+   (sin entradas, HTTP ni auth): sin modelo de amenazas.
+3. **Revisión base de todas las áreas.** Recorrer la tabla de abajo completa. Las áreas ausentes del
+   alcance (sin uploads, sin WebSocket, sin SSR) se cierran juntas como N/A con un `graphify query` o
+   `grep` que lo pruebe. Cada área termina en
    uno de tres estados: **OK** (con la evidencia, `archivo:línea`), **hallazgo** o **N/A** (con el
    motivo: "no hay uploads en el alcance"). Incluye la tabla de §15.2 (Red Team), las defensas de
    §15.3–15.11 (Blue Team) y `npm audit --omit=dev` + `npm audit` (§15.10; en .NET, `dotnet list
@@ -364,10 +427,12 @@ saltea en silencio, y la profundidad de cada una la decide el agente según lo q
    da **cualquiera** de estas condiciones:
    - la revisión base encontró un hallazgo o una señal dudosa;
    - el área es sensible: auth, tokens, pagos, datos personales, uploads, permisos por usuario;
-   - el alcance es una feature completa o todo el repo.
+   - el alcance es una feature completa o todo el repo (en solo lectura, solo las áreas sensibles o con hallazgo).
 
    Un área N/A no se profundiza. Solo sobre el código propio o entornos autorizados (§15.1).
-5. **Auditoría general** (alcance feature o repo): correr además la skill `security-audit`
+5. **Auditoría general** (auditoría pedida de una feature o del repo; una pregunta como "¿es seguro X?"
+   usa `security-audit` en modo guía, sin este paso; en un pedido de solo lectura, `claude-security` solo si
+   el usuario acepta que escriba su reporte fuera del repo, y si no, se anota en la cobertura): correr además la skill `security-audit`
    (Cloudflare) y el plugin `claude-security` (Anthropic), que buscan lo que la tabla no anticipa.
    Ambos verifican cada hallazgo antes de reportarlo. En un diff chico no: alcanza con los pasos 3–4.
 6. **Priorizar** por riesgo (crítico → bajo), mapeado a OWASP (§15.13). Una línea por hallazgo:
@@ -421,7 +486,7 @@ dosifica es la profundidad. No releer lo mismo para cada skill: pasarles los `ar
 ubicó graphify. Delegar el barrido por área a subagentes en paralelo cuando cumple la regla de §14.3.4
 (3+ archivos a leer, lo leído 3x o más que lo necesario);
 la priorización, la corrección y la decisión final quedan en el modelo principal. Si falta una skill
-de la tabla, instalarla (`npx github:MRydex/skills-frontend-mrydex`) y avisar en una línea; si no se puede, hacer
+de la tabla, instalarla (`npx github:MRydex/skills-frontend-mrydex`) y avisar en una línea (solo lectura: solo avisar); si no se puede, hacer
 esa área con la revisión base y decirlo en el reporte de cobertura.
 
 ---

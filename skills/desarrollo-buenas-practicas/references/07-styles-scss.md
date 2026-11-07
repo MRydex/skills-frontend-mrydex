@@ -104,7 +104,7 @@ assets/styles/
 Dos mecanismos de token, con roles distintos — no son intercambiables:
 
 - **`$variables` de Sass**: se resuelven en **tiempo de compilación**. Son las únicas que se
-  pueden usar dentro de la condición de un `@media` (`@media (min-width: var.$bp-tablet)`) o en
+  pueden usar dentro de la condición de un `@media` (`@media (min-width: var.$bp-tablet)`; si el repo no tiene breakpoints, se agregan al archivo de variables la primera vez que hacen falta) o en
   lógica de Sass (`@if`, `@each`, funciones). No cambian en runtime.
 - **Custom properties (`--variable`)**: se resuelven en **tiempo de ejecución**, heredan por el
   DOM y pueden cambiar dinámicamente (JS, `@media`, clases de tema). Son la única opción cuando el
@@ -366,8 +366,9 @@ completa de `@container` (nombrado, unidades `cq*`, container style queries).
 ### 7.7 `prefers-reduced-motion` en componentes
 
 Toda transición o animación definida en el SCSS de un componente debe respetar la preferencia de
-movimiento reducido del sistema operativo. Para no repetir la media query en cada componente,
-centralizarla en un mixin del partial global:
+movimiento reducido del sistema operativo. Si el proyecto ya tiene un mixin para eso, se usa. Si no lo
+tiene y es el primer componente con movimiento, la media query va anidada en el selector; el mixin se
+crea al segundo uso (§11.7.1), en el partial global:
 
 ```scss
 // assets/styles/tools/_mixins.scss
@@ -379,6 +380,9 @@ centralizarla en un mixin del partial global:
   }
 }
 ```
+
+Las `animation` (keyframes) se tratan igual: en `reduce`, `animation: none` o una versión sin
+desplazamiento (solo `opacity`).
 
 ```scss
 @use 'index' as var;
