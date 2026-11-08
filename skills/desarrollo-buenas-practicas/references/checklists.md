@@ -19,7 +19,8 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Archivo y clase **sin sufijos** legacy (`.component`, `.service`, `.directive`), y pipes, guards, resolvers e interceptors con sufijo? ¿kebab-case? ([01](./01-project-structure.md) §1.3)
 - [ ] ¿`input()` / `input.required()` / `model()` / `output()` (no decoradores), marcados `readonly`?
 - [ ] ¿Los miembros que solo usa el template están `protected`?
-- [ ] ¿Sin `@HostBinding` ni `@HostListener` (todo en `host: {}`)?
+- [ ] ¿Sin `@HostBinding` ni `@HostListener` (todo en `host: {}`)? ¿Atajos con pseudo-eventos (`keydown.control.s` + `keydown.meta.s`), no `event.key` a mano?
+- [ ] ¿Configs con `satisfies`, conjuntos con métodos de `Set` (si el `lib` los trae) y fechas con `Intl` / pipes, sin librerías de fechas nuevas? (§2.15)
 - [ ] ¿Las propiedades `private` tienen prefijo `_`? ¿Sin `public` explícito?
 - [ ] ¿Estado escribible encapsulado: `private _signal` + `readonly` + método mutador?
 - [ ] ¿Handlers de eventos del usuario con prefijo `on` y sufijo descriptivo?

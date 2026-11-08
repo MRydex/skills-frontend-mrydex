@@ -225,6 +225,9 @@ Se pueden encadenar múltiples `[class.x]` y `[style.x]` en el mismo elemento si
   *"Arrow function will not be invoked in this event listener. Did you intend to call a method?"*.
   Para eso, llamar el método directo: `(click)="doSomething()"`.
 - **`instanceof`** en el template (v21.2+): `@if (event instanceof MouseEvent) { ... }`.
+- **`@if (expr; as alias)`** para leer una vez un valor que puede ser `null` y usarlo ya angostado:
+  `@if (guardadoEn(); as hora) { <small>Guardado {{ hora | date: 'shortTime' }}</small> }`. Evita
+  repetir la llamada y los `!` dentro del bloque.
 - **Semántica JS real de `?.`**: si la cadena se corta, el resultado es `undefined`. Además hay
   narrowing verdadero después de un chequeo de verdad, así que el acceso posterior no necesita `?.`.
 - **Comentarios `//` y `/* … */` dentro de la lista de atributos** de un elemento, útiles para

@@ -12,7 +12,8 @@ fuera de la app · [2.10](#210-servicios) Servicios · [2.11](#211-null-safety-c
 Null safety, contrato con el back y mapeo · [2.12](#212-comunicación-entre-componentes-hermanos--servicio-con-signals)
 Comunicación entre hermanos · [2.13](#213-apis-del-navegador-en-servicios-ejemplo-notifications)
 APIs del navegador en servicios · [2.14](#214-servicios-lazy-con-injectasync) Servicios lazy con
-`injectAsync`.
+`injectAsync` · [2.15](#215-lenguaje-y-plataforma-satisfies-set-intl) Lenguaje y plataforma ·
+[2.16](#216-ngrx-solo-si-el-repo-ya-lo-usa) NgRx (solo si el repo ya lo usa).
 
 ### 2.1 Strict typing
 
@@ -68,6 +69,11 @@ let data: unknown;                    // tipo incierto
   componente).
 - **Nunca** `@HostBinding` ni `@HostListener` → usar la propiedad `host: {}` en `@Component` /
   `@Directive`.
+  - Atajos de teclado con los pseudo-eventos de Angular (`keydown.enter`, `keydown.escape`,
+    `keydown.control.s`), no comparando `event.key` a mano. Fuera del componente, con prefijo:
+    `(document:keydown.control.s)`, `(window:resize)`. Un atajo "de sistema" (guardar, buscar) cubre
+    Ctrl y Cmd (`keydown.control.s` + `keydown.meta.s`) y llama a `event.preventDefault()` para
+    que el navegador no abra su propio diálogo.
 - Usar `NgOptimizedImage` para todas las imágenes estáticas (no aplica a base64 inline).
 - Templates y estilos **externos** (`templateUrl` / `styleUrl`) con rutas relativas al `.ts`. Inline
   solo para componentes triviales (< 5 líneas de template).
@@ -193,6 +199,10 @@ private _agregarElemento(): void { /* ... */ }
 ### 2.4 Inyección de dependencias
 
 - **Siempre** `inject()`. **Nunca** inyectar por constructor.
+- Configuración con un default razonable (tamaño de página, timeouts): `InjectionToken` con `factory`
+  (`new InjectionToken<number>('TAMANIO_PAGINA', { factory: () => 20 })`). Funciona sin registrar
+  nada, y una ruta o un componente lo pisa con `providers: [{ provide: TAMANIO_PAGINA, useValue: 100 }]`.
+  Config obligatoria, sin default: token sin `factory`, así un provider olvidado falla al arrancar.
 - Servicios singleton nuevos: decorador **`@Service()`** (v22+), que equivale a
   `@Injectable({ providedIn: 'root' })` pero sin la configuración repetida.
   - `@Service({ autoProvided: false })` si el servicio se va a proveer a mano (en `app.config.ts`,
@@ -328,7 +338,7 @@ addItem(item: Item): void {
 }
 
 // ✅ BIEN — linkedSignal: valor por defecto reactivo pero editable por el usuario
-selectedTab = linkedSignal(() => this.tabs()[0]?.id);
+protected readonly idSeleccionado = linkedSignal(() => this.opciones()[0]?.id);
 
 // ✅ BIEN — tabs por proyección: contentChildren() + linkedSignal, sin @ContentChildren ni QueryList
 // <app-tabs> <app-tab label="Perfil">...</app-tab> <app-tab label="Ajustes">...</app-tab> </app-tabs>
@@ -338,6 +348,8 @@ protected readonly activa = linkedSignal<readonly Tab[], Tab | undefined>({
   // Si la tab activa sigue proyectada se conserva; si desapareció, vuelve a la primera
   computation: (tabs, previa) => (previa?.value && tabs.includes(previa.value) ? previa.value : tabs[0]),
 });
+// Template: @for (tab of tabs(); track tab) { <button type="button" (click)="activa.set(tab)">{{ tab.label() }}</button> }
+// `track tab` vale acá: son instancias de componente, referencia estable y sin id.
 
 // ✅ BIEN — debouncing sin RxJS
 protected readonly filtro = signal<string>('');
@@ -463,7 +475,31 @@ dentro del constructor, y nunca escribe signals que él mismo lee.
 - `afterNextRender()` / `afterRenderEffect()` aceptan fases que Angular corre en este orden:
   `earlyRead` → `write` → `mixedReadWrite` → `read`. Sin fase, todo corre en `mixedReadWrite`, que
   mezcla lecturas y escrituras de layout y puede forzar reflows. Separar: leer en `earlyRead` o
-  `read`, escribir en `write`.
+  `read`, escribir en `write`. Cada fase recibe lo que devolvió la anterior como signal.
+- Chat que baja al último mensaje solo si el usuario ya estaba abajo (no le roba el scroll si está
+  leyendo mensajes viejos):
+  ```ts
+  // Template: <ul #lista class="chat__lista" (scroll)="alScrollear()">
+  private readonly _lista = viewChild.required<ElementRef<HTMLElement>>('lista');
+  private _pegadoAlFinal = true;
+
+  constructor() {
+    afterRenderEffect({
+      earlyRead: () => {
+        this.mensajes(); // dependencia: corre al llegar un mensaje
+        return this._lista().nativeElement.scrollHeight;
+      },
+      write: (alto) => {
+        if (this._pegadoAlFinal) this._lista().nativeElement.scrollTop = alto();
+      },
+    });
+  }
+
+  protected alScrollear(): void {
+    const el = this._lista().nativeElement;
+    this._pegadoAlFinal = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  }
+  ```
 - Para reaccionar a cambios de tamaño, de contenido o de visibilidad, `ResizeObserver`,
   `MutationObserver` o `IntersectionObserver` antes que un `afterRenderEffect` que mide en cada
   render.
@@ -507,6 +543,29 @@ constructor() {
    vez para una **mutación** (§4.1).
 3. Interoperabilidad con una librería de terceros que solo expone Observables — se convierte a signal
    con `toSignal()` **en el borde** y de ahí para adentro todo es signals.
+4. **Tiempo sobre eventos del DOM** (inactividad, "sin actividad hace X"): `fromEvent` + `merge` +
+   `switchMap` + `timer`, convertido con `toSignal()`. `switchMap` cancela el timer anterior en
+   cada evento (reemplaza el `setTimeout` / `clearTimeout` a mano) y `toSignal` se desuscribe al
+   destruir el componente. Es un signal derivado de eventos, no estado modelado con streams.
+
+```ts
+// ✅ BIEN — aviso de inactividad: cualquier evento reinicia la cuenta
+// pointerdown / wheel / touchstart: el usuario hizo algo. Sin pointermove (cientos por segundo) ni
+// scroll (no burbujea: el de una lista interna no llega a document).
+const EVENTOS_ACTIVIDAD = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const;
+
+export class App {
+  private readonly _document = inject(DOCUMENT); // no `document` global: SSR y tests
+  protected readonly inactivo = toSignal(
+    merge(...EVENTOS_ACTIVIDAD.map(e => fromEvent(this._document, e, { passive: true }))).pipe(
+      startWith(null),                                   // la cuenta arranca al cargar
+      switchMap(() => timer(10 * 60_000).pipe(map(() => true), startWith(false))),
+      distinctUntilChanged(),                            // no notifica `false` en cada movimiento
+    ),
+    { initialValue: false },
+  );
+}
+```
 
 ```ts
 // ❌ MAL — estado con BehaviorSubject
@@ -933,3 +992,80 @@ export function alPasarPuntero(el: HTMLElement): PrefetchTrigger {
 funciones, clases o constantes sin DI → `import()` dinámico estándar.
 
 ---
+
+### 2.15 Lenguaje y plataforma (`satisfies`, `Set`, `Intl`)
+
+- **`satisfies`** para objetos de configuración, mapas de rutas o diccionarios de constantes: valida
+  la forma sin ensanchar el tipo, y se conservan los literales (autocompletado y narrowing). `: T`
+  solo cuando se quiere justamente el tipo ancho.
+
+```ts
+type Estado = 'activo' | 'baja';
+
+// ❌ MAL — la anotación ensancha: ESTADOS.activo.color es string | undefined
+const ESTADOS: Record<Estado, { etiqueta: string; color?: string }> = { /* ... */ };
+
+// ✅ BIEN — valida que estén todos los estados y conserva el tipo de cada uno
+const ESTADOS = {
+  activo: { etiqueta: 'Activo', color: 'verde' },
+  baja: { etiqueta: 'De baja' },
+} satisfies Record<Estado, { etiqueta: string; color?: string }>;
+```
+
+- **Operaciones de conjuntos** (permisos, roles, ids seleccionados): `Set` con `difference`,
+  `intersection`, `union`, `isSubsetOf`, `isSupersetOf`, `isDisjointFrom`, en vez de `filter` +
+  `includes` sobre arrays. Requieren `lib` con `ESNext` (TS 5.x: `esnext.collection`; TS 6:
+  `ES2025`) en `tsconfig.json` y navegadores Baseline 2024 (Chrome 122, Safari 17, Firefox 127). Si el
+  `lib` del repo no los incluye, sumarlo es un cambio de configuración: va con pedido o avisando.
+
+```ts
+const faltan = permisosPagina.difference(permisosUsuario);    // lo que le falta para entrar
+const puedeEntrar = permisosPagina.isSubsetOf(permisosUsuario);
+```
+
+- **Fechas, números, listas y plurales con `Intl`** (`DateTimeFormat`, `RelativeTimeFormat`,
+  `NumberFormat`, `ListFormat`, `PluralRules`) y los pipes de Angular (`date`, `number`,
+  `currency`), con el `LOCALE_ID` de la app. No sumar `moment`, `dayjs` ni `date-fns` para formatear
+  (si el repo ya usa una, se sigue usando). "Hace 3 días" / "ayer": `Intl.RelativeTimeFormat` con
+  `numeric: 'auto'`, en un pipe puro. Un pipe puro no se actualiza solo con el paso del tiempo: si el
+  texto tiene que envejecer en pantalla (un chat abierto), pasarle un signal de "ahora" que avance con
+  un intervalo, no volverlo impuro.
+
+```ts
+@Pipe({ name: 'haceTiempo' })
+export class HaceTiempoPipe implements PipeTransform {
+  private readonly _formato = new Intl.RelativeTimeFormat(inject(LOCALE_ID), { numeric: 'auto' });
+
+  transform(fecha: Date, ahora = Date.now()): string {
+    // Para algo que ya pasó: una fecha apenas futura (reloj del server adelantado) es "ahora", no "dentro de 1 minuto"
+    const segundos = Math.min(0, (fecha.getTime() - ahora) / 1000);
+    const [unidad, tamanio] = UNIDADES.find(([, t]) => Math.abs(segundos) >= t) ?? ['second', 1];
+    // trunc, no round: 59 min 40 s es "hace 59 minutos", no "hace 60 minutos"
+    return this._formato.format(Math.trunc(segundos / tamanio), unidad);
+  }
+}
+
+const UNIDADES = [
+  ['year', 31_536_000], ['month', 2_592_000], ['day', 86_400],
+  ['hour', 3_600], ['minute', 60],
+] as const satisfies readonly (readonly [Intl.RelativeTimeFormatUnit, number])[];
+```
+
+### 2.16 NgRx (solo si el repo ya lo usa)
+
+La forma por defecto de estado compartido es un servicio con signals (§2.12): no se suma NgRx sin
+pedido. Si el repo ya tiene NgRx:
+
+- **`@ngrx/signals` (SignalStore)**: estado nuevo con `signalStore` + `withState` / `withComputed` /
+  `withMethods`; lógica repetida entre stores en `signalStoreFeature()`. Si el equipo quiere el patrón
+  eventos → reducer → efectos, el events plugin (`@ngrx/signals/events`) lo cubre sin `@ngrx/store`.
+- **`@ngrx/store` clásico**: el código nuevo sigue su patrón. Migrar a SignalStore solo con pedido,
+  feature por feature, con esta equivalencia:
+
+| `@ngrx/store` | SignalStore + events plugin |
+| :--- | :--- |
+| `createActionGroup()` | `eventGroup({ source, events: { cargado: type<Item[]>() } })` |
+| `createReducer()` + `on()` | `withReducer(on(evento, ({ payload }) => ({ ... })))` |
+| `createEffect()` | `withEventHandlers((store, events = inject(Events)) => ({ ... }))` |
+| `createSelector()` | `withComputed()` |
+| `store.dispatch()` | `injectDispatch(eventos)` o `inject(Dispatcher).dispatch()` |

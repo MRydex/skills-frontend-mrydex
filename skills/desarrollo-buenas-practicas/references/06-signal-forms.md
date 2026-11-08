@@ -137,12 +137,14 @@ inválido o pendiente.
   (falta `touched()`) y el botón queda gris sin explicación. `submit()` marca todo como `touched`
   y `onInvalid` lleva el foco al primer error.
 - **Condicionales de campo con `disabled` / `readonly` / `hidden` + `when`**, no con lógica suelta en
-  el template:
+  el template ni con `valueChanges.subscribe` + `setValidators`:
   ```ts
   disabled(path.cupon,  { when: ({ valueOf }) => valueOf(path.total) < 50 });
   readonly(path.usuario);
   hidden(path.direccionEnvio, { when: ({ valueOf }) => !valueOf(path.requiereEnvio) });
+  required(path.direccionEnvio); // solo valida mientras está visible
   ```
+  Usar la forma `{ when: ... }`, la de la documentación: deja lugar a otras opciones y se lee igual en todas las reglas.
   Los campos `hidden` / `disabled` / `readonly` **no participan de la validación** ni afectan el
   estado del padre.
   > **Campo `hidden` ⇒ sacarlo del DOM con `@if`.** Angular avisa en dev mode si un campo marcado
@@ -567,11 +569,10 @@ export class FormContacto {
     required(path.fechaAlta, { message: '"Fecha de alta" es obligatoria.' });
     required(path.email, { message: '"Email" es obligatorio.' });
 
-    hidden(path.esEmpresa, () => !this.permiteEmpresa());
-    hidden(
-      path.razonSocial,
-      ({ valueOf }) => !this.permiteEmpresa() || !valueOf(path.esEmpresa),
-    );
+    hidden(path.esEmpresa, { when: () => !this.permiteEmpresa() });
+    hidden(path.razonSocial, {
+      when: ({ valueOf }) => !this.permiteEmpresa() || !valueOf(path.esEmpresa),
+    });
     required(path.razonSocial, { message: 'Ingresá la razón social.' });
   }, {
     // Obligatorio con [formRoot]: un Enter en un input dispara submit(); sin action tira NG01915.

@@ -242,6 +242,10 @@ en un interceptor, no repetido con el operador `retry` de RxJS en cada servicio.
 
 ```ts
 // interceptors/retry-interceptor.ts
+// Solo se reintenta lo que puede arreglarse solo: sin red (0), timeout (408), límite (429) y 5xx.
+// Un 400/401/403/404 no cambia esperando: falla enseguida.
+const REINTENTABLE = (status: number) => status === 0 || status === 408 || status === 429 || status >= 500;
+
 export const retryInterceptor: HttpInterceptorFn = (req, next) => {
   // Reintentar solo métodos idempotentes seguros por defecto: GET (y HEAD, si aplica).
   // PUT/DELETE son idempotentes en teoría, pero acá NO se reintentan: sumarlos a esta condición
@@ -250,13 +254,19 @@ export const retryInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     retry({
-      count: 2,
-      delay: (_error, attempt) => timer(attempt * 500), // backoff simple: 500ms, 1000ms
+      count: 3, // siempre acotado
+      delay: (error: HttpErrorResponse, attempt) =>
+        REINTENTABLE(error.status)
+          ? timer(2 ** attempt * 500) // backoff exponencial: 1 s, 2 s, 4 s
+          : throwError(() => error),
     }),
   );
 };
 ```
 
+> Cortar por `status < 500` deja sin reintento al `0` (sin red), que es justo el caso que más se arregla
+> solo: la lista de reintentables es explícita.
+>
 > **Nunca** reintentar POST/PUT/PATCH/DELETE a ciegas: si la primera petición sí llegó a impactar en
 > el servidor pero la respuesta se perdió, un retry automático puede duplicar la operación (alta doble,
 > pago doble). Si hace falta reintentar una mutación, eso va explícito en el servicio, con una

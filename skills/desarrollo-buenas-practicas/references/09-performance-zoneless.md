@@ -427,7 +427,18 @@ provideRouter(
 ```
 - `withPreloading(PreloadAllModules)`: descarga los chunks lazy en segundo plano después del
   arranque. Con muchas features pesadas, una `PreloadingStrategy` propia que precargue solo las
-  rutas marcadas (`data: { precargar: true }`).
+  rutas marcadas (`data: { precargar: true }`):
+
+```ts
+@Injectable({ providedIn: 'root' })
+export class PrecargaSelectiva implements PreloadingStrategy {
+  preload(ruta: Route, cargar: () => Observable<unknown>): Observable<unknown> {
+    return ruta.data?.['precargar'] ? cargar() : of(null);
+  }
+}
+// app.config.ts: withPreloading(PrecargaSelectiva)
+// { path: 'reportes', loadComponent: () => import('./reportes/reportes'), data: { precargar: true } }
+```
 - **v22 (breaking)**: `paramsInheritanceStrategy` pasa a `'always'` por defecto. Una ruta hija ve
   los params de todos sus padres. Si un hijo usa un param con el mismo nombre que el padre,
   renombrarlo. Volver al comportamiento anterior (`withRouterConfig({ paramsInheritanceStrategy:

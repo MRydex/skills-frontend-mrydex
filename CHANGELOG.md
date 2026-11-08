@@ -26,6 +26,12 @@ Todo lo nuevo aplica solo si el proyecto ya usa esa tecnología o el usuario lo 
   accesibilidad y legibilidad, verificación); la revisión de riesgo alto es parte de terminar (sin subagentes:
   `checklists.md` completo) y lo que marque el revisor (MEDIO o más) se corrige antes de entregar.
   El parser de datos del back o del socket valida cada campo usado, y ningún `catch` traga en silencio.
+- Angular moderno: retry con backoff exponencial solo para errores reintentables (0, 408, 429, 5xx); inactividad
+  con `fromEvent` + `switchMap` + `timer` → `toSignal`; `InjectionToken` con `factory`; atajos con pseudo-eventos
+  (Ctrl y Cmd); `@if (x; as alias)`; autoscroll de chat con fases de `afterRenderEffect`; `PreloadingStrategy`
+  por flag; Signal Forms con `hidden` + `required` y la forma `{ when }`. §2.15: `satisfies`, métodos de `Set` e
+  `Intl` (pipe "hace X") sin librerías de fechas. §2.16: NgRx SignalStore y events plugin, solo si el repo ya usa NgRx.
+  Regla 4: en menor a v22, `OnPush` en componentes nuevos; a uno existente se propone, no se agrega sin pedido.
 - Formularios en v20: precarga async con `linkedSignal` y `preventDefault` en `(submit)`; error del guardado
   sin duplicar el aviso del interceptor global. `.gitignore` creado de cero con `node_modules/`, `dist/`, `.angular/`.
 - Índice de SKILL.md: 14 y 15 ya no son lectura "siempre"; se lee la sección que cita la regla.
