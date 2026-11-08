@@ -992,8 +992,10 @@ function initHeadroom(homeDir) {
       $cmd = $t.Actions[0].Execute
       $a = if ($cmd -like '*conhost.exe') { $t.Actions } else { New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless \`"$cmd\`"" }
       $trig = @($t.Triggers | Where-Object { $_.CimClass.CimClassName -ne 'MSFT_TaskLogonTrigger' }) + (New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\\$env:USERNAME")
+      # Cada 2 min (Headroom usa 5): un proxy caído vuelve antes de que Claude Code agote sus reintentos (~3 min)
+      $trig | Where-Object { $_.Repetition.Interval } | ForEach-Object { $_.Repetition.Interval = 'PT2M' }
       Set-ScheduledTask -TaskName $n -Action $a -Trigger $trig | Out-Null`]);
-    if (ok && fix.ok) logOk('headroom: tarea sin consola');
+    if (ok && fix.ok) logOk('headroom: tarea sin consola, revisa el proxy cada 2 min');
     else if (ok) console.log(`  ${colors.yellow}⚠${colors.reset} headroom: no se pudo ocultar la tarea: ${fix.output.trim().split(/\r?\n/).pop()}`);
   }
   console.log(`  ${colors.dim}Codex en Windows: headroom wrap codex · Cursor: headroom wrap cursor · VS Code Copilot: headroom wrap vscode`);

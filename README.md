@@ -77,6 +77,23 @@ Siempre instala todo; no hay flags para saltear partes.
   - Subagentes con `effort` (`low` el revisor, `medium` el resto).
 - **`.gitignore`**: agrega los archivos de IA y agentes.
 
+## Si Headroom se cae
+
+Vuelve solo. En Windows la tarea oculta `headroom-init-user-health` lo revisa cada 2 minutos y lo relanza;
+Claude Code reintenta cada llamada unos 3 minutos, así que la respuesta sigue sin hacer nada. En macOS /
+Linux lo levantan los hooks de Headroom al iniciar sesión y antes de cada comando.
+
+Si sigue caído (`ECONNREFUSED` después de los reintentos), en una terminal fuera de Claude:
+
+```bash
+schtasks /Run /TN headroom-init-user-health   # Windows
+headroom proxy --port 8787                    # macOS / Linux (dejar la terminal abierta)
+headroom doctor                               # con "proxy ✓ pass", reintentar en Claude
+```
+
+Si no levanta, `headroom unwrap claude` y reiniciar el editor: Claude Code va directo a Anthropic, sin
+compresión. Para volver a usarlo: `headroom init -g claude` (o reinstalar la skill).
+
 ## Opciones
 
 ```text

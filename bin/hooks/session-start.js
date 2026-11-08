@@ -125,7 +125,8 @@ async function main() {
   // Sin proxy cada llamada al modelo falla: el aviso va al usuario, no al modelo
   if (usesHeadroom && !headroomUp) {
     output.systemMessage = `Headroom no responde en 127.0.0.1:${HEADROOM_PORT}: las llamadas al modelo van a fallar. `
-      + `Correr "headroom proxy --port ${HEADROOM_PORT}" o quitar ANTHROPIC_BASE_URL del env de ~/.claude/settings.json.`;
+      + `Correr en una terminal "${process.platform === 'win32' ? 'schtasks /Run /TN headroom-init-user-health' : `headroom proxy --port ${HEADROOM_PORT}`}" `
+      + 'o, para seguir sin Headroom, "headroom unwrap claude" y reiniciar el editor.';
   }
   if (additionalContext) {
     output.hookSpecificOutput = { hookEventName: 'SessionStart', additionalContext };

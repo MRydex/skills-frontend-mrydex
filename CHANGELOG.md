@@ -5,6 +5,12 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ## [Unreleased]
 
+### Agregado
+
+- Headroom vuelve solo si se cae: en Windows la tarea oculta lo revisa cada 2 min (antes 5), dentro
+  de los ~3 min que Claude Code reintenta. README: qué hacer si sigue caído; el aviso del hook da el
+  comando según el sistema.
+
 ### Seguridad
 
 - Instalador: `-t` solo borra una instalación propia (`name:` de la skill en `SKILL.md`); el reintento de caveman
