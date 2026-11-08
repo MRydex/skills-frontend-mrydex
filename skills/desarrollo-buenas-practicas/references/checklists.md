@@ -201,10 +201,12 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Transiciones con propiedades concretas (no `all`)? ¿Se anima `transform` / `opacity`, no layout?
 - [ ] ¿Aparición/desaparición de `<dialog>` / popovers con `@starting-style` + `allow-discrete`?
 - [ ] ¿Tema claro/oscuro con `color-scheme` + `light-dark()` en vez de duplicar reglas?
-- [ ] ¿APIs que no son Baseline (`interpolate-size`, `base-select`, scroll-driven, anchor positioning) bajo `@supports` con fallback?
+- [ ] ¿APIs que no son Baseline (`interpolate-size`, `base-select`, anchor positioning) bajo `@supports` con fallback?
 - [ ] ¿Fondos por densidad con `image-set()` (y `<img>` con `NgOptimizedImage`)? (§13.24)
 - [ ] ¿Entrada/salida de `@if` / `@for` con `animate.enter` / `animate.leave` y un solo `@keyframes` (`reverse` para salir), sin `@angular/animations`? (§13.25)
 - [ ] ¿Transiciones de ruta (`withViewTransitions`) salteadas con `prefers-reduced-motion` y `::view-transition-*` en estilos globales? (§13.30)
+- [ ] ¿Scroll-driven: `animation-timeline` y `animation-range` después del shorthand `animation`, sin `animation-duration`, con `linear both`? ¿El estado estático es el final y el inicial va solo en `from`? (§13.18)
+- [ ] ¿Scrollytelling con sección alta (`vh`) + hijo `sticky` + `view-timeline` con nombre, `--i` / `--n` desde `@for` con `[style.--i]` (sin `:nth-child`), y `@supports not (animation-timeline: scroll())` que quita la altura extra? (§13.18)
 - [ ] ¿`@media (prefers-reduced-motion: reduce)` contemplado?
 
 ---

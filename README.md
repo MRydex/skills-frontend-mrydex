@@ -66,8 +66,12 @@ Siempre instala todo; no hay flags para saltear partes.
   y 22 `offensive-*` de [claude-red](https://github.com/SnailSploit/claude-red), solo de web, API,
   auth, supply chain y network (TLS, cabeceras, WebSocket, superficie expuesta). Plugin `claude-security` en Claude Code.
 - **Otras skills**: [emilkowalski/skills](https://github.com/emilkowalski/skills) (solo web),
-  [ponytail](https://github.com/DietrichGebert/ponytail) y
-  [agent-skills](https://github.com/addyosmani/agent-skills). Plugin `claude-code-setup` en Claude Code.
+  [ponytail](https://github.com/DietrichGebert/ponytail),
+  [agent-skills](https://github.com/addyosmani/agent-skills),
+  [web-design-guidelines](https://github.com/vercel-labs/agent-skills) y
+  [agent-browser](https://github.com/vercel-labs/agent-browser) de Vercel,
+  [grill-me](https://github.com/mattpocock/skills) y [find-skills](https://github.com/vercel-labs/skills).
+  Plugin `claude-code-setup` en Claude Code.
 - **[Headroom](https://github.com/chopratejas/headroom)**: proxy que comprime el contexto
   (`headroom init -g`). En Claude Code, hook `SessionStart` (levanta Headroom y carga `tasks/lessons.md` del proyecto) y autocompactación al 40%.
   No funciona con Remote Control de Claude Code.

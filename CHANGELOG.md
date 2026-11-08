@@ -29,6 +29,14 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 Todo lo nuevo aplica solo si el proyecto ya usa esa tecnología o el usuario lo pide.
 
+- §13.18 animaciones por scroll, ampliado (Baseline desde nov 2025): `scroll()` / `view()`, rangos de
+  `animation-range` (también dentro de los keyframes), timelines con nombre y `timeline-scope`, sección alta +
+  `sticky` con el progreso repartido por `--i` / `--n` desde `@for`, `@property` para fuentes variables y
+  contadores, catálogo de patrones, qué sigue necesitando JS. Regla: el estado estático es el final y el inicial
+  va en `from`, así sin soporte o con `prefers-reduced-motion` nada queda oculto. Checklist CSS con dos ítems.
+- §14.9 suma `web-design-guidelines` (revisar a11y + UX de una pantalla), `agent-browser` (verificar en
+  navegador sin archivos de test), `grill-me`, `find-skills`, SEO (`seo-audit`, `ai-seo`) y las skills bajo
+  demanda con su repo (`anti-ui-slop`, `canvas-design`, `video-lens`, `video-use`, `content-strategy`, `pricing`).
 - §14.9 skills externas por área: cada área (UI, animaciones, bugs, rendimiento, seguridad, migración,
   CI, git...) nombra la skill externa que la acompaña y la regla del repo que gana si chocan. Regla 7
   de SKILL.md, templates y bloque global apuntan a §14.9.
@@ -70,6 +78,9 @@ Todo lo nuevo aplica solo si el proyecto ya usa esa tecnología o el usuario lo 
 
 ### Instalador
 
+- Skills externas nuevas, siempre en su última versión: `web-design-guidelines` y `agent-browser` (Vercel),
+  `grill-me` (mattpocock) y `find-skills` (vercel-labs/skills). Las de SEO, video, marketing y `anti-ui-slop`
+  quedan bajo demanda en §14.9.
 - Hooks de Claude Code `guard-spec`, `guard-secrets` (compartido con la skill de backend) y
   `format-prettier`.
 - Subagentes `migrador-angular`, `auditor-contrato-api` y `revisor-auth` (los dos últimos,

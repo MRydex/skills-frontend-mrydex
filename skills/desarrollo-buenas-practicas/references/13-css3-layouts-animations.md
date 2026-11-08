@@ -491,27 +491,204 @@ activa para todo el documento desde `:root`.
 
 ### 13.18 Animaciones ligadas al scroll (sin JavaScript)
 
-Sustituyen los listeners de scroll en JS por animaciones delegadas a la GPU.
+**Baseline Newly Available desde noviembre de 2025** (Chrome/Edge 115+, Safari 26+, Firefox 145+).
+Reemplazan los listeners de scroll y el `IntersectionObserver` para animar por scroll: corren en el
+compositor, fuera del hilo principal, y en zoneless Angular no participa (sin change detection).
+
+#### Modelo mental
+
+Las keyframes son las de siempre. Lo único que cambia es el **reloj**: en vez de segundos, el progreso
+lo da una *timeline* de scroll.
+
+- `scroll()` → *Scroll Progress Timeline*: 0 % arriba del scroller, 100 % abajo.
+- `view()` → *View Progress Timeline*: 0 % cuando el elemento empieza a entrar al scrollport, 100 %
+  cuando terminó de salir.
+- `animation-range` → recorta qué tramo de esa timeline cubre la animación.
 
 ```css
-.reveal {
-  animation: aparecer linear;
-  animation-timeline: view();       /* rastrea la intersección del elemento con el viewport */
-  animation-range: entry 20% cover 30%;
+/* Barra de progreso de lectura */
+.progreso {
+  transform-origin: 0 50%;
+  animation: crecer linear both;
+  animation-timeline: scroll(root block);
 }
+@keyframes crecer { from { scale: 0 1; } }
 
-/* scroll(root block) → liga la línea de tiempo al scroll vertical del documento */
+/* Scroll reveal: el estado estático es el final; el inicial va en `from` */
+.reveal {
+  animation: aparecer linear both;
+  animation-timeline: view();
+  animation-range: entry 0% cover 30%;
+}
+@keyframes aparecer { from { opacity: 0; translate: 0 2rem; } }
 ```
 
-- `animation-timeline` → reemplaza el reloj de segundos por un rastreador de progreso.
-- `scroll()` → progreso de la barra de scroll de un contenedor.
-- `view()` → visibilidad/intersección de un elemento al cruzar el viewport (ideal *scroll reveal*).
-- `animation-range` → acota el tramo del recorrido donde ocurre la interpolación.
-- **Fallback**: comprobar soporte con `@supports (animation-timeline: scroll())` (o
-  `@supports (scroll-timeline: --nombre)` si se usa la sintaxis con nombre) y proveer una
-  alternativa estática, o basada en `IntersectionObserver`, donde no haya soporte. Confirmar el
-  estado exacto por navegador en caniuse.com antes de depender de esto como único mecanismo.
-- Referencia: <https://developer.chrome.com/docs/css-ui/scroll-driven-animations>
+Reglas:
+- Sin `animation-duration` (o `auto`): con `animation-timeline` la duración no significa nada.
+- El shorthand `animation:` **resetea** `animation-timeline` y `animation-range` a su valor inicial:
+  escribirlos siempre **después** del shorthand.
+- `animation-fill-mode: both` y `animation-timing-function: linear`: el estado inicial y final quedan
+  aplicados fuera del rango, y el easing lo pone el usuario con la mano.
+- El **estado estático** del elemento es el **final** y el inicial va solo en `from`. Así, sin soporte
+  (`animation-timeline` se ignora y la animación de 0 s termina en `to`) y con el reset de
+  `prefers-reduced-motion` (§13.23, `animation: none`) el contenido se ve completo, nunca oculto.
+- Animar solo `transform` / `translate` / `scale` / `rotate`, `opacity`, `clip-path`, `filter` y custom
+  properties con `@property`. Nada de layout (§13.23).
+
+#### Sintaxis
+
+```css
+animation-timeline: scroll(<scroller> <axis>) | view(<axis> <inset>) | --nombre | auto | none;
+/* scroller: nearest (default) | root | self        axis: block (default) | inline | x | y */
+/* inset: auto | <length-percentage>{1,2} → achica el área que cuenta como "visible" */
+
+animation-range: <start> <end>;            /* shorthand de animation-range-start / -end */
+
+scroll-timeline: --nombre block;           /* en el scroller */
+view-timeline: --nombre block;             /* en el elemento observado */
+timeline-scope: --nombre;                  /* en un ancestro común, si el animado no es descendiente */
+```
+
+Rangos de `animation-range` (solo con `view()`):
+
+| Rango | De | A |
+| :--- | :--- | :--- |
+| `cover` (default) | empieza a entrar | terminó de salir |
+| `contain` | está completo adentro | empieza a salir |
+| `entry` | empieza a entrar | está completo adentro |
+| `exit` | empieza a salir | terminó de salir |
+| `entry-crossing` / `exit-crossing` | el borde inicial cruza el borde del scrollport | el borde final lo cruza |
+
+Se combinan con porcentajes (`entry 0% contain 50%`, `exit 0% exit 70%`) y también van **dentro de los
+keyframes**, para una sola animación con fase de entrada y de salida:
+
+```css
+@keyframes fade-in-out {
+  entry 0%   { opacity: 0; }
+  entry 100% { opacity: 1; }
+  exit  0%   { opacity: 1; }
+  exit  100% { opacity: 0; }
+}
+```
+
+#### Timelines con nombre (patrón del equipo)
+
+El scroller o la sección define la timeline; los hijos la consumen. Es la forma de animar varios
+elementos contra el **mismo** progreso.
+
+```css
+/* Hero cuyo título se parte al salir */
+.hero { view-timeline: --hero; }
+
+.hero-title span {
+  animation: split-left linear both;
+  animation-timeline: --hero;
+  animation-range: exit 0% exit 70%;
+}
+.hero-title span:last-child { animation-name: split-right; }
+
+@keyframes split-left  { to { translate: -60% 0; opacity: 0; filter: blur(16px); } }
+@keyframes split-right { to { translate:  60% 0; opacity: 0; filter: blur(16px); } }
+```
+
+Si el elemento animado no es descendiente del que declara la timeline, subir `timeline-scope: --hero`
+al ancestro común.
+
+#### Sección alta + `sticky`: progreso repartido entre N hijos
+
+Base del *scrollytelling*: una sección con `height` grande (`320vh`, `520vh`) declara la
+`view-timeline`; adentro un hijo `position: sticky` queda fijo mientras la sección atraviesa el
+viewport, y cada ítem toma **su tramo** del rango con `calc()` sobre custom properties.
+
+```css
+/* Texto que se ilumina palabra por palabra */
+.words { height: 320vh; view-timeline: --words; }
+.words-sticky { position: sticky; top: 0; height: 100vh; display: grid; place-items: center; }
+
+/* --i = índice de la palabra, --n = total (en el padre) */
+.words-text span {
+  animation: light linear both;
+  animation-timeline: --words;
+  animation-range:
+    contain calc(var(--i) / var(--n) * 85%)
+    contain calc(var(--i) / var(--n) * 85% + 15%);
+}
+@keyframes light { from { opacity: .12; filter: blur(4px); } }
+```
+
+En Angular, `--i` y `--n` salen del `@for`, nunca de `:nth-child` ni de clases generadas:
+
+```html
+<section class="words" [style.--n]="palabras().length">
+  <div class="words-sticky">
+    <p class="words-text">
+      @for (p of palabras(); track $index) {
+        <span [style.--i]="$index">{{ p }} </span>
+      }
+    </p>
+  </div>
+</section>
+```
+
+El mismo patrón resuelve: stepper o cronología vertical cuyo conector se llena (`scaleY` con
+`scroll(root)` y umbrales por `--i`), tarjetas apiladas (`sticky` + `scale`), scroll horizontal dentro
+de vertical (`translateX` del hijo sticky con `view()` de la sección), carrusel con indicador
+(`scroll(self inline)`, §13.22).
+
+#### Propiedades no animables: `@property`
+
+Con `@property` cualquier custom property tipada se vuelve interpolable (§13.29), y con eso se animan
+por scroll cosas que CSS no anima solo: ejes de una fuente variable, contadores, ángulos de gradientes.
+
+```css
+/* Fuente variable que cambia con el scroll */
+@property --elsh { syntax: "<integer>"; inherits: true; initial-value: 0; }
+
+.morph { height: 520vh; view-timeline: --morph; }
+.morph-sticky {
+  position: sticky; top: 0;
+  animation: morph linear both;
+  animation-timeline: --morph;
+  animation-range: contain;
+}
+.morph-word { font-variation-settings: "ELSH" var(--elsh); }
+@keyframes morph { to { --elsh: 100; } }
+```
+
+Mismo mecanismo para el contador de §13.29 ligado a `scroll()`, un `conic-gradient` de §13.28 que se
+completa al scrollear, o `hue-rotate` / `color` del texto por tramos.
+
+#### Catálogo, límites y fallback
+
+Patrones CSS-only ya resueltos (demos, visualizadores de rangos y extensión de DevTools en
+<https://scroll-driven-animations.style>): reading progress, carrusel con indicador y con markers,
+columnas en sentido inverso, cover card → header fijo, image reveal (`clip-path`), fly-in / fly-out de
+listas (`entry` + `exit`), cover flow (`view(inline)` + `rotateY`), stacking cards, sección horizontal,
+3D que rota con `scroll()`, header que se achica tras N px (`animation-range: 0 100px`), scroll
+shadows (`scroll(self)`), timeline / stepper, texto palabra por palabra, typewriter
+(`clip-path: inset()`), sprites `steps(N)` por `background-position`, line drawing SVG
+(`stroke-dashoffset`), blur progresivo de fondo, parallax por capas.
+
+Lo que **todavía necesita JS**: una animación que se *dispare* por scroll y corra con tiempo (no hay
+`animation-trigger` estable). Alternativas, en orden: `animation-range: entry 0% entry 100%` + `both`
+(parece disparada), `@starting-style` + `transition` (§13.19) y, como última opción,
+`IntersectionObserver`.
+
+Fallback: con el estado estático como final (regla de arriba) el contenido ya se ve completo sin
+soporte. `@supports` queda para lo que sí cambia el layout, como las secciones altas:
+
+```css
+@supports not (animation-timeline: scroll()) {
+  .words, .morph { height: auto; }         /* sin la timeline, la altura extra solo alarga la página */
+  .words-sticky, .morph-sticky { position: static; height: auto; }
+}
+```
+
+El polyfill `flackr/scroll-timeline` solo si el proyecto exige versiones anteriores a las de
+Baseline (§11.5: no se suma sin pedido).
+
+Referencias: <https://developer.chrome.com/docs/css-ui/scroll-driven-animations> ·
+<https://drafts.csswg.org/scroll-animations-1/>.
 
 ### 13.19 Animar aparición/desaparición de elementos discretos (`@starting-style`)
 

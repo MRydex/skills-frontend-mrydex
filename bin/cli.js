@@ -788,6 +788,15 @@ const EXTERNAL_SKILLS = [
       'find-animation-opportunities', 'improve-animations', 'pick-ui-library', 'prototype', 'review-animations',
     ],
   },
+  // Web Interface Guidelines de Vercel: audita .html/.scss (a11y + UX) y devuelve archivo:línea (§14.9)
+  { repo: 'vercel-labs/agent-skills', skills: ['web-design-guidelines'] },
+  // Navegador headless para verificar una pantalla sin dejar archivos de test (§8, §14.9).
+  // La skill usa la CLI `agent-browser` de npm; la primera vez baja Chromium con `agent-browser install`.
+  { repo: 'vercel-labs/agent-browser', skills: ['agent-browser'] },
+  // Interroga al usuario hasta cerrar las decisiones antes de programar (alternativa a interview-me)
+  { repo: 'mattpocock/skills', skills: ['grill-me'] },
+  // Busca e instala skills de skills.sh según la tarea (alternativa a using-agent-skills)
+  { repo: 'vercel-labs/skills', skills: ['find-skills'] },
   // Código mínimo: reglas de ponytail en todos los agentes (las 6 skills)
   { repo: 'DietrichGebert/ponytail', skills: ['*'] },
   // Skills de ingeniería por fase; sin test-driven-development ni browser-testing-with-devtools (§8 de la skill)

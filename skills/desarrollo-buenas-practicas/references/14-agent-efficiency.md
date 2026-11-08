@@ -627,11 +627,14 @@ método o checklist. Si chocan, gana la regla del repo de la última columna. Si
 
 | Área o momento | Skill externa | Manda en caso de conflicto |
 | :--- | :--- | :--- |
-| Pedido vago o idea sin forma | `interview-me`, `idea-refine` | §11.6: preguntar todo junto, una sola vez |
+| Pedido vago o idea sin forma | `interview-me`, `idea-refine` o `grill-me` (misma función: una alcanza) | §11.6: preguntar todo junto, una sola vez |
 | Feature no trivial: spec y plan | `spec-driven-development`, `planning-and-task-breakdown` | §11.2 (`tasks/todo.md`) |
 | Implementar en pasos chicos | `incremental-implementation` | §11.4 y §11.5: commits chicos, sin ampliar el alcance |
 | Fijar la vara de calidad o evitar que se baje | `constraint-driven-development` | §8: nunca crear archivos de test para cumplir una vara |
-| Pantalla o componente nuevo con layout no trivial, pulido visual | `frontend-ui-engineering` (pantalla nueva sin otra parecida en el repo para copiar su patrón; sus ejemplos React/Tailwind y su lista de tests no aplican: Angular, SCSS y §8), `emil-design-eng` (pulido visual; si la tarea es solo animación, alcanza `animate`) | §01, §03, §07 (BEM), §12 (WCAG AA), librería de UI del proyecto |
+| Pantalla o componente nuevo con layout no trivial, pulido visual | `frontend-ui-engineering` (pantalla nueva sin otra parecida en el repo para copiar su patrón; sus ejemplos React/Tailwind y su lista de tests no aplican: Angular, SCSS y §8), `emil-design-eng` (pulido visual; si la tarea es solo animación, alcanza `animate`); `anti-ui-slop` (bajo demanda) para una pantalla sin referencia en el repo, para no caer en UI genérica | §01, §03, §07 (BEM), §12 (WCAG AA), librería de UI del proyecto; §11.5: sin librerías ni fuentes nuevas salvo pedido |
+| Revisar una pantalla antes de entregar (a11y + UX) | `web-design-guidelines` sobre los `.html` / `.scss` tocados (trae las reglas actualizadas en cada corrida y devuelve `archivo:línea`); sus reglas React / Next (hydration, `next/link`) no aplican | §12 (WCAG AA), §07 (BEM), librería de UI del proyecto |
+| Verificar en navegador una pantalla implementada | `agent-browser` (navegar, leer el DOM, capturar); usa la CLI `agent-browser` de npm, que la primera vez baja Chromium con `agent-browser install` | §8: no quedan archivos de test ni scripts; los datos demo se quitan antes de cerrar |
+| Asset visual (poster, cover, diagrama exportado) | `canvas-design`, solo si el usuario lo pide | §11.5: no entra al bundle sin optimizar (§13.24, §13.26) |
 | Animación nueva | `animate` | §13: `transform` / `opacity`, `prefers-reduced-motion`, sin librerías nuevas |
 | Revisar o auditar animaciones | `review-animations` (una), `improve-animations` (todo el proyecto) | §13 |
 | Dónde sumar movimiento, cómo se llama un efecto | `find-animation-opportunities`, `animation-vocabulary` | §13 |
@@ -641,6 +644,7 @@ método o checklist. Si chocan, gana la regla del repo de la última columna. Si
 | Contrato con la API, modelos Request / Response | `api-and-interface-design` | §02, §05 |
 | Bug, build roto, comportamiento inesperado | `debugging-and-error-recovery` | §11.7: causa raíz |
 | Rendimiento | `performance-optimization` | §09 |
+| SEO técnico de una página pública | `seo-audit`; `ai-seo` solo si el usuario pide posicionar en buscadores con IA | §12 (semántica, metadatos), §09 (Web Vitals), §10.13 (SSR / prerender) |
 | Simplificar o limpiar código | `code-simplification`, `ponytail`, `ponytail-debt` (lista los `shortcut:` pendientes en una auditoría o limpieza) | §11.9, §11.5 |
 | Migración de versión, deprecar algo | `deprecation-and-migration` | §20 (subagente `migrador-angular`) |
 | API de una librería que no conocés bien | `source-driven-development` | §14.2: otro agente abierto, después Context7 |
@@ -652,9 +656,17 @@ método o checklist. Si chocan, gana la regla del repo de la última columna. Si
 | Pipeline, build de despliegue | `ci-cd-and-automation`, `shipping-and-launch` | §10.13 |
 | Commits, ramas, changelog | `git-workflow-and-versioning`, solo si el usuario pide commitear | §11.4 |
 | Reglas del agente, `CLAUDE.md`, contexto | `context-engineering` | §14 |
-| No sabés qué skill usar | `using-agent-skills` | Esta tabla |
+| Entender un video que el usuario pasa como requerimiento | `video-lens` / `video-use` | §11.6: lo que no se entienda del video se pregunta |
+| Estrategia de contenido o pricing | `content-strategy`, `pricing`, solo si el usuario lo pide | Fuera del alcance de esta skill |
+| No sabés qué skill usar | `using-agent-skills` o `find-skills` (busca en skills.sh) | Esta tabla |
 
 - Las skills de tests (`test-driven-development`, `browser-testing-with-devtools`) no se instalan: §8.
+- **Bajo demanda** (el instalador no las instala; se instalan al tocar el área, con el comando de arriba):
+  `anti-ui-slop` (`github/awesome-copilot`; alternativa `frontend-design` de `anthropics/skills`),
+  `seo-audit`, `ai-seo`, `content-strategy` y `pricing` (`coreyhaines31/marketingskills`),
+  `canvas-design` (`anthropics/skills`), `video-lens` (`kar2phi/video-lens`), `video-use` (`browser-use/video-use`).
+- Las skills externas nunca habilitan crear archivos de test (§8), sumar librerías de UI (§11.5) ni bajar la
+  vara de seguridad (§15).
 - Los subagentes de solo lectura no pueden cargar skills: el orquestador carga la del área antes de
   delegar y pasa en el brief lo que haga falta.
 - Un subagente nombrado en la tabla que no está instalado: se aplica su checklist directo (§15.2 y
