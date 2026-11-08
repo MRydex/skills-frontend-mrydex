@@ -320,7 +320,7 @@ function extractFromTarGz(archivePath, fileName) {
 
 // Windows trae tar.exe (lee .zip) desde Windows 10; PowerShell queda como respaldo.
 function extractZip(archivePath, destDir) {
-  const systemTar = path.join(process.env.SystemRoot ?? 'C:\Windows', 'System32', 'tar.exe');
+  const systemTar = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe');
   return (fs.existsSync(systemTar) && runCommand(systemTar, ['-xf', archivePath, '-C', destDir]).ok)
     || runCommand('powershell', ['-NoProfile', '-Command',
       `Expand-Archive -LiteralPath ${psQuote(archivePath)} -DestinationPath ${psQuote(destDir)} -Force`]).ok;
@@ -475,10 +475,19 @@ function setupGraphifyProject(projectRoot) {
   }
 }
 
+// Instalación propia: SKILL.md con `name: <esta skill>`. Otra skill (que también tiene SKILL.md) no se toca.
+function isOwnInstall(dir) {
+  try {
+    return new RegExp(`^name:\\s*${SKILL_NAME}\\s*$`, 'm').test(fs.readFileSync(path.join(dir, 'SKILL.md'), 'utf8'));
+  } catch {
+    return false;
+  }
+}
+
 function installTarget(destDir, label) {
   const isUpdate = fs.existsSync(destDir);
   // Solo se borra una instalación previa de la skill, nunca otra carpeta (ej. `-t .`)
-  if (isUpdate && fs.readdirSync(destDir).length > 0 && !fs.existsSync(path.join(destDir, 'SKILL.md'))) {
+  if (isUpdate && fs.readdirSync(destDir).length > 0 && !isOwnInstall(destDir)) {
     console.error(`${colors.red}✖ ${destDir} no está vacía y no es una instalación de la skill: no se toca.${colors.reset}`);
     process.exit(1);
   }
@@ -519,7 +528,7 @@ function doctor(homeDir, repoRoot) {
     const mark = ok ? colors.green + '✔' : colors.yellow + '✗';
     console.log(`  ${mark}${colors.reset} ${label}`);
   }
-  if (checks.some(([, ok]) => !ok)) console.log(`${colors.dim}Para completar: npx skills-frontend-mrydex@latest${colors.reset}`);
+  if (checks.some(([, ok]) => !ok)) console.log(`${colors.dim}Para completar: npx -y github:MRydex/skills-frontend-mrydex${colors.reset}`);
 }
 // Subagentes y bloque global se escriben al final (finish): `graphify install` reescribe
 // ~/.claude/CLAUDE.md y borraría el bloque si corriera después.
@@ -712,8 +721,10 @@ ${colors.bold}${colors.cyan}Caveman:${colors.reset} instalando el plugin para lo
   if (!globalOk) {
     // En Windows el instalador de caveman no logra lanzar sus propios `npx skills add`:
     // se reintentan directo los mismos comandos que listó.
-    const commands = [...global.output.matchAll(/^\s*\$ npx (.+)$/gm)].map((match) => match[1].trim().split(/\s+/));
-    globalOk = commands.length > 0 && commands.every((cmdArgs) => runNpx(cmdArgs, homeDir).ok);
+    const commands = [...global.output.matchAll(/^\s*\$ npx (.+)$/gm)]
+      .map((match) => match[1].trim().split(/\s+/).filter((arg) => arg !== '-y'))
+      .filter((cmdArgs) => cmdArgs[0] === 'skills' && cmdArgs[1] === 'add' && /^JuliusBrussee\/caveman(?:[@#][\w.-]+)?$/.test(cmdArgs[2] ?? ''));
+    globalOk = commands.length > 0 && commands.every((cmdArgs) => runNpx(['-y', ...cmdArgs], homeDir).ok);
   }
   if (globalOk) logOk(`caveman global: ${agents.length > 0 ? agents.join(', ') : 'sin agentes detectados'}`);
   else console.log(`  ${colors.yellow}⚠${colors.reset} caveman global falló. Correr a mano: npx -y ${CAVEMAN_PKG}`);
@@ -996,7 +1007,7 @@ const AUTOCOMPACT_PCT = 40;
 // Hooks de edición (§08, §10, §15). `shared`: lo instalan las dos skills y queda una sola entrada.
 const EDIT_HOOKS = [
   { event: 'PreToolUse', matcher: 'Write', file: 'guard-spec.js', timeout: 10 },
-  { event: 'PreToolUse', matcher: 'Edit|Write|MultiEdit', file: 'guard-secrets.js', timeout: 10, shared: true },
+  { event: 'PreToolUse', matcher: 'Edit|Write|MultiEdit|NotebookEdit', file: 'guard-secrets.js', timeout: 10, shared: true },
   { event: 'PostToolUse', matcher: 'Edit|Write|MultiEdit', file: 'format-prettier.js', timeout: 40 },
 ];
 const SECRET_DENY = ['Read(~/.ssh/**)', 'Read(~/.aws/credentials)', 'Read(**/.env)', 'Read(**/.env.*)',

@@ -249,11 +249,16 @@ const DELEGATION_FILES = [
 // Escribe config global del usuario sin riesgo de dejarla a medias: copia la versión previa a
 // `<archivo>.bak` y reemplaza con rename (atómico), así un corte deja el archivo viejo o el nuevo.
 // Un symlink (dotfiles) se sigue hasta el archivo real: el rename no lo reemplaza por una copia.
+// El .bak se hace una vez por corrida: una segunda escritura del mismo archivo no pisa el original del usuario.
+const backedUp = new Set();
 function writeFileSafe(linkPath, content) {
   const filePath = fs.existsSync(linkPath) ? fs.realpathSync(linkPath) : linkPath;
   if (fs.existsSync(filePath)) {
     if (fs.readFileSync(filePath, 'utf8') === content) return;
-    fs.copyFileSync(filePath, `${filePath}.bak`);
+    if (!backedUp.has(filePath)) {
+      fs.copyFileSync(filePath, `${filePath}.bak`);
+      backedUp.add(filePath);
+    }
   }
   const tmpPath = `${filePath}.${process.pid}.tmp`;
   fs.writeFileSync(tmpPath, content);
@@ -291,7 +296,8 @@ function readClaudeSettings(settingsPath) {
 }
 
 // Claude Code pide aprobación en cada `graphify`; se permite solo ese comando.
-const GRAPHIFY_PERMISSIONS = ['Bash(graphify:*)', 'PowerShell(graphify:*)'];
+const GRAPHIFY_PERMISSIONS = ['query', 'update', 'explain', 'path']
+  .flatMap((cmd) => [`Bash(graphify ${cmd}:*)`, `PowerShell(graphify ${cmd}:*)`]);
 
 function allowGraphifyInClaude(homeDir, log) {
   const settingsPath = path.join(homeDir, '.claude', 'settings.json');
@@ -302,8 +308,12 @@ function allowGraphifyInClaude(homeDir, log) {
   }
   settings.permissions ??= {};
   settings.permissions.allow ??= [];
+  // Versiones previas daban `graphify:*` (incluye `graphify install`, que reescribe ~/.claude/CLAUDE.md)
+  const LEGACY = ['Bash(graphify:*)', 'PowerShell(graphify:*)'];
+  const hadLegacy = settings.permissions.allow.some((rule) => LEGACY.includes(rule));
+  settings.permissions.allow = settings.permissions.allow.filter((rule) => !LEGACY.includes(rule));
   const missing = GRAPHIFY_PERMISSIONS.filter((rule) => !settings.permissions.allow.includes(rule));
-  if (missing.length === 0) return;
+  if (missing.length === 0 && !hadLegacy) return;
   settings.permissions.allow.push(...missing);
   writeFileSafe(settingsPath, `${JSON.stringify(settings, null, 2)}
 `);

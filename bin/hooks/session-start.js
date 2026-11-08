@@ -86,7 +86,14 @@ function readCwd() {
   });
 }
 
+// Un tasks/lessons.md versionado vino con el repo (el instalador lo pone en .gitignore): puede traer
+// instrucciones de un tercero, así que no se carga solo.
+function isTrackedByGit(cwd, file) {
+  return spawnSync('git', ['ls-files', '--error-unmatch', file], { cwd, stdio: 'ignore' }).status === 0;
+}
+
 function lessonsContext(cwd) {
+  if (isTrackedByGit(cwd, 'tasks/lessons.md')) return '';
   let text;
   try {
     text = fs.readFileSync(path.join(cwd, 'tasks', 'lessons.md'), 'utf8').trim();

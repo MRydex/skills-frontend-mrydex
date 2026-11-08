@@ -178,7 +178,7 @@ intermedio, solo lectura: en una prueba real el modelo barato se perdía en bús
   reemplaza solo ese bloque; el resto del archivo no se toca.
 - Los subagentes solo se crean para agentes cuya carpeta existe en el home (agente instalado).
 - Todos siguen la regla de §14.3.4: se usan solo si bajan el total de tokens.
-- En Claude Code también agrega `Bash(graphify:*)` y `PowerShell(graphify:*)` a `permissions.allow`
+- En Claude Code también agrega `graphify query|update|explain|path` (Bash y PowerShell) a `permissions.allow`
   de `~/.claude/settings.json`, para que graphify no pida aprobación en cada sesión.
 
 #### 14.3.3 Fallback: el agente no puede lanzar subagentes
@@ -622,8 +622,8 @@ estas reglas para que rijan en todas las sesiones.
 
 Además de las reglas de esta skill, el agente carga la skill externa del área que toca la tarea
 (instaladas por §14.8, §15.14 y el instalador). Primero la regla del repo, después la skill externa como
-método o checklist. Si chocan, gana la regla del repo de la última columna. Si una skill de la tabla no está instalada: avisar en una línea, instalarla con el
-instalador (solo lectura: solo avisar) y mientras tanto seguir con las reglas del repo.
+método o checklist. Si chocan, gana la regla del repo de la última columna. Si una skill de la tabla no está instalada: avisar en una línea, instalar solo esa skill
+(`npx -y skills add <owner/repo> --global --yes --skill <nombre>`; solo lectura: solo avisar) y mientras tanto seguir con las reglas del repo.
 
 | Área o momento | Skill externa | Manda en caso de conflicto |
 | :--- | :--- | :--- |

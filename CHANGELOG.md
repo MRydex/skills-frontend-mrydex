@@ -1,9 +1,23 @@
 # Changelog
 
 Cambios de la skill `desarrollo-buenas-practicas` y del instalador `skills-frontend-mrydex`.
-Para actualizar en un proyecto: `npx skills-frontend-mrydex@latest`.
+Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ## [Unreleased]
+
+### Seguridad
+
+- Instalador: `-t` solo borra una instalación propia (`name:` de la skill en `SKILL.md`); el reintento de caveman
+  solo corre `skills add JuliusBrussee/caveman`; `--doctor` sugiere `npx -y github:MRydex/...` (el paquete no está en npm);
+  el `.bak` de `settings.json` guarda el original de la corrida; permisos de graphify solo para `query`, `update`,
+  `explain` y `path` (se quita el `graphify:*` de versiones previas); ruta `C:\Windows` corregida.
+- `guard-secrets`: también NotebookEdit; en Markdown, solo formatos inconfundibles (clave privada, AWS, GitHub, Slack,
+  Anthropic, Stripe, Google); reglas nuevas para JWT literal, firma SAS y `KEY=valor` en `.env` y similares.
+- `session-start`: un `tasks/lessons.md` versionado en el repo no se carga solo (puede traer instrucciones de un tercero);
+  para compartir lecciones de equipo, llevarlas a `CLAUDE.md` / `AGENTS.md`.
+- Skill: el plugin `claude-security` (multiagente, caro) solo con pedido explícito o costo aceptado, también en la
+  auditoría completa; si falta una skill externa se instala solo esa, no el instalador entero; `revisor-auth` en los
+  cambios de auth.
 
 ### Skill `desarrollo-buenas-practicas`
 

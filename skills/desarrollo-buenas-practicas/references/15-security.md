@@ -431,10 +431,9 @@ saltea en silencio, y la profundidad de cada una la decide el agente según lo q
 
    Un área N/A no se profundiza. Solo sobre el código propio o entornos autorizados (§15.1).
 5. **Auditoría general** (auditoría pedida de una feature o del repo; una pregunta como "¿es seguro X?"
-   usa `security-audit` en modo guía, sin este paso; en un pedido de solo lectura, `claude-security` solo si
-   el usuario acepta que escriba su reporte fuera del repo, y si no, se anota en la cobertura): correr además la skill `security-audit`
-   (Cloudflare) y el plugin `claude-security` (Anthropic), que buscan lo que la tabla no anticipa.
-   Ambos verifican cada hallazgo antes de reportarlo. En un diff chico no: alcanza con los pasos 3–4.
+   usa `security-audit` en modo guía, sin este paso): correr además la skill `security-audit`
+   (Cloudflare), que busca lo que la tabla no anticipa y verifica cada hallazgo antes de reportarlo.
+   El plugin `claude-security` (Anthropic, escaneo multiagente que gasta muchos tokens) solo con pedido explícito o si el usuario acepta su costo cuando se le ofrece en una línea; si no, se anota en la cobertura. En solo lectura, además, que acepte que escriba su reporte fuera del repo. En un diff chico no: alcanza con los pasos 3–4.
 6. **Priorizar** por riesgo (crítico → bajo), mapeado a OWASP (§15.13). Una línea por hallazgo:
    archivo, línea, riesgo, fix propuesto. Triage de hallazgos dudosos o de scanners:
    `performing-web-application-vulnerability-triage`. Redacción: `offensive-reporting`.
@@ -486,7 +485,7 @@ dosifica es la profundidad. No releer lo mismo para cada skill: pasarles los `ar
 ubicó graphify. Delegar el barrido por área a subagentes en paralelo cuando cumple la regla de §14.3.4
 (3+ archivos a leer, lo leído 3x o más que lo necesario);
 la priorización, la corrección y la decisión final quedan en el modelo principal. Si falta una skill
-de la tabla, instalarla (`npx github:MRydex/skills-frontend-mrydex`) y avisar en una línea (solo lectura: solo avisar); si no se puede, hacer
+de la tabla, instalar solo esa skill (`npx -y skills add <owner/repo> --global --yes --skill <nombre>`: las `offensive-*` vienen de `SnailSploit/claude-red`, las de AppSec de `mukul975/Anthropic-Cybersecurity-Skills`, `security-audit` de `cloudflare/security-audit-skill`) y avisar en una línea (solo lectura: solo avisar); si no se puede, hacer
 esa área con la revisión base y decirlo en el reporte de cobertura.
 
 ---

@@ -111,7 +111,7 @@ revisarlo: la revisión no agrega features.
 | :--- | :--- | :--- |
 | **Trivial** | No cambia comportamiento: textos visibles, estilos SCSS sin selectores ni mixins nuevos, HTML estático (sin bindings ni control flow), rename mecánico, comentarios, formato | Releer el diff + build/lint + tabla rápida de §15.2 |
 | **Medio** | Todo lo demás: lógica de componente o servicio, bindings, formularios, rutas, SCSS nuevo | Lo anterior + `ponytail-review` sobre el diff |
-| **Alto** | Auth, tokens, interceptores, permisos, datos sensibles, `package.json`, borrar o migrar datos | Lo anterior + revisor independiente (`revisor-checklist` o `/code-review`) + revisión ofensiva profunda con la skill del área (§15.14, tabla de skills) |
+| **Alto** | Auth, tokens, interceptores, permisos, datos sensibles, `package.json`, borrar o migrar datos | Lo anterior + revisor independiente (`revisor-checklist` o `/code-review`; en auth, también `revisor-auth`) + revisión ofensiva profunda con la skill del área (§15.14, tabla de skills) |
 
 - El revisor independiente recibe el pedido (`L1`), las specs y el diff; no el razonamiento de quien
   lo escribió. Así juzga contra lo pedido y no hereda sus supuestos.
