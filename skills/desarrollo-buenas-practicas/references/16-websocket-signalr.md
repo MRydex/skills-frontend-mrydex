@@ -128,9 +128,14 @@ private _hub: HubConnection | null = null;
 private _cola: Promise<void> = Promise.resolve();
 private _detenidoAMano = false;   // onclose también corre después de stop(): no reconectar
 private _reintento?: ReturnType<typeof setTimeout>;
+private readonly _destroyRef = inject(DestroyRef);
 
 constructor() {
-  inject(DestroyRef).onDestroy(() => void this.detener());
+  this._detenerAlDestruir();
+}
+
+private _detenerAlDestruir(): void {
+  this._destroyRef.onDestroy(() => void this.detener());
 }
 
 /** Idempotente: llamar dos veces no abre dos conexiones. */

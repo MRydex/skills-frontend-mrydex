@@ -247,6 +247,53 @@ ruta.
   (`inject(ItemsHttp).obtener(id).pipe(map((i) => i.nombre))`), sin `setTitle()` ni `effect()`. Para un prefijo/sufijo
   consistente en toda la app (ej. agregar siempre `" | Gestión"`), extender `TitleStrategy` una
   sola vez en `app.config.ts` en vez de repetir el sufijo ruta por ruta.
+- **Migas de pan desde el mismo `title`**: el `title` resuelto de cada ruta activa queda en
+  `ActivatedRouteSnapshot.title`, así que las migas se derivan del árbol de rutas sin `data: { breadcrumb }`
+  ni servicio aparte: una sola fuente para la pestaña y las migas (el sufijo de `TitleStrategy` no llega al
+  snapshot, solo al `<title>`). `computed()` que lee `lastSuccessfulNavigation()` y recorre el snapshot;
+  nunca `router.events` ni `effect()`. Las rutas sin `title` (layouts, `path: ''`) no generan miga.
+  ```ts
+  // layout/migas-de-pan/migas-de-pan.ts
+  @Component({
+    selector: 'app-migas-de-pan',
+    imports: [RouterLink],
+    template: `
+      <nav aria-label="Migas de pan">
+        <ol class="migas">
+          @for (miga of migas(); track miga.url; let ultima = $last) {
+            <li class="migas__item">
+              @if (ultima) {
+                <span aria-current="page">{{ miga.titulo }}</span>
+              } @else {
+                <a [routerLink]="miga.url">{{ miga.titulo }}</a>
+              }
+            </li>
+          }
+        </ol>
+      </nav>
+    `,
+  })
+  export class MigasDePan {
+    private readonly _router = inject(Router);
+
+    readonly migas = computed(() => {
+      this._router.lastSuccessfulNavigation(); // recalcula al terminar cada navegación, con el snapshot ya nuevo
+      const migas: { titulo: string; url: string }[] = [];
+      let url = '';
+      let ruta = this._router.routerState.snapshot.root.firstChild;
+      while (ruta) {
+        const segmento = ruta.url.map((s) => s.path).join('/');
+        if (segmento) url += `/${segmento}`;
+        if (ruta.title) migas.push({ titulo: ruta.title, url });
+        ruta = ruta.firstChild;
+      }
+      return migas;
+    });
+  }
+  ```
+  `lastSuccessfulNavigation()` y no `currentNavigation()`: el segundo cambia al empezar y al terminar la
+  navegación (dos recálculos, el primero con el snapshot viejo). La última miga va con `aria-current="page"`
+  y sin enlace; el separador es CSS (`.migas__item + .migas__item::before`), no texto en el template (§12.4).
 - **`Meta`** (`@angular/platform-browser`) — lee/escribe `<meta>` tags, incluyendo Open Graph para
   compartir en redes:
   ```ts

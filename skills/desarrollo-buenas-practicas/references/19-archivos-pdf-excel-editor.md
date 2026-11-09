@@ -260,6 +260,11 @@ export class RichText implements FormValueControl<string> {
   private _editor?: Editor;
 
   constructor() {
+    this._crearEditor();
+    this._sincronizarModeloAlEditor();
+  }
+
+  private _crearEditor(): void {
     afterNextRender(() => {
       this._editor = new Editor({
         element: this._host().nativeElement,
@@ -269,8 +274,10 @@ export class RichText implements FormValueControl<string> {
       });
       this._destroyRef.onDestroy(() => this._editor?.destroy());
     });
+  }
 
-    // modelo → editor (reset del form): sincronización con el DOM, no con effect() (§2.7)
+  // modelo → editor (reset del form): sincronización con el DOM, no con effect() (§2.7)
+  private _sincronizarModeloAlEditor(): void {
     afterRenderEffect(() => {
       const next = this.value();
       if (this._editor && next !== this._editor.getHTML()) {

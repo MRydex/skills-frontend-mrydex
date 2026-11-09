@@ -391,13 +391,16 @@ import { afterNextRender, DestroyRef, Directive, ElementRef, inject, signal } fr
 })
 export class OverflowDetector {
   private readonly _el = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly _destroyRef = inject(DestroyRef);
 
   private readonly _isOverflowing = signal(false);
   readonly isOverflowing = this._isOverflowing.asReadonly();
 
   constructor() {
-    const destroyRef = inject(DestroyRef);
+    this._observarDesborde();
+  }
 
+  private _observarDesborde(): void {
     afterNextRender(() => {
       const el = this._el.nativeElement;
       const check = () => this._isOverflowing.set(el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth);
@@ -406,7 +409,7 @@ export class OverflowDetector {
 
       const observer = new ResizeObserver(check);
       observer.observe(el);
-      destroyRef.onDestroy(() => observer.disconnect());
+      this._destroyRef.onDestroy(() => observer.disconnect());
     });
   }
 }

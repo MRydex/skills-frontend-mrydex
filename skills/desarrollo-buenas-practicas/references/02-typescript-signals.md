@@ -422,6 +422,7 @@ bloque se mantiene solo.
 | Mostrar u ocultar el spinner                    | `spinnerInterceptor` + `SpinnerState` (§5.2)           |
 | Abrir el modal de error                         | `errorInterceptor` + `ErrorNotifier` (§5.3)              |
 | Reaccionar a lo que hizo un componente hermano  | Servicio con signal + `linkedSignal` (§2.12)             |
+| Compartir un signal entre pestañas (logout)     | Servicio: el método que escribe el signal también hace `postMessage`; `onmessage` escribe el signal (15 §15.5) |
 | Refrescar tras una mutación                     | Cambiar el signal de `params`, o `resource.reload()`     |
 | Debouncing                                      | `debounced()` (§2.5)                                     |
 | Transformar un resource entero                  | `snapshot` + `resourceFromSnapshots()` (experimental, §4.10) |
@@ -472,6 +473,9 @@ dentro del constructor, y nunca escribe signals que él mismo lee.
   - Lógica que necesita inputs ya resueltos → un `computed`/`resource` que los lea (los inputs son
     signals); **no** un `effect`.
   - Manipulación del DOM tras el primer render → `afterNextRender()` / `afterRenderEffect()`.
+- **El constructor solo llama métodos privados con nombre** (`this._leerPreferencias()`,
+  `this._escucharOtrasPestanas()`): nunca lógica inline ni callbacks (`onmessage`, `afterNextRender`)
+  escritos ahí. El nombre dice qué hace el arranque sin leer el cuerpo.
 - `afterNextRender()` / `afterRenderEffect()` aceptan fases que Angular corre en este orden:
   `earlyRead` → `write` → `mixedReadWrite` → `read`. Sin fase, todo corre en `mixedReadWrite`, que
   mezcla lecturas y escrituras de layout y puede forzar reflows. Separar: leer en `earlyRead` o
@@ -484,6 +488,10 @@ dentro del constructor, y nunca escribe signals que él mismo lee.
   private _pegadoAlFinal = true;
 
   constructor() {
+    this._seguirAlFinal();
+  }
+
+  private _seguirAlFinal(): void {
     afterRenderEffect({
       earlyRead: () => {
         this.mensajes(); // dependencia: corre al llegar un mensaje
@@ -1011,6 +1019,27 @@ const ESTADOS = {
   baja: { etiqueta: 'De baja' },
 } satisfies Record<Estado, { etiqueta: string; color?: string }>;
 ```
+
+- **Lista de literales → unión → type guard**: la lista `as const` define el tipo, y un type guard
+  convierte el `string` que llega de afuera (query param, back, storage, `postMessage`) en la unión.
+  `ROLES.includes(valor)` con `valor: string` no compila (el array es de literales): ensanchar el array
+  en el chequeo, nunca castear el valor (`valor as Rol` miente). Es la validación de campo que exige
+  el parser de datos externos (§2.11).
+
+
+```ts
+const ROLES = ['admin', 'editor', 'lector'] as const;
+type Rol = (typeof ROLES)[number];
+
+function esRol(valor: string): valor is Rol {
+  return (ROLES as readonly string[]).includes(valor);
+}
+
+// en el componente, con `private readonly _route = inject(ActivatedRoute)`
+const rol = this._route.snapshot.queryParamMap.get('rol') ?? 'lector';
+if (esRol(rol)) this.abrirPanel(rol); // acá rol es Rol
+```
+
 
 - **Operaciones de conjuntos** (permisos, roles, ids seleccionados): `Set` con `difference`,
   `intersection`, `union`, `isSubsetOf`, `isSupersetOf`, `isDisjointFrom`, en vez de `filter` +

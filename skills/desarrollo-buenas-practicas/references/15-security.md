@@ -185,6 +185,43 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 - Guards (`canMatch`, `canActivate`) ocultan rutas; **no protegen datos**. Cada endpoint valida
   permisos en el backend. Preferir `canMatch` para no descargar el chunk de una ruta sin permiso.
 - En logout: limpiar signals de sesión, stores con datos del usuario y cualquier storage propio.
+- **Logout en todas las pestañas**: con el token en memoria no hay evento `storage` que avise a las
+  otras pestañas; usar `BroadcastChannel` (mismo origen) desde el servicio de auth, **sin `effect()`**: el
+  método que cierra la sesión también avisa, y `onmessage` escribe el signal. El mensaje es un evento
+  (`'logout'`), **nunca el token ni datos del usuario**; comparar el payload antes de actuar (el canal
+  es de mismo origen: no hay `event.origin` que validar). Singleton de root: el canal vive lo que la
+  app, no hace falta `close()`. Microfrontends: [17](./17-microfrontends.md) §17.8.
+
+```ts
+@Service()
+export class Auth {
+  private readonly _router = inject(Router);
+  private readonly _canal = new BroadcastChannel('auth');
+  readonly usuario = signal<Usuario | null>(null);
+
+  constructor() {
+    this._escucharOtrasPestanas();
+  }
+
+  logout() {
+    this._cerrarLocal();
+    this._canal.postMessage('logout');
+  }
+
+  // otra pestaña cerró sesión: esta también
+  private _escucharOtrasPestanas() {
+    this._canal.onmessage = (e: MessageEvent<unknown>) => {
+      if (e.data === 'logout') this._cerrarLocal();
+    };
+  }
+
+  private _cerrarLocal() {
+    this.usuario.set(null);
+    this._router.navigate(['/login']);
+  }
+}
+```
+
 - 401 → sesión vencida: redirigir a login. 403 → sin permiso: mostrar mensaje. Nunca reintentar
   automáticamente con otras credenciales.
 

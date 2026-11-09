@@ -29,6 +29,19 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 Todo lo nuevo aplica solo si el proyecto ya usa esa tecnología o el usuario lo pide.
 
+- §12.8 migas de pan desde el `title` resuelto de cada ruta (`ActivatedRouteSnapshot.title`): una sola fuente
+  para la pestaña y las migas, `computed()` sobre `lastSuccessfulNavigation()` + `routerState.snapshot`, sin
+  `data: { breadcrumb }`, `router.events` ni `effect()`; marcado `<nav aria-label>` + `<ol>` + `aria-current="page"`.
+  Cruce en §9.6.4 y checklist HTML.
+- §15.5 logout en todas las pestañas con `BroadcastChannel` desde el servicio de auth, sin `effect()` (el
+  método que cierra sesión avisa; `onmessage` escribe el signal); el mensaje es un evento, nunca el token.
+  Fila nueva en la tabla de §2.7 y checklist de seguridad.
+- §2.8 el constructor solo llama métodos privados con nombre; nunca lógica inline ni callbacks escritos ahí. Los
+  snippets de la skill con lógica en el constructor (§2.8, §3.8, §9.6.1, §9.10.1, §15.5, §16.5, §19.7) quedan así.
+- §2.15 lista de literales `as const` → unión → type guard (`(ROLES as readonly string[]).includes(v)`) para
+  validar strings externos (query param, back, storage), nunca `v as Rol`.
+- §14.1 y templates: código en el chat como diff (líneas cambiadas + contexto), nunca el archivo entero; no
+  volver a explicar lo ya decidido en la sesión.
 - §13.18 animaciones por scroll, ampliado (Baseline desde nov 2025): `scroll()` / `view()`, rangos de
   `animation-range` (también dentro de los keyframes), timelines con nombre y `timeline-scope`, sección alta +
   `sticky` con el progreso repartido por `--i` / `--n` desde `@for`, `@property` para fuentes variables y

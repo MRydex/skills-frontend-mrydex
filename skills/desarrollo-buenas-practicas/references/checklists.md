@@ -187,7 +187,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Tipos de input semánticos + `required` / `pattern` para validación nativa?
 - [ ] ¿Enlaces externos con `target="_blank"` llevan `rel="noopener noreferrer"`?
 - [ ] ¿Elemento nativo antes que `role="…"`? (sin ARIA es mejor que ARIA mal puesta, §12.6)
-- [ ] ¿`<title>` por ruta (`title` en `Route` / `TitleStrategy`) y metadatos SEO? (§12.8)
+- [ ] ¿`<title>` por ruta (`title` en `Route` / `TitleStrategy`) y metadatos SEO? ¿Migas de pan derivadas de ese mismo `title` (`<nav aria-label>` + `<ol>` + `aria-current="page"`), sin `data: { breadcrumb }`? (§12.8)
 - [ ] ¿Foco gestionado al navegar entre vistas? (§12.9)
 
 ### CSS ([13](./13-css3-layouts-animations.md))
@@ -215,7 +215,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Revisión Red Team del cambio hecha (tabla de §15.2) y sin respuestas "sí"?
 - [ ] ¿Sin `bypassSecurityTrust*` con datos externos, sin `nativeElement.innerHTML`, `eval` ni `new Function`? ¿Pipes que devuelven HTML escapan la entrada? (§15.3)
 - [ ] ¿`autoCsp` activo en producción? ¿CSP nueva desplegada primero como Report-Only? (§15.4)
-- [ ] ¿Token en memoria o cookie `HttpOnly`, nunca en `localStorage`? ¿`authInterceptor` compara origen con `URL`? ¿Autorización validada en backend? (§15.5)
+- [ ] ¿Token en memoria o cookie `HttpOnly`, nunca en `localStorage`? ¿`authInterceptor` compara origen con `URL`? ¿Autorización validada en backend? ¿Logout avisado a las otras pestañas por `BroadcastChannel` con un evento, nunca el token? (§15.5)
 - [ ] ¿XSRF configurado con sesión por cookie? ¿Sin mutaciones por `GET`? (§15.6)
 - [ ] ¿`returnUrl` validado como ruta interna? ¿`postMessage` valida `event.origin`? ¿Links externos con `rel="noopener noreferrer"`? (§15.7)
 - [ ] ¿Sin secretos en `environment.ts` / `appsettings.json`? ¿Sin PII ni tokens en `console` o storage? ¿Errores genéricos al usuario? (§15.8)

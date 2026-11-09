@@ -248,13 +248,18 @@ import { Router } from '@angular/router';
 })
 export class DetalleItem {
   private readonly _router = inject(Router);
+  private readonly _destroyRef = inject(DestroyRef);
 
   constructor() {
+    this._forzarRecreacion();
+  }
+
+  private _forzarRecreacion(): void {
     const original = this._router.routeReuseStrategy.shouldReuseRoute;
     this._router.routeReuseStrategy.shouldReuseRoute = () => false;
 
     // La estrategia es global del Router: restaurarla al salir de esta ruta
-    inject(DestroyRef).onDestroy(() => {
+    this._destroyRef.onDestroy(() => {
       this._router.routeReuseStrategy.shouldReuseRoute = original;
     });
   }
@@ -466,7 +471,9 @@ export class PrecargaSelectiva implements PreloadingStrategy {
   activa fuera de un link, en lugar de suscribirse a `router.events`:
   `readonly enConfig = isActive('/config', this._router, { paths: 'exact' });`
 - `router.lastSuccessfulNavigation()` (signal desde v21) y `router.currentNavigation()` (ejemplo de uso: §10.4)
-  reemplazan filtrar `router.events` para saber dónde se está o si hay una navegación en curso.
+  reemplazan filtrar `router.events` para saber dónde se está o si hay una navegación en curso. Para derivar
+  algo del árbol de rutas activo (ej. migas de pan desde el `title` de cada ruta), `computed()` que lee
+  `lastSuccessfulNavigation()` y recorre `routerState.snapshot` ([12](./12-html5-semantics-seo.md) §12.8).
 
 #### 9.6.5 Conservar una pantalla al ir y volver (lista → detalle)
 
@@ -797,14 +804,19 @@ anidados ni `Subject`:
 export class CalculoWorker {
   private readonly _worker = new Worker(new URL('./calculo.worker', import.meta.url), { type: 'module' });
   private readonly _pendientes = new Map<number, PromiseWithResolvers<Resultado>>();
+  private readonly _destroyRef = inject(DestroyRef);
   private _proximoId = 0;
 
   constructor() {
+    this._escucharResultados();
+  }
+
+  private _escucharResultados(): void {
     this._worker.onmessage = ({ data }: MessageEvent<{ id: number; resultado: Resultado }>) => {
       this._pendientes.get(data.id)?.resolve(data.resultado);
       this._pendientes.delete(data.id);
     };
-    inject(DestroyRef).onDestroy(() => this._worker.terminate());
+    this._destroyRef.onDestroy(() => this._worker.terminate());
   }
 
   calcular(entrada: Entrada): Promise<Resultado> {

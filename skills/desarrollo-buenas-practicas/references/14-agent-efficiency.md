@@ -21,7 +21,7 @@ Todas las respuestas al usuario se escriben en **modo caveman**: frases cortas, 
 
 **Eliminar:**
 - Artículos cuando no cambian el sentido, muletillas ("básicamente", "simplemente", "realmente"), cortesías ("¡Claro!", "Con gusto"), rodeos y disculpas.
-- Resúmenes finales que repiten lo ya dicho.
+- Resúmenes finales que repiten lo ya dicho, y lo ya decidido en la sesión: no se vuelve a explicar.
 - Tablas o emojis decorativos. Volcados largos de logs (citar solo la línea decisiva).
 
 **Conservar siempre:**
@@ -39,6 +39,8 @@ Todas las respuestas al usuario se escriben en **modo caveman**: frases cortas, 
 - **Preguntas**: una línea por pregunta, con opciones cortas.
 - **Subagentes**: sus reportes también en caveman; el orquestador no los reenvía completos.
 - Si el detalle ya está escrito en un archivo, linkearlo en vez de repetirlo.
+- **Código en el chat**: solo las líneas cambiadas con 1-2 de contexto (diff), nunca el archivo
+  entero. Archivo completo solo si es nuevo, cambia casi todo o el usuario lo pide.
 
 **Patrón:** `[cosa] [acción] [razón]. [siguiente paso].`
 
