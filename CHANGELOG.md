@@ -7,6 +7,12 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- `13` §13.31 reglas de movimiento de interfaz (150-250 ms, `ease-out` / `ease-in`, sin overshoot en
+  menús, `transform-origin` desde el disparador, CPU throttling, fade con `prefers-reduced-motion`);
+  §13.26 texto sobre imagen con scrim; §13.18 line drawing con `pathLength="1"`.
+- `02` §2.11 tipos derivados (`Pick` / `Omit` / `Partial`) sin romper el espejo con el record de C#.
+- `checklists.md`: checklist de salida a producción (legales, consentimiento, SEO técnico, licencias,
+  secretos y cabeceras, páginas de error).
 - Advisor y orquestador según lo publicado con Fable 5.2 (§14.3): alias `fable` en `/advisor`, `advisorModel` y
   frontmatter `model`; tabla de pareo (Fable solo acepta Fable); Claude Code 2.1.321+; límites reales de Claude
   Code (20 en paralelo, 3 niveles) frente a los de Managed Agents (25 hijos, un nivel); link a la doc de

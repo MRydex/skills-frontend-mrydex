@@ -705,6 +705,12 @@ readonly items = httpResource<ItemResponse[]>(() => ({
   - Lo que vuelve: `<Entidad>Response` → `ItemResponse`. Si una operación devuelve otra forma, le
     pone su acción: `CreateItemResponse`.
   - Un tipo por operación: así cada uno dice qué campos viajan y cuáles son obligatorios.
+  - Derivar, no duplicar: cuando un tipo es subconjunto o variante de otro (alta sin `id`, edición
+    parcial, vista de solo lectura), derivarlo con `Pick` / `Omit` / `Partial` / `Required` /
+    `Readonly` en vez de copiar la interfaz (`type UpdateItemRequest = Partial<Omit<ItemResponse, 'id'>>`).
+    Una sola fuente de verdad: si cambia la base, cambian las derivadas. Mapped types propios
+    (`{ [K in keyof T]-?: T[K] }`) solo si ningún utility type alcanza. El nombre y los campos siguen
+    espejando el record de C#: si derivar no da exactamente esos campos, el tipo se escribe a mano.
   - El genérico de `HttpClient` / `httpResource` es el contrato real del endpoint, y el `T` de ese
     contrato es siempre el `Response`.
 - **El back responde de dos formas, y el front soporta las dos**: el `Response` directo

@@ -227,6 +227,18 @@ Proceso del agente · Verificación rápida (Do & Don't).
 
 ---
 
+## Checklist de salida a producción ([12](./12-html5-semantics-seo.md), [15](./15-security.md))
+Antes de publicar un sitio o una app nueva, además de los bloques anteriores:
+- [ ] ¿Páginas legales según el caso: política de privacidad y de cookies si se recolectan datos o hay cookies no esenciales; términos de uso si hay cuentas o compras? Las redacta o valida quien corresponda: el agente no da asesoría legal.
+- [ ] ¿Banner de consentimiento solo si hay cookies o trackers no esenciales? Sin analítica de terceros no hace falta.
+- [ ] ¿`robots.txt`, `sitemap.xml`, `canonical`, `<title>` y `meta description` por ruta? (§12)
+- [ ] ¿Dependencias auditadas y con licencia compatible con el uso (comercial o no)? (§15)
+- [ ] ¿Sin secretos ni URLs internas en el bundle; cabeceras de seguridad configuradas en el servidor? (§15)
+- [ ] ¿Páginas 404 y de error sin stack, SQL ni rutas internas? (§15)
+- [ ] ¿Favicon, `manifest`, `lang` en `<html>` y el bloque HTML5 / CSS3 de accesibilidad AA pasados?
+
+---
+
 ## Checklist de proceso del agente ([11](./11-workflow-orchestration.md), [14](./14-agent-efficiency.md))
 - [ ] ¿Se leyó el código existente y sus usos antes de editar? (§11.1)
 - [ ] ¿`.gitignore` del proyecto excluye todo lo de IA y agentes? (§10.9)

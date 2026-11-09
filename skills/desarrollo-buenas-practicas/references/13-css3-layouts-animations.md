@@ -32,6 +32,7 @@
 - 13.28 Gráficos simples con `conic-gradient()`
 - 13.29 Contadores animados sin JavaScript (`@property` + `counter()`)
 - 13.30 Transiciones entre rutas (`withViewTransitions`)
+- 13.31 Reglas de movimiento de interfaz
 
 > Este archivo cubre CSS genérico (aplica a cualquier stack). Para convenciones SCSS del equipo en
 > Angular (`@use`/`@forward`, BEM, `:host`, encapsulación, theming de NG-ZORRO) ver
@@ -669,6 +670,10 @@ shadows (`scroll(self)`), timeline / stepper, texto palabra por palabra, typewri
 (`clip-path: inset()`), sprites `steps(N)` por `background-position`, line drawing SVG
 (`stroke-dashoffset`), blur progresivo de fondo, parallax por capas.
 
+Line drawing sin medir el trazo: `pathLength="1"` en el `<path>`, `stroke-dasharray: 1;
+stroke-dashoffset: 1` y animar `stroke-dashoffset` a `0`. Dentro del bloque que respeta
+`prefers-reduced-motion` (§13.23).
+
 Lo que **todavía necesita JS**: una animación que se *dispare* por scroll y corra con tiempo (no hay
 `animation-trigger` estable). Alternativas, en orden: `animation-range: entry 0% entry 100%` + `both`
 (parece disparada), `@starting-style` + `transition` (§13.19) y, como última opción,
@@ -941,6 +946,9 @@ fija, `ngSrc` con `fill`, `<video>`, `<iframe>`), reservar con `aspect-ratio`:
 - `object-fit: cover` recorta; `contain` muestra la imagen entera con bandas. `object-position`
   elige qué parte se conserva.
 - Con `fill`, el `aspect-ratio` va en el contenedor `position: relative`, no en la imagen.
+- Texto sobre imagen: scrim detrás del texto (gradiente semitransparente,
+  `linear-gradient(rgb(0 0 0 / 0.6), transparent)`, o fondo sólido) y contraste AA medido sobre la
+  zona más clara de la imagen (§3.1). `text-shadow` solo no alcanza.
 - Baseline desde 2021.
 
 ### 13.27 Unidades de viewport dinámicas (`dvh`, `svh`, `lvh`)
@@ -1051,5 +1059,24 @@ provideRouter(routes, withViewTransitions({
   componente.
 - `skipTransition()` saltea la animación pero la navegación se completa.
 - Elementos que deben "viajar" entre páginas: `view-transition-name` único por página.
+
+### 13.31 Reglas de movimiento de interfaz
+
+Los valores de los ejemplos de este archivo (§13.23, §13.25, §13.30) salen de estas reglas:
+
+- Duración: transiciones de UI entre 150 y 250 ms, salida más corta que la entrada. Por encima de
+  ~400 ms se percibe lento, salvo movimientos grandes de página.
+- Curva: `ease-out` para entrar (arranca rápido, frena al llegar), `ease-in` para salir; `linear`
+  solo para progreso continuo (barras, spinners, marquee).
+- Sin rebote ni overshoot en controles de uso repetido: menús, dropdowns, tooltips, modales. El
+  "spring" queda para un gesto ocasional (onboarding, confirmación de éxito), nunca para lo que se
+  abre 50 veces al día.
+- `transform-origin` en el punto que dispara el elemento: un menú nace del botón que lo abrió
+  (`transform-origin: top left`, o la esquina que da `anchor()` en §13.15); un diálogo, del centro.
+- Solo `transform` y `opacity` (§13.23). Nunca `width`, `height`, `top`, `left` ni `margin`:
+  recalculan layout en cada frame. El jank no se ve en la máquina del desarrollador: probar con CPU
+  throttling ×4 en DevTools.
+- `prefers-reduced-motion` (§13.23) anula el movimiento; si el cambio de estado necesita feedback,
+  dejar solo un fade de opacidad, nunca un desplazamiento.
 
 ---

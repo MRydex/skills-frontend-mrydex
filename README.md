@@ -35,7 +35,9 @@ npx github:MRydex/skills-frontend-mrydex -a claude -g --advisor opus
 
 El advisor queda guardado en `~/.claude/settings.json`: a partir de ahí es automático, el modelo decide
 cuándo consultarlo (al orientarse, al trabarse y antes de terminar). Se cobra al precio del advisor.
-`--advisor off` lo quita. Con sesión Opus sin Fable no hay advisor útil: el mismo modelo no suma.
+`--advisor off` lo quita. También se cambia en cualquier momento dentro de Claude Code, sin reinstalar:
+`/advisor fable`, `/advisor opus` o `/advisor off` (queda guardado igual). Con sesión Opus sin Fable no hay
+advisor útil: el mismo modelo no suma.
 
 Para actualizar, correr el mismo comando. Borra los archivos viejos y copia la última versión.
 Si `npx` usa una copia en caché, agregar `#main` al final.
