@@ -25,7 +25,17 @@ npx github:MRydex/skills-frontend-mrydex -a all -w -b
 
 # Solo global, un agente
 npx github:MRydex/skills-frontend-mrydex -a claude -g
+
+# Claude Code con advisor (el modelo de la sesión consulta a uno más fuerte cuando hace falta)
+# Si tu plan incluye Fable (también es el valor por defecto sin flag):
+npx github:MRydex/skills-frontend-mrydex -a claude -g --advisor fable
+# Si no tenés Fable y trabajás con Sonnet:
+npx github:MRydex/skills-frontend-mrydex -a claude -g --advisor opus
 ```
+
+El advisor queda guardado en `~/.claude/settings.json`: a partir de ahí es automático, el modelo decide
+cuándo consultarlo (al orientarse, al trabarse y antes de terminar). Se cobra al precio del advisor.
+`--advisor off` lo quita. Con sesión Opus sin Fable no hay advisor útil: el mismo modelo no suma.
 
 Para actualizar, correr el mismo comando. Borra los archivos viejos y copia la última versión.
 Si `npx` usa una copia en caché, agregar `#main` al final.
@@ -78,6 +88,10 @@ Siempre instala todo; no hay flags para saltear partes.
 - **Claude Code, extras** (cada uno solo si el usuario no lo configuró antes, salvo `permissions.deny`, que se suma):
   - `permissions.deny` para que el agente no lea secretos (`~/.ssh`, `.env*`, `*.pem`, `*.key`...); se suman a las reglas del usuario.
   - MCP [Context7](https://github.com/upstash/context7) (docs vigentes de librerías, gratis).
+  - Advisor `fable` (`advisorModel`) si no había uno, la sesión no es Fable y no hay Bedrock/Vertex: el modelo
+    de la sesión consulta a Fable solo al orientarse, al trabarse y antes de terminar. Se cobra al precio de
+    Fable; solo con la API de Anthropic. Sin acceso a Fable, Claude Code sigue sin advisor y avisa una vez, sin
+    fallar. `--advisor opus|sonnet` elige otro, `--advisor off` lo quita.
   - Subagentes con `effort` (`low` el revisor, `medium` el resto).
 - **`.gitignore`**: agrega los archivos de IA y agentes.
 
@@ -108,6 +122,7 @@ compresión. Para volver a usarlo: `headroom init -g claude` (o reinstalar la sk
 -b, --bridge           Copia AGENTS.md, CLAUDE.md y .cursorrules
 --dry-run              Muestra qué haría, sin escribir
 --doctor               Chequea qué está instalado, sin escribir nada
+--advisor <modelo>     Claude Code: advisor (fable | opus | sonnet | off); sin el flag, fable
 -v, --version          Versión
 -h, --help             Ayuda
 ```

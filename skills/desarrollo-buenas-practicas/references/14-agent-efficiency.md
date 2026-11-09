@@ -122,7 +122,7 @@ elegir el modelo de cada uno? Según la respuesta, usar la fila de la tabla o el
 
 | Agente | Subagentes en paralelo | Modelo por subagente |
 | :--- | :--- | :--- |
-| **Claude Code** | Tool `Agent`, o archivos en `.claude/agents/*.md` | Parámetro `model` del tool, o frontmatter `model: opus\|sonnet\|haiku\|inherit`; env `CLAUDE_CODE_SUBAGENT_MODEL` |
+| **Claude Code** | Tool `Agent`, o archivos en `.claude/agents/*.md` | Parámetro `model` del tool, o frontmatter `model: fable\|opus\|sonnet\|haiku\|inherit`; env `CLAUDE_CODE_SUBAGENT_MODEL` (con `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` pisa el `model` de cada agente) |
 | **Codex (CLI / IDE)** | Sección `[agents]` en `config.toml`, o pedirlo explícito ("un agente por punto"); `/agent` para ver hilos | Archivos en `.codex/agents/` o `~/.codex/agents/` con `model` y `model_reasoning_effort`; `agents.default_subagent_model` |
 | **Antigravity** | Agent Manager (conversaciones en paralelo); subagentes en `.agents/agents/<nombre>.md` o `~/.gemini/config/agents/` | Frontmatter `model: pro\|flash\|inherit` |
 | **Cursor** | `.cursor/agents/*.md`; varias tareas en un turno corren en simultáneo | Frontmatter `model: inherit\|<model-id>` |
@@ -227,8 +227,10 @@ en el brief. Sin motivo, o ante la duda: lo hace el orquestador.
 | Sonnet principal + Opus advisor | $7.99 | 861 s | Amplió el alcance a 28 archivos |
 
 - En tareas chicas, delegar cuesta más: el brief y la revisión suman más de lo que ahorra el modelo barato.
-- No usar un modelo más barato como agente principal con otro más caro de advisor: amplía el alcance y
-  multiplica los turnos. El modelo seleccionado orquesta.
+- No usar un modelo más barato como agente principal con un advisor del mismo nivel: amplía el alcance y
+  multiplica los turnos. El modelo seleccionado orquesta. Con un advisor de nivel superior (Fable 5.2
+  para una sesión Sonnet u Opus) Anthropic reporta ~92% del resultado de Fable solo a ~63% del costo, con
+  ~1 consulta por tarea. Por eso el instalador configura Fable como advisor (§14.3.5); medir en el equipo.
 
 Si el agente no puede lanzar subagentes con un modelo más barato, delegar solo lo que ahorra
 contexto (búsquedas y lecturas grandes). El resto lo hace el orquestador (§14.3.3).
@@ -288,15 +290,28 @@ más capaz bajo demanda, compartiendo el mismo contexto.
 **Claude Code: advisor nativo** ([doc](https://code.claude.com/docs/en/advisor.md), experimental,
 solo con la API de Anthropic; no en Bedrock, Vertex ni Foundry):
 
-- Activar: `/advisor opus` (sin argumento abre el selector; `/advisor off` lo apaga). Solo para una
-  sesión: `claude --advisor opus`. El instalador no lo activa.
-- **Por defecto, no usarlo.** En la medición de §14.3.4, Sonnet principal + Opus advisor costó 10 veces
-  más ($7.99 contra $0.79) y amplió el alcance a 28 archivos. Un advisor del mismo nivel que la sesión no
-  suma calidad y gasta más. Solo tiene sentido probar un advisor de nivel superior al de la sesión en una tarea difícil de riesgo
-  alto, sabiendo que cuesta más.
-- El advisor tiene que ser de nivel igual o mayor que el modelo de la sesión. Un modelo de nivel
+- Activar: `/advisor fable` u `/advisor opus` (sin argumento abre el selector; `/advisor off` lo apaga).
+  Queda en `~/.claude/settings.json` como `"advisorModel": "fable"` (alias `fable`, `opus`, `sonnet` o un
+  id completo). Solo para una sesión: `claude --advisor fable`. Fable 5.2 como advisor pide Claude Code
+  2.1.321 o mayor. **El instalador lo deja en `fable`** si no había uno configurado, la sesión (`model` en
+  settings) no es Fable y no hay Bedrock/Vertex. `--advisor <modelo>` elige otro; `--advisor off` o
+  `/advisor off` lo quitan. Una vez configurado, la consulta es automática: el modelo decide cuándo,
+  siguiendo los 3 momentos de abajo.
+- **Solo de nivel superior.** En la medición de §14.3.4, Sonnet principal + Opus advisor (mismo nivel) costó
+  10 veces más ($7.99 contra $0.79) y amplió el alcance a 28 archivos: un advisor del mismo nivel que la
+  sesión no suma calidad y gasta más. Por eso el instalador configura Fable (nivel superior para Sonnet y
+  Opus, el patrón que publica Anthropic) y no configura nada si la sesión ya es Fable. Cada consulta se
+  cobra a precio de Fable: si el costo preocupa, `--advisor off`.
+- **Sin acceso a Fable** (plan sin Fable, `availableModels` de la organización lo excluye, o la API lo
+  rechaza): Claude Code no falla, manda la sesión sin advisor y avisa una vez. No baja solo a Opus: queda
+  la emulación (`NECESITA_ADVISOR` + revisión del modelo de la sesión). Quien quiera Opus como advisor de
+  una sesión Sonnet lo pide con `--advisor opus`, sabiendo la medición de §14.3.4.
+- El advisor tiene que ser de nivel igual o mayor que el modelo de la sesión: Haiku o Sonnet principal
+  aceptan Fable u Opus; Opus acepta Fable u Opus; Fable solo acepta Fable. Un modelo de nivel
   rápido (§14.3.1) puede consultar, pero no ser advisor.
-- Los subagentes heredan el advisor.
+- Los subagentes heredan el advisor. Límites de Claude Code: 20 subagentes en paralelo
+  (`CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`) y 3 niveles de anidado (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`).
+  El "25 a la vez, un solo nivel" que publica Anthropic es de Managed Agents (API), no de Claude Code.
 - Costo: cada consulta se cobra al precio del advisor (en suscripción, cuenta para el límite del plan).
   No corre en segundo plano: solo cuando el modelo decide consultar.
 - Apagar del todo: `CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1`.
@@ -332,8 +347,11 @@ ejecutores:
    algo falla, vuelve al mismo ejecutor con la corrección concreta.
 
 **Apps del equipo que llaman a la API de Claude:** ahí sí existe el advisor tool nativo (beta,
-header `advisor-tool-2026-03-01`, tool `advisor_20260301`). Ver la
-[doc oficial](https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool).
+header `advisor-tool-2026-03-01`, tool `advisor_20260301`; `max_uses` y `max_tokens` acotan el costo). Ver la
+[doc oficial](https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool). El patrón
+orquestador vive en Managed Agents (`multiagent_20261001`, `model` por subagente, hasta 25 hijos, un solo
+nivel; los subagentes no consultan al advisor):
+[doc oficial](https://platform.claude.com/docs/en/managed-agents/multiagent-orchestration).
 
 ---
 

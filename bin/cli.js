@@ -62,6 +62,8 @@ ${colors.bold}OPCIONES:${colors.reset}
                           cursor, universal y all los generan siempre.
   ${colors.green}--dry-run${colors.reset}               Muestra los archivos y destinos sin escribir cambios
   ${colors.green}--doctor${colors.reset}                Chequea qué está instalado, sin escribir nada
+  ${colors.green}--advisor <modelo>${colors.reset}      Claude Code: advisor (fable | opus | sonnet | off). Sin el flag queda fable si no
+                          había uno; off lo quita. Se cobra al precio del advisor; solo API de Anthropic.
   ${colors.green}-v, --version${colors.reset}           Muestra la versión del paquete
   ${colors.green}-h, --help${colors.reset}              Muestra esta ayuda
 
@@ -107,6 +109,13 @@ function getArgValue(flags) {
 
 const agentArg = getArgValue(['-a', '--agent']);
 const customTarget = getArgValue(['-t', '--target']);
+// Advisor de Claude Code (§14.3.5): fable por defecto, el modelo decide cuándo consultarlo. `off` lo quita.
+const ADVISOR_ALIASES = ['fable', 'opus', 'sonnet', 'off'];
+const advisorArg = getArgValue(['--advisor']);
+if (args.includes('--advisor') && (!advisorArg || (!ADVISOR_ALIASES.includes(advisorArg) && !advisorArg.startsWith('claude-')))) {
+  console.error(`--advisor: valor inválido "${advisorArg ?? ''}". Usar ${ADVISOR_ALIASES.join(' | ')} o un id completo (claude-...).`);
+  process.exit(1);
+}
 
 const sourceSkillDir = path.join(__dirname, '..', 'skills', 'desarrollo-buenas-practicas');
 const templatesDir = path.join(__dirname, '..', 'templates');
@@ -856,6 +865,7 @@ ${colors.bold}${colors.cyan}Herramientas del agente:${colors.reset} Headroom y c
     console.log(`${colors.dim}[dry-run] Claude Code: activar ${CLAUDE_PLUGINS.map(({ id }) => id).join(', ')}${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: hooks SessionStart, guard-spec, guard-secrets, format-prettier + ANTHROPIC_BASE_URL=${HEADROOM_URL} + CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=${AUTOCOMPACT_PCT}${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: permissions.deny de secretos, MCP context7${colors.reset}`);
+    console.log(`${colors.dim}[dry-run] Claude Code: advisorModel=${advisorArg ?? 'fable (si no había uno y la sesión no es Fable)'}${colors.reset}`);
     return;
   }
 
@@ -1078,6 +1088,7 @@ function installSessionStartHook(homeDir) {
     .some((key) => settings.env[key] || process.env[key]);
   if (headroomOk && !ownRoute) settings.env.ANTHROPIC_BASE_URL = HEADROOM_URL;
   settings.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE ??= String(AUTOCOMPACT_PCT);
+  const advisorNote = configureAdvisor(settings, ownRoute);
   // Lista base de secretos que el agente no lee (§15). Suma las reglas nuevas sin quitar las del usuario.
   settings.permissions ??= {};
   settings.permissions.deny = [...new Set([...(settings.permissions.deny ?? []), ...SECRET_DENY])];
@@ -1089,7 +1100,26 @@ function installSessionStartHook(homeDir) {
   if (settings.env.ANTHROPIC_BASE_URL === HEADROOM_URL) logOk(`Claude Code: modelo vía Headroom (${HEADROOM_URL})`);
   else if (ownRoute) console.log(`  ${colors.dim}Ya hay otra ruta al modelo (ANTHROPIC_BASE_URL, Bedrock o Vertex): no se cambió${colors.reset}`);
   logOk(`Claude Code: autocompactación al ${settings.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE}% del contexto`);
+  console.log(advisorNote);
   logOk(`Claude Code: ${settings.permissions.deny.length} reglas deny de lectura de secretos`);
+}
+
+// Advisor (§14.3.5): fable por defecto, salvo que el usuario ya tenga uno, pida `off`, use Bedrock/Vertex
+// (ahí no existe) o la sesión ya sea Fable (mismo nivel: no suma y cuesta). Devuelve la línea a mostrar.
+function configureAdvisor(settings, ownRoute) {
+  const sessionIsFable = String(settings.model ?? '').includes('fable');
+  if (advisorArg === 'off') {
+    delete settings.advisorModel;
+    return `  ${colors.green}✔${colors.reset} Claude Code: advisor quitado`;
+  }
+  if (advisorArg) settings.advisorModel = advisorArg;
+  else if (!ownRoute && !sessionIsFable) settings.advisorModel ??= 'fable';
+  if (settings.advisorModel) {
+    const warn = ownRoute ? `\n  ${colors.yellow}⚠${colors.reset} El advisor solo funciona con la API de Anthropic, no con Bedrock, Vertex ni Foundry` : '';
+    return `  ${colors.green}✔${colors.reset} Claude Code: advisor ${settings.advisorModel} (se cobra al precio del advisor; el modelo lo consulta solo al orientarse, al trabarse y antes de terminar; quitar con --advisor off)${warn}`;
+  }
+  if (sessionIsFable) return `  ${colors.dim}Advisor: la sesión ya es Fable, un advisor del mismo nivel no suma${colors.reset}`;
+  return `  ${colors.dim}Advisor: solo funciona con la API de Anthropic, no se configuró${colors.reset}`;
 }
 
 function finish() {

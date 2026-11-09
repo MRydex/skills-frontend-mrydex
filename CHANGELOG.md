@@ -7,6 +7,13 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- Advisor y orquestador según lo publicado con Fable 5.2 (§14.3): alias `fable` en `/advisor`, `advisorModel` y
+  frontmatter `model`; tabla de pareo (Fable solo acepta Fable); Claude Code 2.1.321+; límites reales de Claude
+  Code (20 en paralelo, 3 niveles) frente a los de Managed Agents (25 hijos, un nivel); link a la doc de
+  Managed Agents.
+- Instalador: advisor `fable` en `~/.claude/settings.json` (`advisorModel`) si no había uno, la sesión no es
+  Fable y no hay Bedrock/Vertex (ahí no existe). `--advisor <fable|opus|sonnet|off>` elige otro o lo quita.
+  El modelo lo consulta solo al orientarse, al trabarse y antes de terminar; se cobra al precio del advisor.
 - Headroom vuelve solo si se cae: en Windows la tarea oculta lo revisa cada 2 min (antes 5), dentro
   de los ~3 min que Claude Code reintenta. README: qué hacer si sigue caído; el aviso del hook da el
   comando según el sistema.
