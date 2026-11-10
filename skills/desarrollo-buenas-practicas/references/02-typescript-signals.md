@@ -11,7 +11,7 @@ Constructor vs `ngOnInit` vs `afterNextRender` · [2.9](#29-rxjs--fuera-del-cód
 fuera de la app · [2.10](#210-servicios) Servicios · [2.11](#211-null-safety-contrato-con-el-backend-y-mapeo)
 Null safety, contrato con el back y mapeo · [2.12](#212-comunicación-entre-componentes-hermanos--servicio-con-signals)
 Comunicación entre hermanos · [2.13](#213-apis-del-navegador-en-servicios-ejemplo-notifications)
-APIs del navegador en servicios · [2.14](#214-servicios-lazy-con-injectasync) Servicios lazy con
+APIs del navegador en servicios (y `BroadcastChannel`, §2.13.1) · [2.14](#214-servicios-lazy-con-injectasync) Servicios lazy con
 `injectAsync` · [2.15](#215-lenguaje-y-plataforma-satisfies-set-intl) Lenguaje y plataforma ·
 [2.16](#216-ngrx-solo-si-el-repo-ya-lo-usa) NgRx (solo si el repo ya lo usa).
 
@@ -339,6 +339,7 @@ addItem(item: Item): void {
 
 // ✅ BIEN — linkedSignal: valor por defecto reactivo pero editable por el usuario
 protected readonly idSeleccionado = linkedSignal(() => this.opciones()[0]?.id);
+// v22.1+: `set` custom de linkedSignal para escribir también en la fuente (ej. otras pestañas), sin effect: §2.13.1
 
 // ✅ BIEN — tabs por proyección: contentChildren() + linkedSignal, sin @ContentChildren ni QueryList
 // <app-tabs> <app-tab label="Perfil">...</app-tab> <app-tab label="Ajustes">...</app-tab> </app-tabs>
@@ -422,7 +423,7 @@ bloque se mantiene solo.
 | Mostrar u ocultar el spinner                    | `spinnerInterceptor` + `SpinnerState` (§5.2)           |
 | Abrir el modal de error                         | `errorInterceptor` + `ErrorNotifier` (§5.3)              |
 | Reaccionar a lo que hizo un componente hermano  | Servicio con signal + `linkedSignal` (§2.12)             |
-| Compartir un signal entre pestañas (logout)     | Servicio: el método que escribe el signal también hace `postMessage`; `onmessage` escribe el signal (15 §15.5) |
+| Compartir un signal entre pestañas (logout)     | `broadcastSignal()` con el `set` custom de `linkedSignal` (§2.13.1, v22.1+) o el servicio de 15 §15.5: el método que escribe el signal también hace `postMessage`; `onmessage` escribe el signal |
 | Refrescar tras una mutación                     | Cambiar el signal de `params`, o `resource.reload()`     |
 | Debouncing                                      | `debounced()` (§2.5)                                     |
 | Transformar un resource entero                  | `snapshot` + `resourceFromSnapshots()` (experimental, §4.10) |
@@ -937,6 +938,62 @@ export class DesktopNotifier {
 > Requisitos: contexto **HTTPS**, **gesto del usuario** para pedir permiso, ícono opcional en
 > `assets/`. No usar `setTimeout` para "forzar" el prompt: en zoneless no aporta nada y el navegador
 > igual exige el gesto.
+
+#### 2.13.1 Signal compartido entre pestañas (`BroadcastChannel`)
+
+**Cuándo**: estado que tiene que verse igual en todas las pestañas del mismo origen: logout en todas
+([15](./15-security.md) §15.5), aviso "hay una versión nueva" descartado en una pestaña
+([10](./10-environment-tooling.md) §10.14), filtros o preferencias de una lista compartidos.
+**Sin `effect()`**: el `set` custom de `linkedSignal` (**v22.1+**, estable) escribe la fuente local y
+avisa al canal; `onmessage` escribe la fuente. `set` intercepta `.set()` y `.update()`. En v21 o
+menor la opción no existe (no compila): usar el servicio de [15](./15-security.md) §15.5.
+
+```ts
+// shared/utils/broadcast-signal.ts
+import { DestroyRef, inject, linkedSignal, signal, type WritableSignal } from '@angular/core';
+
+/** Signal escribible sincronizado entre pestañas del mismo origen. `esValido` filtra lo que llega. */
+export function broadcastSignal<T>(canal: string, inicial: T, esValido: (data: unknown) => data is T): WritableSignal<T> {
+  const channel = new BroadcastChannel(canal);
+  const entrante = signal<T>(inicial);
+
+  // Otra pestaña escribió: esta adopta el valor y el linkedSignal recomputa
+  channel.onmessage = (event: MessageEvent<unknown>) => {
+    if (esValido(event.data)) entrante.set(event.data);
+  };
+  inject(DestroyRef).onDestroy(() => channel.close());
+
+  return linkedSignal(() => entrante(), {
+    // set() y update() escriben la fuente local y avisan a las demás pestañas
+    set: (valor) => {
+      entrante.set(valor);
+      channel.postMessage(valor);
+    },
+  });
+}
+```
+
+```ts
+// Uso en un servicio singleton
+@Service()
+export class AvisoVersion {
+  readonly descartado = broadcastSignal('aviso-version-descartado', false, (d): d is boolean => typeof d === 'boolean');
+}
+// Template: <button type="button" (click)="avisoVersion.descartado.set(true)">Más tarde</button>
+```
+
+- Solo pestañas y workers del **mismo origen** (esquema + host + puerto); no sirve entre dominios.
+- `postMessage` **no llega a la pestaña emisora**: por eso el `set` escribe `entrante` a mano.
+- El valor viaja por **structured clone**: objetos planos, arrays, `Date`, `Map`, `Set`; nunca
+  funciones, instancias de clase ni signals. Preferir un string, un booleano o un objeto chico.
+- `inject(DestroyRef)` exige **contexto de inyección**: llamar la función en un inicializador de campo
+  o en el constructor, nunca dentro de un handler. En un singleton root el canal vive lo que la app
+  (el `close()` corre al destruirla; no contradice a 15 §15.5).
+- Sin `esValido` cualquier script del mismo origen puede meter basura en el signal: validar siempre.
+
+> **Seguridad**: nunca tokens, datos del usuario ni nada sensible por el canal; solo eventos o valores
+> de UI. El nombre del canal es visible a cualquier script del mismo origen (extensiones, terceros
+> inyectados): el receptor valida el payload y nunca lo usa para autorizar.
 
 ---
 

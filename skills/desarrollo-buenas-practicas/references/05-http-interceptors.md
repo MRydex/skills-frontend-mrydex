@@ -1,7 +1,7 @@
 ## 5. Interceptores HTTP — spinner, errores y concerns transversales
 
 Índice: [5.1](#51-por-qué-no-el-patrón-effect-por-recurso-resourceerrorhandler) Por qué no `effect` por recurso ·
-[5.2](#52-spinner--interceptor--servicio-con-contador-de-peticiones) Spinner · [5.3](#53-errores--interceptor--fachada-de-modal-lib-agnóstica) Errores ·
+[5.2](#52-spinner--interceptor--servicio-con-contador-de-peticiones) Spinner · [5.3](#53-errores--interceptor--fachada-de-modal-lib-agnóstica) Errores (§5.3.1 `ErrorHandler`, §5.3.2 telemetría de salida con `keepalive`) ·
 [5.4](#54-opt-out-por-request-con-httpcontext-tokens) `HttpContext` opt-out · [5.5](#55-registro-en-appconfigts-el-orden-importa) Registro y orden ·
 [5.6](#56-cómo-se-combina-con-la-resource-api) Combinación con Resource API · [5.7](#57-retries) Retries ·
 [5.8](#58-funcionales-vs-basados-en-clase-di) Funcionales vs. basados en clase (DI) · [5.9](#59-withxhr-vs-fetch-y-progreso-de-subida) `withXhr` vs. fetch ·
@@ -161,6 +161,70 @@ provideBrowserGlobalErrorListeners(), // window.onerror + unhandledrejection al 
 - Loguear sin PII ni tokens (§15). Nunca mostrar el stack al usuario.
 - API que responde 200 con `{ success: false }`: normalizar una sola vez en un interceptor que lance
   `HttpErrorResponse`, para que el resto de la app vea un error real.
+
+#### 5.3.2 Telemetría de salida y reporte de crashes (`pagehide` + `keepalive`)
+
+**Cuándo**: telemetría al salir de la página (tiempo en pantalla, última ruta), reporte de crashes
+desde el `ErrorHandler` de §5.3.1 y auditoría de uso. Un singleton `@Service()` registra el listener
+una sola vez y vive toda la app: no necesita `removeEventListener`.
+
+```ts
+// shared/services/telemetria.ts
+@Service()
+export class Telemetria {
+  private readonly http = inject(HttpClient);
+  private salidaEnviada = false;
+
+  constructor() {
+    if (!('addEventListener' in globalThis)) return; // SSR
+    // pagehide: compatible con bfcache ([16](./16-websocket-signalr.md) §16.5). visibilitychange → hidden:
+    // lo último que se dispara de forma confiable en móvil cuando el SO mata el proceso.
+    globalThis.addEventListener('pagehide', () => this.avisarSalida());
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') this.avisarSalida();
+      else this.salidaEnviada = false; // volvió (pestaña o bfcache): puede salir otra vez
+    });
+  }
+
+  enviar(evento: string, datos: string): void {
+    // keepalive (v20.1+, solo con FetchBackend): la request sobrevive a la navegación. Body máximo 64 KiB.
+    // `error: () => {}`: si el POST falla NO lanza; si lanzara, ErrorHandler → enviar('crash') → falla → bucle.
+    this.http
+      .post<void>(`${environment.API_URL}telemetria`, { evento, datos }, { keepalive: true })
+      .subscribe({ error: () => {} });
+  }
+
+  private avisarSalida(): void {
+    if (this.salidaEnviada) return;
+    this.salidaEnviada = true;
+    this.enviar('salida_pagina', location.pathname); // ruta sin query string: puede traer ids o tokens
+  }
+}
+
+// shared/services/app-error-handler.ts (amplía §5.3.1)
+@Service({ autoProvided: false })
+export class AppErrorHandler implements ErrorHandler {
+  private readonly telemetria = inject(Telemetria);
+
+  handleError(error: unknown): void {
+    if (error instanceof HttpErrorResponse) return; // ya lo notificó el errorInterceptor
+    console.error(error);
+    const mensaje = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    this.telemetria.enviar('crash', mensaje.slice(0, 2_000)); // sin stack: suele traer URLs con datos
+  }
+}
+```
+
+- `keepalive` pasa por los interceptores (auth, XSRF): el endpoint de telemetría puede exigir auth.
+  Con `withXhr()` (§5.9) se ignora y avisa `NG02813`. No leer la respuesta: la página ya no está.
+- La entrega **no está garantizada** (`pagehide` no se dispara si el SO mata el proceso; por eso
+  también `visibilitychange`). El dato confiable de salida lo tiene el backend (sesión, `OnDisconnectedAsync`).
+- `navigator.sendBeacon` solo si el endpoint es anónimo y sin cabeceras (no pasa por interceptores
+  ni manda `Authorization` / XSRF). Con endpoint propio, `HttpClient` + `keepalive`.
+- Nunca `unload` (saca la página del bfcache) ni `beforeunload` como señal de salida
+  ([16](./16-websocket-signalr.md) §16.5). Nunca `effect()` para esto: es un listener del DOM en un servicio ([02](./02-typescript-signals.md) §2.13).
+- Seguridad ([15](./15-security.md) §15.8, §15.11): nunca PII, tokens, cuerpos de request ni stack
+  completo en el payload; endpoint del mismo origen, con auth y rate limit en el backend.
 
 ### 5.4 Opt-out por request con `HttpContext` tokens
 

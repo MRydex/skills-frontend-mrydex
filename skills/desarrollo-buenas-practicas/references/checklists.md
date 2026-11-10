@@ -62,6 +62,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 
 ### Interceptores / concerns transversales ([05](./05-http-interceptors.md))
 - [ ] ¿`ErrorHandler` global que filtra `HttpErrorResponse` (ya notificado) + `provideBrowserGlobalErrorListeners()`? (§5.3.1)
+- [ ] ¿Telemetría de salida con `pagehide` + `visibilitychange` y `keepalive: true`, `subscribe({ error })` que no lanza, sin PII ni stack? ¿Nunca `unload` ni `sendBeacon` con endpoint autenticado? (§5.3.2)
 - [ ] ¿Spinner y errores resueltos por **interceptores funcionales**, NO por `effect` por recurso?
 - [ ] ¿El spinner usa un **contador de peticiones** (sin parpadeo con requests concurrentes)?
 - [ ] ¿El interceptor de errores mapea el **status real** y delega en `ErrorNotifier`?
@@ -128,6 +129,15 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Subscripciones inevitables cerradas con `takeUntilDestroyed()` / `DestroyRef`? (§9.11)
 - [ ] ¿Sin `withExperimentalPlatformNavigation()` en producción? (§9.6.3)
 - [ ] ¿Budgets de `angular.json` respetados?
+
+### Despliegue sin cortar al usuario ([10](./10-environment-tooling.md) §10.14)
+- [ ] ¿`@angular/service-worker` con `ngsw-config.json` sin `dataGroups`, `enabled: !isDevMode()`, ambiente con HTTPS? (§10.14)
+- [ ] ¿`index.html`, `ngsw.json` y `ngsw-worker.js` sin cache en `web.config`; el resto con hash y cache larga? (§10.2, §10.14)
+- [ ] ¿Chequeo al estabilizar, al volver a la pestaña y al navegar, nunca más de una vez cada 5 min? (§10.14)
+- [ ] ¿Aviso no bloqueante y recarga solo con confirmación (automática solo con `unrecoverable` o `426`)? ¿Formularios sucios registrados con `computed(() => form().dirty())`, sin `effect()`? (§10.14)
+- [ ] ¿`withNavigationErrorHandler` que recarga ante un chunk inexistente, también con SW? (§10.4, §10.14)
+- [ ] ¿`X-App-Version` en cada request y `426` tratado como recarga obligatoria? ¿SignalR solo dispara `verificar(true)` en `onreconnected`? (§10.14, §16.1)
+- [ ] ¿Sin scripts de test ni re-exports para el servicio de actualización? (§10.14, §08)
 
 ### Tiempo real / SignalR ([16](./16-websocket-signalr.md))
 - [ ] ¿Un servicio singleton por hub y una sola conexión por pestaña, también al navegar? (§16.2)

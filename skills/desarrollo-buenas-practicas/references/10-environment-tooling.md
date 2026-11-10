@@ -9,7 +9,8 @@
 [10.10](#1010-librería-de-ui-setup-de-ng-zorro-22-y-angular-material) Setup de NG-ZORRO 22 y Material ·
 [10.11](#1011-i18n-de-angular-solo-apps-multi-idioma) i18n de Angular ·
 [10.12](#1012-hooks-de-claude-code-que-instala-el-paquete) Hooks de Claude Code ·
-[10.13](#1013-despliegue-basehref-configuraciones-https-local-y-docker) `baseHref`, configuraciones, HTTPS local y Docker.
+[10.13](#1013-despliegue-basehref-configuraciones-https-local-y-docker) `baseHref`, configuraciones, HTTPS local y Docker ·
+[10.14](#1014-actualizaciones-sin-cortar-al-usuario-service-worker) Actualizaciones sin cortar al usuario (Service Worker).
 
 ### 10.1 Crear o actualizar un proyecto con los schematics del equipo
 
@@ -226,6 +227,11 @@ bootstrap de la app espera a que termine antes de renderizar.
   responde, muestra "Actualizando sistema" y reintenta cada 30 segundos.
 - Guardar siempre el resultado en un `signal` del servicio (nunca en una variable mutable suelta), para
   que el resto de la app lo consuma de forma reactiva.
+
+> **Con Service Worker (§10.14)** el aviso de versión nueva lo da `SwUpdate`, y la pestaña vieja sigue
+> navegando entera. `VersionCheck` queda como fallback para ambientes sin TLS (ahí el SW no se registra)
+> y el `withNavigationErrorHandler` de arriba se mantiene siempre: es lo único que rescata una pestaña
+> que el SW todavía no controla.
 
 ### 10.5 VS Code — settings del equipo
 
@@ -540,5 +546,354 @@ EXPOSE 8080
 - `nginx.conf` con `try_files $uri /index.html;`, las cabeceras de §15.9 y sin cache para
   `index.html`/`appsettings.json`.
 - Ajustá el path de `dist/` al nombre real del proyecto (`angular.json` → `outputPath`).
+
+### 10.14 Actualizaciones sin cortar al usuario (Service Worker)
+
+**Problema.** El build de producción emite bundles con hash (`outputHashing: all`) y cada deploy
+borra los anteriores. Una pestaña abierta con la versión vieja sigue andando hasta que entra a una
+ruta lazy que todavía no descargó: pide un chunk que ya no existe en el servidor y falla
+(`ChunkLoadError`, pantalla en blanco o navegación cancelada). Si además el deploy cambió el contrato
+de la API, el front viejo recibe respuestas que no entiende.
+
+**Estándar: `@angular/service-worker`.** El Service Worker (SW) descarga y cachea **todos** los
+bundles de la versión que el usuario tiene abierta (`installMode: prefetch`): la pestaña vieja se
+sirve de su propia cache y navega entera aunque IIS ya no tenga esos archivos. Cuando hay una versión
+nueva, el SW la baja en segundo plano, avisa (`VERSION_READY`) y el usuario elige cuándo recargar. Es
+la única opción que evita el `ChunkLoadError`: un aviso por polling (§10.4) o por SignalR solo avisa,
+no rescata a la pestaña abierta.
+
+#### Instalación
+
+```bash
+npm install @angular/service-worker@<misma versión que @angular/core>
+```
+
+```jsonc
+// angular.json → configurations.production (y toda configuración que se sirva por HTTPS)
+"serviceWorker": "ngsw-config.json"
+```
+
+```jsonc
+// ngsw-config.json (raíz del proyecto)
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": { "files": ["/index.html", "/favicon.ico", "/manifest.webmanifest", "/*.css", "/*.js"] }
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": { "files": ["/assets/**", "/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"] }
+    }
+  ]
+}
+```
+
+- **Sin `dataGroups`.** La API nunca pasa por la cache del SW: una respuesta cacheada es un dato viejo
+  que el usuario no sabe que es viejo. `appsettings.json` (§10.4) tampoco va en `assetGroups`: se lee
+  con `fetch` y `cache: 'no-cache'`.
+- `index` y `files` se resuelven contra el `baseHref`: funcionan igual bajo `/mi-app/` (§10.13).
+- `manifest.webmanifest` e íconos solo si el proyecto ya es PWA instalable; para actualizar sin cortar
+  no hacen falta.
+
+```ts
+// app.config.ts
+provideServiceWorker('ngsw-worker.js', {
+  enabled: !isDevMode(), // nunca con `ng serve`: la cache esconde los cambios que se están haciendo
+  registrationStrategy: 'registerWhenStable:30000',
+}),
+```
+
+- El SW solo se registra sobre **HTTPS** (o `localhost`). En un ambiente sin TLS `SwUpdate.isEnabled`
+  queda en `false` en silencio: el fallback de §10.4 sigue activo y hay que pedir TLS para ese
+  ambiente. Si una configuración de producción se sirve por HTTP a propósito, `enabled` sale de un
+  flag explícito del `environment` de esa configuración, no de `isDevMode()`.
+- `web.config` (§10.2): `ngsw.json`, `ngsw-worker.js` e `index.html` **sin cache** (un `<location>`
+  por archivo, igual al de `index.html`); el resto tiene hash y cache larga. La regla de rewrite no
+  toca archivos físicos: no hace falta una regla extra para `ngsw.json`.
+- Publicar **junto** `index.html`, `ngsw.json`, `ngsw-worker.js` y todos los bundles. Un `ngsw.json`
+  que referencia archivos que no están deja la versión en `VERSION_INSTALLATION_FAILED`: el SW sigue
+  sirviendo la anterior (no rompe) pero nadie se actualiza.
+
+#### Servicio `AppUpdate`
+
+Singleton en `shared/services/app-update/app-update.ts`. Estado en signals; RxJS solo para los
+flujos que `SwUpdate` y `Router` exponen como `Observable` ([02](./02-typescript-signals.md) §2.9):
+
+```ts
+@Service()
+export class AppUpdate {
+  private readonly swUpdate = inject(SwUpdate);
+  private readonly appRef = inject(ApplicationRef);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+
+  private readonly _nuevaVersion = signal(false);
+  private readonly _recargaObligatoria = signal(false);
+  private readonly _error = signal<string | null>(null);
+  private readonly _verificando = signal(false);
+  private ultimoChequeo = 0;
+
+  readonly nuevaVersion = this._nuevaVersion.asReadonly();
+  readonly recargaObligatoria = this._recargaObligatoria.asReadonly();
+  readonly error = this._error.asReadonly();
+  readonly verificando = this._verificando.asReadonly();
+  readonly puedeRecargar = computed(() => this._nuevaVersion() || this._recargaObligatoria());
+
+  iniciar(): void {
+    if (!this.swUpdate.isEnabled) return;
+
+    this.swUpdate.versionUpdates.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((evento) => {
+      if (evento.type === 'VERSION_READY') {
+        this._nuevaVersion.set(true);
+        this._error.set(null);
+      }
+      if (evento.type === 'VERSION_INSTALLATION_FAILED') this._error.set('No se pudo descargar la actualización.');
+    });
+    // Cache rota o versión que ya no existe en el servidor: la pestaña no puede seguir sin recargar.
+    this.swUpdate.unrecoverable.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this._recargaObligatoria.set(true));
+
+    // Primer chequeo con la app estable; después al volver a la pestaña, al navegar y cada 30 min.
+    void this.appRef.whenStable().then(() => this.verificar());
+    const intervalo = setInterval(() => void this.verificar(), 30 * 60_000);
+    const alVolver = () => {
+      if (document.visibilityState === 'visible') void this.verificar();
+    };
+    document.addEventListener('visibilitychange', alVolver);
+    this.router.events
+      .pipe(filter((e) => e instanceof NavigationEnd), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => void this.verificar());
+    this.destroyRef.onDestroy(() => {
+      clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', alVolver);
+    });
+  }
+
+  /** Nunca más de una vez cada 5 minutos: cada chequeo baja `ngsw.json` del servidor. */
+  async verificar(forzar = false): Promise<void> {
+    const reciente = Date.now() - this.ultimoChequeo < 5 * 60_000;
+    if (!this.swUpdate.isEnabled || this._verificando() || (reciente && !forzar)) return;
+    this._verificando.set(true);
+    this.ultimoChequeo = Date.now();
+    try {
+      await this.swUpdate.checkForUpdate();
+    } catch {
+      this._error.set('No se pudo verificar si hay una versión nueva.');
+    } finally {
+      this._verificando.set(false);
+    }
+  }
+
+  /** Para el interceptor (`426` del back, más abajo) o un evento del hub: la versión abierta ya no sirve. */
+  exigirRecarga(): void {
+    this._recargaObligatoria.set(true);
+  }
+
+  /** La versión nueva ya está descargada: recargar alcanza, no hace falta `activateUpdate()`. */
+  recargar(): void {
+    window.location.reload();
+  }
+}
+```
+
+Arranca en el mismo `provideAppInitializer` que `VersionCheck` (§10.4):
+`inject(AppUpdate).iniciar();`. Con el SW habilitado, `VersionCheck` sigue corriendo pero su
+chequeo ya no es el que avisa: queda para los ambientes sin TLS y para el `withNavigationErrorHandler`.
+
+#### Aviso al usuario
+
+Un componente en `shared/components/aviso-actualizacion/`, montado **una sola vez** en `app.ts`,
+fuera del `<router-outlet>`. No bloquea: el usuario elige cuándo recargar. Única excepción:
+`recargaObligatoria()` (SW irrecuperable o `426` del back), donde el aviso no se puede cerrar.
+
+```html
+@if (visible()) {
+  <aside class="aviso-actualizacion" role="status" aria-live="polite">
+    @if (update.recargaObligatoria()) {
+      <p>La aplicación necesita recargarse para seguir funcionando.</p>
+    } @else if (update.nuevaVersion()) {
+      <p>Hay una versión nueva. Podés actualizar ahora o seguir trabajando.</p>
+    } @else {
+      <p>{{ update.error() }}</p>
+    }
+    <div class="aviso-actualizacion__acciones">
+      @if (!update.recargaObligatoria()) {
+        <button type="button" (click)="ocultar()">Más tarde</button>
+      }
+      @if (update.puedeRecargar()) {
+        <button type="button" (click)="actualizar()">Actualizar ahora</button>
+      } @else {
+        <button type="button" [disabled]="update.verificando()" (click)="update.verificar(true)">Reintentar</button>
+      }
+    </div>
+  </aside>
+} @else if (update.puedeRecargar()) {
+  <button type="button" class="aviso-actualizacion__pendiente" (click)="mostrar()">Actualización pendiente</button>
+}
+```
+
+```ts
+export class AvisoActualizacion {
+  protected readonly update = inject(AppUpdate);
+  private readonly cambios = inject(CambiosSinGuardar);
+  private readonly confirmacion = inject(Confirmacion); // el modal del proyecto, Promise<boolean>
+  private readonly oculto = signal(false);
+  protected readonly visible = computed(
+    () => this.update.recargaObligatoria() || (!this.oculto() && (this.update.puedeRecargar() || this.update.error() !== null)),
+  );
+
+  ocultar(): void {
+    this.oculto.set(true);
+  }
+
+  mostrar(): void {
+    this.oculto.set(false);
+  }
+
+  async actualizar(): Promise<void> {
+    if (this.cambios.hay() && !(await this.confirmacion.preguntar('Hay cambios sin guardar. ¿Actualizar igual?'))) return;
+    this.cambios.descartar(); // apaga el `beforeunload`: el navegador no vuelve a preguntar
+    this.update.recargar();
+  }
+}
+```
+
+- Estilos del componente con BEM anidado y `position: fixed` ([07](./07-styles-scss.md)); un aviso
+  no justifica un `.scss` cerca del límite de 150 líneas.
+- Nunca `location.reload()` automático al recibir `VERSION_READY`: pierde el formulario que el
+  usuario esté editando y corta una operación en curso.
+
+#### Cambios sin guardar antes de recargar
+
+El guard `cambiosSinGuardarGuard` ([09](./09-performance-zoneless.md) §9.6.4) cubre la navegación
+interna. La recarga y el cierre de pestaña necesitan un registro global de los formularios sucios,
+**sin `effect()`**: `dirty()` ya es un signal, el servicio lo lee cuando lo necesita.
+
+```ts
+// shared/services/cambios-sin-guardar.ts
+@Service()
+export class CambiosSinGuardar {
+  private readonly formularios = signal<readonly Signal<boolean>[]>([]);
+  private readonly descartado = signal(false);
+  readonly hay = computed(() => !this.descartado() && this.formularios().some((dirty) => dirty()));
+
+  /** Registra el `dirty()` de un formulario. Llamar en el constructor: se da de baja sola al destruirse el componente. */
+  registrar(dirty: Signal<boolean>): void {
+    this.formularios.update((lista) => [...lista, dirty]);
+    inject(DestroyRef).onDestroy(() => this.formularios.update((lista) => lista.filter((d) => d !== dirty)));
+  }
+
+  descartar(): void {
+    this.descartado.set(true);
+  }
+}
+```
+
+```ts
+// Un componente con Signal Forms
+export class EditarUsuario implements ConFormulario {
+  readonly form = form(this.modelo, usuarioSchema);
+
+  constructor() {
+    inject(CambiosSinGuardar).registrar(computed(() => this.form().dirty()));
+  }
+}
+```
+
+```ts
+// app.ts: el aviso nativo del navegador solo mientras haya cambios ([09](./09-performance-zoneless.md) §9.6.4)
+host: { '(window:beforeunload)': 'alCerrar($event)' },
+// ...
+alCerrar(evento: BeforeUnloadEvent): void {
+  if (this.cambios.hay()) evento.preventDefault();
+}
+```
+
+- Después de guardar con éxito, `reset()` del form ([06](./06-signal-forms.md) §6.8): el `dirty()`
+  vuelve a `false` y el registro se limpia solo. Un submit que falló **no** limpia el estado.
+- Reactive Forms legacy (interoperabilidad, [06](./06-signal-forms.md) intro): el `dirty` como signal
+  con `toSignal(group.events.pipe(map(() => group.dirty)), { initialValue: group.dirty })`, y se
+  registra igual.
+
+#### Fallback cuando el SW no controla la pestaña
+
+Primera visita (el SW se registra después del arranque), navegador sin soporte, ambiente sin TLS o
+`unrecoverable`: en todos esos casos un chunk lazy puede fallar. El `withNavigationErrorHandler` de
+§10.4 detecta el error de chunk y recarga. Es el **único** caso en que se recarga sin preguntar: la
+pestaña ya no puede navegar y, sin SW, no hay versión vieja completa a la que volver.
+
+#### SignalR: solo como complemento
+
+- No es el mecanismo: exige una conexión viva por pestaña para un evento que llega una vez por deploy
+  ([16](./16-websocket-signalr.md) §16.1) y no evita el `ChunkLoadError`.
+- Si ya hay un hub, el deploy del back recicla el app pool y corta el socket: en `onreconnected`
+  ([16](./16-websocket-signalr.md) §16.6), además de reunirse a los grupos, `inject(AppUpdate).verificar(true)`.
+  Así el aviso llega en segundos en vez de esperar al próximo chequeo.
+- Un evento `RecargaObligatoria` del back (cambio de contrato incompatible) llama `exigirRecarga()`.
+  Nunca se recarga desde el handler del evento: el aviso con `recargaObligatoria()` se encarga.
+
+#### Contrato con la API durante el deploy
+
+Mientras haya pestañas sin recargar conviven dos versiones del front contra una API. Reglas:
+
+- **Cambios aditivos** en la API (skill backend §17.8 y §17.12): un campo que el front viejo manda
+  no deja de aceptarse hasta el deploy siguiente; un campo nuevo del response se ignora en el front
+  viejo. Si de verdad hay un corte, la API responde `426 Upgrade Required` (`ProblemDetails`).
+- El front manda su versión en cada request (`appVersion()` de `AppSettings`, §10.4) y trata el
+  `426` como recarga obligatoria. Interceptor funcional ([05](./05-http-interceptors.md)), antes del
+  de errores en la lista para que el modal genérico no se muestre:
+
+```ts
+export const versionInterceptor: HttpInterceptorFn = (req, next) => {
+  const update = inject(AppUpdate);
+  const version = inject(AppSettings).appVersion();
+  return next(version ? req.clone({ setHeaders: { 'X-App-Version': version } }) : req).pipe(
+    tap({
+      error: (e: unknown) => {
+        if (e instanceof HttpErrorResponse && e.status === 426) update.exigirRecarga();
+      },
+    }),
+  );
+};
+```
+
+- API en otro origen: `X-App-Version` es una cabecera custom y el preflight de CORS tiene que
+  permitirla (skill backend §11, `WithHeaders`). Mismo origen (IIS con la API como sub-aplicación):
+  nada que hacer.
+- El reciclado del app pool deja unos segundos de `502` / `503`: lo absorbe el `retryInterceptor` de
+  [05](./05-http-interceptors.md), sin lógica nueva.
+
+#### Verificación manual
+
+1. `ng build` de producción y servirlo por HTTPS o `localhost` (por ejemplo `npx http-server dist/<app>/browser -p 8080`).
+2. Abrir la app; en DevTools → Application → Service Workers debe figurar `ngsw-worker.js` activado y
+   `ngsw.json` en Network con `Cache-Control: no-cache`.
+3. Cambiar un texto, volver a buildear y publicar **sobre la misma carpeta** (los bundles viejos desaparecen).
+4. En la pestaña vieja: navegar a una ruta lazy que no se visitó. Tiene que cargar igual (la sirve el SW).
+5. Cambiar de pestaña y volver, o esperar el chequeo: aparece "Hay una versión nueva". "Más tarde" deja
+   el botón "Actualización pendiente"; "Actualizar ahora" con un form sucio pide confirmación.
+6. Recargar: la app muestra el texto nuevo. Repetir el paso 3 con un `ngsw.json` incompleto para ver
+   el "Reintentar" (`VERSION_INSTALLATION_FAILED`).
+7. Sin SW (DevTools → Bypass for network, o un ambiente HTTP): el paso 4 tiene que terminar en
+   recarga automática por el `withNavigationErrorHandler`, no en pantalla en blanco.
+
+#### Antipatrones
+
+| Antipatrón | Qué hacer |
+| :--- | :--- |
+| `activateUpdate()` + `reload()` automáticos al recibir `VERSION_READY` | Avisar y que el usuario recargue; automático solo con `unrecoverable` o `426`. |
+| `dataGroups` para la API "así anda offline" | Nunca: datos viejos sin que el usuario lo sepa. La API no se cachea. |
+| SW habilitado en `ng serve` o en una configuración de build sin TLS | `enabled: !isDevMode()`; sin TLS no hay SW, queda §10.4. |
+| `index.html` o `ngsw.json` con cache larga | Sin cache en `web.config` (§10.2). |
+| `effect()` para saber si un form está sucio | `registrar(computed(() => form().dirty()))`; `dirty()` ya es signal. |
+| Polling cada minuto "para avisar rápido" | 30 min + visibilidad + navegación, nunca más de una vez cada 5 min; SignalR `onreconnected` si hay hub. |
+| Script de test propio para el servicio (`scripts/test-*.mjs`) | Sin archivos de test ([08](./08-sin-tests.md)); verificación manual de arriba. |
+| Re-export del servicio desde otra carpeta "por compatibilidad" | Un solo archivo; los imports apuntan ahí. |
 
 ---

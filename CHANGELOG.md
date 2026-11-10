@@ -7,6 +7,16 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- `10` §10.14 actualizaciones sin cortar al usuario: `@angular/service-worker` como estándar (`ngsw-config.json`
+  sin `dataGroups`, `enabled: !isDevMode()`, HTTPS), servicio `AppUpdate` (chequeo al estabilizar, al volver a la
+  pestaña y al navegar, tope de 1 cada 5 min, `unrecoverable`), aviso no bloqueante, registro de formularios sucios
+  sin `effect()`, fallback con `withNavigationErrorHandler`, SignalR solo como disparador en `onreconnected`,
+  `X-App-Version` + `426` con el back, verificación manual y antipatrones. §10.4 y §16.1 enlazan; checklist nuevo.
+- `02` §2.13.1 `broadcastSignal()`: signal compartido entre pestañas con `BroadcastChannel` y el `set` custom de
+  `linkedSignal` (v22.1+), sin `effect()`; payload validado, nunca datos sensibles. §2.5 y §2.7 enlazan.
+- `05` §5.3.2 telemetría de salida y reporte de crashes: `pagehide` + `visibilitychange` con `HttpClient`
+  `keepalive: true` (v20.1+, solo `FetchBackend`, 64 KiB), `ErrorHandler` que no entra en bucle si el POST
+  falla, `sendBeacon` solo para endpoints anónimos, sin PII ni stack. §16.5 y checklist enlazan.
 - `13` §13.31 reglas de movimiento de interfaz (150-250 ms, `ease-out` / `ease-in`, sin overshoot en
   menús, `transform-origin` desde el disparador, CPU throttling, fade con `prefers-reduced-motion`);
   §13.26 texto sobre imagen con scrim; §13.18 line drawing con `pathLength="1"`.

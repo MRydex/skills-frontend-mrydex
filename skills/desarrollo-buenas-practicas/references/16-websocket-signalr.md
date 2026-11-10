@@ -28,6 +28,7 @@ Steyer (*streaming resources* con WebSockets).
 | El servidor avisa cambios a varios usuarios (chat, presencia, notificaciones, tableros) con backend .NET | **SignalR** (`@microsoft/signalr`), estándar del equipo |
 | Solo servidor → cliente, sin grupos ni presencia, sin hub existente | SSE (`EventSource`) o el hub existente si ya hay uno |
 | Dato que cambia poco y no urge (minutos) | `httpResource` + `reload()` periódico, sin socket |
+| Avisar que hay una versión nueva del front (deploy) | Service Worker + chequeo propio ([10](./10-environment-tooling.md) §10.14), nunca un hub para eso; si ya hay hub, `onreconnected` dispara `verificar(true)` |
 | Backend que no es SignalR (WebSocket crudo de terceros) | `webSocket()` de RxJS dentro del servicio (§16.10) |
 
 - **Comandos por HTTP, avisos por socket.** Lo que valida datos o devuelve `ProblemDetails` (crear,
@@ -197,7 +198,8 @@ private _programarReintento(): void {
   escuchar varios eventos no abre dos conexiones.
 - **Nunca `unload`**: saca la página del bfcache. `beforeunload` solo mientras haya cambios sin guardar.
 - Avisar salida en `pagehide` con `send` (no espera respuesta), no `invoke`. Puede no llegar: el aviso
-  confiable de salida es el `OnDisconnectedAsync` del servidor.
+  confiable de salida es el `OnDisconnectedAsync` del servidor. Sin hub, el mismo aviso va por HTTP con
+  `keepalive` ([05](./05-http-interceptors.md) §5.3.2).
 - Pestaña congelada (Page Lifecycle): `freeze` → `detener()`, `resume` → `iniciar()` si hay sesión.
 - **Conectividad**: evento `online` → `iniciar()` ya si hay sesión, sin esperar el próximo backoff
   (acelera el reintento programado; durante `Reconnecting` no hace nada).
