@@ -796,47 +796,71 @@ readonly conPedidos = computed(() => {
 #### 9.10.1 Cálculo pesado en un Web Worker
 
 Si un cálculo bloquea la UI más de ~50 ms aun optimizado (parseo de un archivo grande, export,
-cálculo sobre miles de filas), va a un Web Worker (`ng generate web-worker <nombre>`). Para
-emparejar cada pedido con su respuesta, `Promise.withResolvers()` en el servicio, sin `new Promise`
-anidados ni `Subject`:
+cálculo sobre miles de filas, búsqueda o filtrado sobre un dataset grande en memoria), va a un Web
+Worker (`ng generate web-worker <nombre>`). Para emparejar cada pedido con su respuesta, un
+**`MessageChannel` por llamada**: el worker contesta por el puerto que recibió, sin ids, sin `Map` de
+pendientes ni `Subject`:
 
 ```ts
-// shared/services/calculo/calculo-worker.ts
+// shared/services/busqueda/busqueda.worker.ts
+addEventListener('message', ({ data, ports }: MessageEvent<Criterio>) => {
+  try {
+    ports[0].postMessage({ resultado: buscarProductos(data) });
+  } catch (e) {
+    ports[0].postMessage({ error: String(e) });   // siempre contestar: una promesa sin respuesta queda colgada
+  }
+});
+```
+
+```ts
+// shared/services/busqueda/busqueda-worker.ts
+type Respuesta = { resultado: Producto[] } | { error: string };
+
 @Service()
-export class CalculoWorker {
-  private readonly _worker = new Worker(new URL('./calculo.worker', import.meta.url), { type: 'module' });
-  private readonly _pendientes = new Map<number, PromiseWithResolvers<Resultado>>();
-  private readonly _destroyRef = inject(DestroyRef);
-  private _proximoId = 0;
+export class BusquedaWorker {
+  private readonly _worker = new Worker(new URL('./busqueda.worker', import.meta.url), { type: 'module' });
 
   constructor() {
-    this._escucharResultados();
+    inject(DestroyRef).onDestroy(() => this._worker.terminate());
   }
 
-  private _escucharResultados(): void {
-    this._worker.onmessage = ({ data }: MessageEvent<{ id: number; resultado: Resultado }>) => {
-      this._pendientes.get(data.id)?.resolve(data.resultado);
-      this._pendientes.delete(data.id);
-    };
-    this._destroyRef.onDestroy(() => this._worker.terminate());
-  }
-
-  calcular(entrada: Entrada): Promise<Resultado> {
-    const id = this._proximoId++;
-    const pedido = Promise.withResolvers<Resultado>();
-    this._pendientes.set(id, pedido);
-    this._worker.postMessage({ id, entrada });
-    return pedido.promise;
+  buscar(criterio: Criterio): Promise<Producto[]> {
+    const { port1, port2 } = new MessageChannel();
+    return new Promise((resolve, reject) => {
+      port1.onmessage = ({ data }: MessageEvent<Respuesta>) => {
+        port1.close();
+        if ('error' in data) {
+          reject(new Error(data.error));
+        } else {
+          resolve(data.resultado);
+        }
+      };
+      this._worker.postMessage(criterio, [port2]);   // port2 se transfiere, no se copia
+    });
   }
 }
 ```
 
-- El componente lo consume con `resource({ params, loader: ({ params }) => this._calculo.calcular(params) })`
-  (§4): el estado sigue en signals.
+```ts
+// product-search.ts — el estado sigue en signals
+readonly criterio = debounced(signal(''), 300);
+readonly resultados = resource({
+  params: this.criterio,
+  loader: ({ params }) => this._busqueda.buscar(params),   // un pedido viejo que llega tarde se descarta solo
+});
+```
+
+- El componente consume el servicio con `resource({ params, loader })` (§4) y un `debounced()` en el
+  `params` (§2.5): nunca `onmessage` ni promesas sueltas en el componente. `resource` descarta la
+  respuesta de un `params` viejo, así que no hace falta cancelar pedidos a mano.
 - `Worker` no existe en el servidor: con SSR, el servicio se usa solo en el navegador (`@defer`,
-  `afterNextRender`) o crea el worker recién en el primer `calcular()`.
-- `onerror` del worker: rechazar todos los pendientes (`reject`) y vaciar el `Map`; si no, quedan
-  colgados para siempre.
+  `afterNextRender`) o crea el worker recién en el primer `buscar()`.
+- Un error dentro del worker se contesta por el puerto (`try/catch` del ejemplo) y llega como
+  `error()` del `resource`. `this._worker.onerror` queda solo para un worker que murió sin contestar
+  (error al cargar el módulo): loguear y recrear el worker.
+- Datos grandes que viajan seguido (miles de filas en cada búsqueda): mandarlos **una vez** al worker
+  (`postMessage({ tipo: 'cargar', filas })`) y después solo el criterio; o `transfer` del
+  `ArrayBuffer`. Copiar el dataset en cada llamada anula la ganancia.
 
 ### 9.11 Memory leaks: `DestroyRef` y `takeUntilDestroyed`
 

@@ -7,6 +7,30 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- `06` §6.2 / §6.3 errores del servidor como errores de campo: la `action` de `submission` devuelve
+  `{ fieldTree, kind: 'server', message }` por campo rechazado (o `undefined` en éxito) y el template los muestra
+  con el mismo `errors()` que los validadores; mapeo de `ProblemDetails.errors` en la `action`. Checklist nuevo.
+- `09` §9.10.1 Web Worker con un `MessageChannel` por llamada (el worker contesta por `ports[0]`), sin ids ni `Map`
+  de pendientes; errores por el puerto, `resource` + `debounced()` en el componente, dataset grande enviado una
+  sola vez. Checklist nuevo.
+- `14` §14.3.1 effort antes que modelo (Anthropic, nov 2026): arrancar en effort medio, autoverificación → un nivel
+  de effort → modelo siguiente en effort más bajo; tareas verificables en `low` con reintento en `high` solo de lo
+  que falló; `Explore` propio con `model: haiku`. §14.3.4 dato nuevo sobre el advisor (ningún pareo superó al
+  ejecutor solo) junto al anterior, sin promediar; orquestador + 25 ejecutores Sonnet ~1/3 más barato. §14.4
+  cambio de modelo solo en un corte natural con `/compact` (caché y razonamiento no se heredan hacia abajo). §14.7
+  fila para el dial de esfuerzo. §14.3.4 medición real 2 (sesión Fable 5.1): `Explore` de fábrica corre en Opus
+  ($0.14 por búsqueda) contra `Explore` propio en Haiku ($0.002); `general-purpose` hereda la sesión ($0.90 la
+  corrida) contra `CLAUDE_CODE_SUBAGENT_MODEL=sonnet` ($0.15); mismo resultado en las 6 corridas.
+- Instalador (Claude Code): subagente `Explore` propio en Haiku con `effort: low` (reemplaza al de fábrica) y
+  `CLAUDE_CODE_SUBAGENT_MODEL=sonnet` en `~/.claude/settings.json` si no estaba.
+
+### Cambiado
+
+- Instalador: el advisor ya no se configura por defecto (Anthropic, nov 2026: ningún pareo superó claramente al
+  ejecutor solo; el equipo midió 10x con un advisor del mismo nivel). `--advisor fable|opus` lo activa, `--advisor
+  off` quita el que haya. §14.3.4, §14.3.5, README (sección nueva "Modelos: qué corre dónde": qué modelo corre cada
+  cosa, qué pasa con sesión Fable / Opus / Sonnet, cuándo cambiar effort o modelo, cuándo prender el advisor) y
+  `templates/CLAUDE.md` actualizados.
 - Lecciones de un proyecto real en producción (Angular 21, NG-ZORRO) incorporadas como reglas:
   - `02` §2.17 constantes de dominio (`as const` único, sin ids sueltos ni duplicados), permisos por flag del
     backend en un solo `computed` (nunca `idUsuario` / `idArea` hardcodeados en el template) y rutas escritas una

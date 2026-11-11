@@ -115,6 +115,25 @@ Elegir por **nivel**, no por versión: los nombres de versión cambian cada poco
 - Si la herramienta solo tiene modelos de un proveedor, usar los niveles de ese proveedor.
 - Si solo hay un modelo disponible, ese modelo hace todo (§14.3.3).
 
+**Effort antes que modelo** (Anthropic, [nov 2026](https://claude.dev/blog/which-claude-model-should-you-build-with/)).
+Donde el modelo tiene dial de esfuerzo (Claude Code `/model` → effort, Codex `model_reasoning_effort`,
+Gemini *thinking budget*) se ajusta **primero el effort y recién después el nivel**:
+
+- Punto de partida: el modelo de la sesión en effort **medio** (Claude Code: Opus en `medium`, el default).
+  Si no se sabe qué elegir, eso.
+- Cuando no rinde, en este orden: 1) darle forma de **autoverificarse** (build, lint, script que compare
+  la salida); 2) subir **un** nivel de effort; 3) pasado `high`, el **modelo siguiente en effort más bajo**,
+  no más effort. Más effort no agrega conocimiento que el modelo no tiene.
+- Tarea verificable por comando (build, lint, script): correr en `low` y reintentar en `high` **solo lo
+  que falló**. Anthropic midió ~97% de aciertos a ~$0.17 por tarea contra 95.3% a $0.29 con todo en
+  `high` (Opus 5.5, SWE-bench Pro).
+- Subagentes: nivel ejecutor o rápido con effort bajo o medio; los edits con criterio y las decisiones
+  quedan en el orquestador (§14.3.4). Claude Code: el subagente `Explore` de fábrica corre con el modelo
+  de la sesión; para exploración barata, definir uno propio llamado `Explore` con `model: haiku`
+  (`.claude/agents/Explore.md`) o usar `investigador`.
+- Cambiar de modelo solo en un corte natural, con `/compact` antes (§14.4): la caché y el razonamiento
+  no se heredan hacia abajo.
+
 #### 14.3.2 Cómo aplicarlo en cada agente
 
 **Primero, detectar qué soporta el agente que está corriendo.** ¿Puede lanzar subagentes? ¿Puede
@@ -144,6 +163,8 @@ ejecutores del equipo en la carpeta del agente (`.claude/agents/`, `.codex/agent
 `.agents/agents/`, `.cursor/agents/`, `.github/agents/`, `.gemini/agents/`):
 
 - `investigador` (nivel ejecutor): localiza código, devuelve `archivo:línea`. Solo lectura.
+- `Explore` (solo Claude Code, nivel rápido): reemplaza al `Explore` de fábrica, que corre con el modelo
+  de la sesión; el instalador lo crea en `haiku` con `effort: low` (medición en §14.3.4).
 - `ejecutor` (nivel ejecutor): implementa un brief y devuelve archivos tocados, decisiones que el brief
   no fijaba y problemas; el orquestador revisa el diff.
 - `revisor-checklist` (nivel rápido): revisa un diff contra [checklists.md](./checklists.md).
@@ -226,11 +247,37 @@ en el brief. Sin motivo, o ante la duda: lo hace el orquestador.
 | Orquestador + `ejecutor` (Sonnet) | $1.09 | 202 s | Correcto, 3 archivos |
 | Sonnet principal + Opus advisor | $7.99 | 861 s | Amplió el alcance a 28 archivos |
 
+**Medición real 2** (Claude Code 2.1.318, sesión Fable 5.1, tarea "ubicar dónde se asigna
+`settings.advisorModel` en `bin/`" delegada a un subagente; mismo resultado correcto en las 6 corridas):
+
+| Subagente | Modelo que corrió | Costo del subagente | Total de la corrida |
+| :--- | :--- | :--- | :--- |
+| `Explore` de fábrica | Opus 5.5 (el built-in corre con el modelo de la sesión, tope Opus) | $0.14 / $0.10 (front / back) | $0.98 / $0.63 |
+| `Explore` propio (`model: haiku`, `effort: low`) | Haiku 5.5 | $0.002 / $0.001 | $0.39 / $0.41 |
+| `general-purpose` sin configurar | Fable 5.1 (hereda la sesión) | dentro del turno principal | $0.90 |
+| `general-purpose` con `CLAUDE_CODE_SUBAGENT_MODEL=sonnet` | Sonnet 5.5 | $0.09 | $0.15 |
+
+- El total varía con el estado de la caché: comparar la columna del subagente. Un subagente de
+  exploración en Haiku cuesta ~90 veces menos que el mismo en Opus y encontró lo mismo.
+- Por eso el instalador crea un `Explore` propio en Haiku (reemplaza al de fábrica) y fija
+  `CLAUDE_CODE_SUBAGENT_MODEL=sonnet` para todo subagente sin `model` (`general-purpose`, skills,
+  plugins). Los del equipo conservan su `model` propio.
+- Control antes / después con el instalador completo (misma tarea de 2 búsquedas, "usá subagentes" sin
+  nombrar cuál): el orquestador eligió `investigador` (Sonnet) en las 4 corridas, respuesta correcta en
+  las 4, costo $1.07 → $0.78 (front) y $0.59 → $0.66 (back): diferencia dentro del ruido de la caché. Con
+  los agentes del equipo instalados, el ahorro aparece solo cuando el orquestador elige `Explore` o
+  `general-purpose`; por eso ambos quedan en modelo barato.
+
 - En tareas chicas, delegar cuesta más: el brief y la revisión suman más de lo que ahorra el modelo barato.
 - No usar un modelo más barato como agente principal con un advisor del mismo nivel: amplía el alcance y
   multiplica los turnos. El modelo seleccionado orquesta. Con un advisor de nivel superior (Fable 5.2
   para una sesión Sonnet u Opus) Anthropic reporta ~92% del resultado de Fable solo a ~63% del costo, con
-  ~1 consulta por tarea. Por eso el instalador configura Fable como advisor (§14.3.5); medir en el equipo.
+  ~1 consulta por tarea (doc del advisor). Su medición más nueva ([nov 2026](https://claude.dev/blog/which-claude-model-should-you-build-with/)) dice lo contrario:
+  de los 4 pareos de su tabla, ninguno superó claramente al ejecutor solo; Opus `high` + Fable advisor dio
+  +1.7 puntos por ~2.1× el costo. Dos fuentes encontradas y la del equipo en contra: **el instalador no
+  configura advisor por defecto**. `--advisor fable` lo activa a quien quiera medirlo con `/usage`.
+- Cambios grandes partibles en unidades (el patrón de `/batch`): orquestador Opus + hasta 25 ejecutores
+  Sonnet en paralelo costó ~1/3 menos que Opus solo con el mismo resultado (Anthropic, nov 2026).
 
 Si el agente no puede lanzar subagentes con un modelo más barato, delegar solo lo que ahorra
 contexto (búsquedas y lecturas grandes). El resto lo hace el orquestador (§14.3.3).
@@ -293,15 +340,15 @@ solo con la API de Anthropic; no en Bedrock, Vertex ni Foundry):
 - Activar: `/advisor fable` u `/advisor opus` (sin argumento abre el selector; `/advisor off` lo apaga).
   Queda en `~/.claude/settings.json` como `"advisorModel": "fable"` (alias `fable`, `opus`, `sonnet` o un
   id completo). Solo para una sesión: `claude --advisor fable`. Fable 5.2 como advisor pide Claude Code
-  2.1.321 o mayor. **El instalador lo deja en `fable`** si no había uno configurado, la sesión (`model` en
-  settings) no es Fable y no hay Bedrock/Vertex. `--advisor <modelo>` elige otro; `--advisor off` o
-  `/advisor off` lo quitan. Una vez configurado, la consulta es automática: el modelo decide cuándo,
-  siguiendo los 3 momentos de abajo.
+  2.1.321 o mayor. **El instalador no configura ninguno por defecto** (medición de §14.3.4):
+  `--advisor fable` u `--advisor opus` lo activan; `--advisor off` o `/advisor off` quitan el que haya.
+  Una vez configurado, la consulta es automática: el modelo decide cuándo, siguiendo los 3 momentos de
+  abajo.
 - **Solo de nivel superior.** En la medición de §14.3.4, Sonnet principal + Opus advisor (mismo nivel) costó
   10 veces más ($7.99 contra $0.79) y amplió el alcance a 28 archivos: un advisor del mismo nivel que la
-  sesión no suma calidad y gasta más. Por eso el instalador configura Fable (nivel superior para Sonnet y
-  Opus, el patrón que publica Anthropic) y no configura nada si la sesión ya es Fable. Cada consulta se
-  cobra a precio de Fable: si el costo preocupa, `--advisor off`.
+  sesión no suma calidad y gasta más. Si se activa, solo de nivel superior (Fable para Sonnet u Opus);
+  con sesión Fable no hay advisor que sume. Cada consulta se cobra a precio del advisor: si el costo
+  preocupa, `--advisor off`.
 - **Sin acceso a Fable** (plan sin Fable, `availableModels` de la organización lo excluye, o la API lo
   rechaza): Claude Code no falla, manda la sesión sin advisor y avisa una vez. No baja solo a Opus: queda
   la emulación (`NECESITA_ADVISOR` + revisión del modelo de la sesión). Quien quiera Opus como advisor de
@@ -413,6 +460,11 @@ errores sin resolver. Descartar: salidas de tools ya procesadas, exploración de
   leer archivos completos que ya se procesaron: buscar solo lo que haga falta.
 - Delegar a subagentes (§14.3) también ahorra contexto: la exploración pesada vive en el contexto del
   subagente y a la conversación principal solo llega el resultado.
+- **Cambio de modelo solo en un corte natural, con `/compact` antes** (o sesión nueva con el resumen de
+  `tasks/todo.md`). La caché de prompt pertenece al modelo que la escribió: el primer turno del modelo
+  nuevo paga la escritura de caché de toda la conversación. Y un modelo nunca lee los bloques de
+  razonamiento de uno de nivel superior: bajar de Fable a cualquier otro pierde su razonamiento; subir
+  (Sonnet → Opus → Fable) lo conserva. Nunca cambiar de modelo con un cambio a medio aplicar.
 
 ---
 
@@ -563,6 +615,7 @@ comando se aplica **traducida al agente y a los modelos que usa la persona**.
 | Capacidad que pide la skill | Ejemplo en Claude Code | En otro agente |
 | :--- | :--- | :--- |
 | Modelo orquestador / ejecutor / rápido | El seleccionado / Sonnet / Haiku | Niveles de su proveedor (§14.3.1) |
+| Dial de esfuerzo antes de cambiar de modelo | `/model` → effort `low` / `medium` / `high` | `model_reasoning_effort` (Codex), *thinking budget* (Gemini); sin dial: saltar al nivel siguiente (§14.3.1) |
 | Lanzar subagente con modelo propio | `Agent(model: ...)`, `.claude/agents/*.md` | Tabla de §14.3.2 |
 | Cambio grande en paralelo, un worktree por unidad | `/batch <instrucción>` | Varios subagentes en paralelo con el mismo brief por unidad; si no hay, unidades en secuencia |
 | Continuar un subagente con su contexto | `SendMessage` | Retomar el hilo si existe; si no, relanzar con el brief actualizado |

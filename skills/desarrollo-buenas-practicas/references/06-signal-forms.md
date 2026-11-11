@@ -54,7 +54,7 @@ migración incremental (control por control); el objetivo es no necesitarlo en c
 
 ```ts
 import { Component, signal } from '@angular/core';
-import { form, FormField, FormRoot, email, required, minLength } from '@angular/forms/signals';
+import { form, FormField, FormRoot, email, required, minLength, ValidationError } from '@angular/forms/signals';
 
 @Component({
   selector: 'app-registro',
@@ -85,9 +85,15 @@ export class Registro {
     },
   );
 
-  private async _guardar(f: FieldTree<RegistroModel>): Promise<void> {
-    await firstValueFrom(this._usuariosHttp.create(this.modelo()));
+  // Devuelve errores del servidor como errores de campo (§6.3 "Errores del servidor");
+  // `undefined` = éxito. `submit()` los muestra en `errors()` del campo y bloquea el doble envío.
+  private async _guardar(f: FieldTree<RegistroModel>): Promise<ValidationError.WithFieldTree[] | undefined> {
+    const resultado = await firstValueFrom(this._usuariosHttp.create(f().value()));
+    if (resultado.error === 'EMAIL_TAKEN') {
+      return [{ fieldTree: f.email, kind: 'server', message: 'Ese email ya está registrado' }];
+    }
     f().reset({ nombre: '', email: '', edad: 18 });   // limpia valores + touched/dirty
+    return undefined;
   }
 
   private _reportarErrores(f: FieldTree<RegistroModel>): void {
@@ -110,6 +116,10 @@ export class Registro {
     <input id="email" type="email" class="registro__form-input" [formField]="registroForm.email" />
     @if (registroForm.email().pending()) {
       <p class="registro__form-hint">Verificando disponibilidad…</p>
+    }
+    @if (registroForm.email().touched() && registroForm.email().invalid()) {
+      <!-- mismo bloque para validadores y para errores del servidor (kind: 'server') -->
+      <p class="registro__form-error">{{ registroForm.email().errors()[0].message }}</p>
     }
 
     <button class="registro__form-submit" [disabled]="!registroForm().valid()">Registrarse</button>
@@ -164,6 +174,15 @@ inválido o pendiente.
   pasar `action` de nuevo: `submit()` usa esos defaults salvo que se los pisen explícitamente.
 - **Reset tras guardar**: `f().reset(valorInicial)` a nivel del form, o `campo().reset(valor?)` a
   nivel de un campo puntual — ambos limpian valor y estado de interacción (§6.8).
+- **Errores del servidor como errores de campo.** La `action` de `submission` (o la de `submit()`)
+  devuelve `undefined` en éxito o un array de `{ fieldTree, kind: 'server', message }` por cada campo
+  que el backend rechazó: el form los suma a `errors()` de ese campo y el template los muestra con el
+  **mismo** `@if (touched() && invalid())` que los validadores. Nunca un `signal` aparte
+  (`errorServidor`), ni un `alert`, ni un toast genérico para un error que pertenece a un campo. Mapear
+  en la `action`, no en el servicio HTTP: la respuesta de .NET (`ProblemDetails.errors`, diccionario
+  `campo → mensajes[]`, §10.4) se recorre y cada clave se traduce a su `f.<campo>`; una clave sin campo en
+  el form va al `fieldTree: f` (error del form entero, visible en `f().errors()`). Mientras la `action`
+  no resuelve, `submitting()` es `true` (ver siguiente punto). Ejemplo en §6.2 (`_guardar`).
 - **Doble envío bloqueado siempre.** Un doble click en "Guardar" crea dos altas. Con `submit()`, el
   form expone `submitting()` mientras la `action` no resuelve: `[disabled]="f().submitting()"` y
   listo. Sin `submit()` (envío manual), un `signal` `enviando` que se pone en `true` al entrar,

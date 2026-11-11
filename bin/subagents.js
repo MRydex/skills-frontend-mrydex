@@ -111,6 +111,23 @@ for (const role of ROLES) {
 
 const markdown = (frontmatter, body) => `---\n${frontmatter.join('\n')}\n---\n\n${body}\n`;
 
+// Solo Claude Code: su `Explore` de fábrica corre con el modelo de la sesión (medido: Opus, $0.14 por
+// búsqueda). Un agente propio con el mismo nombre lo reemplaza y corre en Haiku ($0.002, mismo resultado).
+// Mismo texto en skills-frontend-mrydex y skills-backend-mrydex: si ambos corren, el archivo queda idéntico.
+const EXPLORE_ROLE = {
+  name: 'Explore',
+  readonly: true,
+  cheap: true,
+  description:
+    'Fast read-only codebase explorer on a cheap model. Use for file search, "where is X defined", "who calls Y", directory maps and reading logs or build output when the location is unknown. Returns file:line lists, never edits.',
+  instructions: `Localizá código o leé salidas grandes y devolvé solo lo decisivo, en modo caveman (frases cortas, sin relleno).
+
+1. Primero \`graphify query "<pregunta>"\` si existe \`graphify-out/graph.json\`; después \`Grep\` / \`Glob\`; leé archivos solo en el rango que hace falta.
+2. Respuesta: \`archivo:línea — qué hay ahí\`, una línea por hallazgo. Para "cómo funciona X", además un resumen del flujo de 3 a 5 líneas.
+3. Nunca edites, nunca propongas arreglos, nunca vuelques archivos completos.
+4. Si no encontrás nada, decí qué buscaste y dónde.`,
+};
+
 // Un escritor por agente: carpeta global, nombre de archivo y contenido en su formato.
 // `requires` = carpeta que indica que el agente está instalado en la máquina.
 const TARGETS = [
@@ -334,6 +351,7 @@ function installSubagents({ homeDir, isDryRun, only, log }) {
     if (!isDryRun) {
       fs.mkdirSync(dir, { recursive: true });
       for (const role of ROLES) fs.writeFileSync(path.join(dir, target.file(role)), target.render(role));
+      if (target.label === 'Claude Code') fs.writeFileSync(path.join(dir, target.file(EXPLORE_ROLE)), target.render(EXPLORE_ROLE));
     }
     installed.push(target.label);
   }
@@ -348,7 +366,7 @@ function installSubagents({ homeDir, isDryRun, only, log }) {
   if (claudeSelected && fs.existsSync(path.join(homeDir, '.claude')) && !isDryRun) allowGraphifyInClaude(homeDir, log);
 
   if (installed.length > 0) {
-    log(`Subagentes ${ROLES.map((role) => role.name).join(' / ')}: ${installed.join(', ')}`);
+    log(`Subagentes ${ROLES.map((role) => role.name).join(' / ')}: ${installed.join(', ')}${installed.includes('Claude Code') ? ' (+ Explore en Haiku en Claude Code)' : ''}`);
   }
 }
 

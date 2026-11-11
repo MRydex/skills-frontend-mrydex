@@ -88,6 +88,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿`disabled` / `readonly` / `hidden` declarados en el schema con `when`, no en el template? ¿Campos `hidden` envueltos en `@if`?
 - [ ] ¿Controles propios implementan `FormValueControl` / `FormCheckboxControl` (no `ControlValueAccessor`)?
 - [ ] ¿Doble envío bloqueado (`f().submitting()` o signal que vuelve a `false` en éxito **y** error)? ¿Select hijo reseteado al cambiar el padre? (§6.3)
+- [ ] ¿Errores del servidor devueltos por la `action` como `{ fieldTree, kind: 'server', message }` y mostrados con el mismo `errors()` del campo, sin signal aparte ni toast? (§6.3)
 
 ### HTML / Template ([03](./03-html-templates.md))
 - [ ] ¿Pasa AXE y cumple WCAG AA? ¿Usa `@angular/aria` para patrones complejos?
@@ -132,6 +133,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Links a la misma ruta recrean el componente (`shouldReuseRoute = () => false` + `onSameUrlNavigation: 'reload'`) en vez de limpiar estado a mano? ¿Estrategia restaurada en `onDestroy`? (§9.6.1)
 - [ ] ¿Servicios pesados con `injectAsync()` (+ `prefetch: onIdle` si corresponde)? ¿Auto-provided, sin `import` estático en ningún archivo y con el chunk separado en el build? (§2.14)
 - [ ] ¿Listas largas con virtual scroll (`*cdkVirtualFor` o `nz-table` con `nzVirtualItemSize`)? (§9.9)
+- [ ] ¿Cálculo o búsqueda pesada sobre datos grandes en un Web Worker con `MessageChannel` por llamada, consumido con `resource()`, errores contestados por el puerto? (§9.10.1)
 - [ ] ¿Subscripciones inevitables cerradas con `takeUntilDestroyed()` / `DestroyRef`? (§9.11)
 - [ ] ¿Sin `withExperimentalPlatformNavigation()` en producción? (§9.6.3)
 - [ ] ¿Budgets de `angular.json` respetados?
