@@ -164,6 +164,14 @@ inválido o pendiente.
   pasar `action` de nuevo: `submit()` usa esos defaults salvo que se los pisen explícitamente.
 - **Reset tras guardar**: `f().reset(valorInicial)` a nivel del form, o `campo().reset(valor?)` a
   nivel de un campo puntual — ambos limpian valor y estado de interacción (§6.8).
+- **Doble envío bloqueado siempre.** Un doble click en "Guardar" crea dos altas. Con `submit()`, el
+  form expone `submitting()` mientras la `action` no resuelve: `[disabled]="f().submitting()"` y
+  listo. Sin `submit()` (envío manual), un `signal` `enviando` que se pone en `true` al entrar,
+  `return` si ya estaba, y vuelve a `false` en éxito **y** en error (`finally`): si solo se limpia
+  en el éxito, el botón queda muerto tras el primer fallo.
+- **Select hijo de un select padre**: al cambiar el padre, el hijo vuelve a vacío en el mismo
+  handler (`f.idLocalidad().reset()`), y sus opciones salen de un `computed` del padre (§6.10). Si no se
+  resetea, queda un valor que no existe en la lista nueva y viaja así al back.
 
 ```ts
 // app.config.ts — clases de estado una sola vez

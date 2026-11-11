@@ -100,7 +100,8 @@ L1: <pedido del usuario, literal, sin resumir>
 - Ante un arreglo que se siente parche: preguntarse si resuelve la causa raíz (§11.7) o solo tapa el
   síntoma.
 - Antes de reportar el cambio, releer el diff completo (no solo el archivo pedido): código muerto,
-  imports sin usar, o el error original sin resolver de fondo no deberían llegar a revisión.
+  imports sin usar, `console.log` de depuración, HTML o código comentado, un tipo quitado o pasado
+  a `any` para que compile, o el error original sin resolver de fondo no deberían llegar a revisión.
 - Código muerto: borrar solo lo que el propio cambio dejó sin uso (imports, variables, métodos). El
   código muerto que ya existía se reporta en una línea y no se toca (§11.5).
 

@@ -36,6 +36,8 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Toda carga de datos tiene estado de carga, de error (con reintentar; si el interceptor global ya muestra el mensaje, inline solo el botón) y vacío, también la carga inicial de una pantalla de edición?
 - [ ] ¿Orden de declaraciones: injects → inputs/outputs → variables → signals → constructor → ngOnInit → públicas (onXxx primero) → privadas? (§2.6)
 - [ ] ¿Imports ordenados: Angular → terceros → propios (core → shared → feature)?
+- [ ] ¿Ids de estado / tipo / área en **una** constante `as const`, sin números sueltos? ¿Permisos por flag del backend en un solo `computed`, nunca `idUsuario` / `idArea` hardcodeado? ¿Rutas escritas una vez y `grep` del path al mover pantallas? (§2.17)
+- [ ] ¿Sin `console.log`, HTML o código comentado, ni tipos pasados a `any` para compilar? ([11](./11-workflow-orchestration.md) §11.3)
 - [ ] ¿Contrato con el back en `models/dtos/`: `<Accion><Entidad>Request` lo enviado, `<Entidad>Response` lo recibido, uno por operación y con el mismo nombre que en C#? ¿Se mapea a un modelo del front solo si la vista necesita otra forma, con `to<Destino>()` en `[feature]-mappers.ts`? ¿El servicio HTTP desenvuelve `ApiResponse<T>` cuando viene y devuelve siempre el `Response`? ¿Nulos del backend controlados antes de calcular? (§2.11)
 
 ### Estructura y tamaño ([01](./01-project-structure.md))
@@ -57,6 +59,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Se manejan los estados `loading` / `error` en el template, no solo el éxito?
 - [ ] ¿Mutaciones (POST/PUT/DELETE) por `HttpClient` en el servicio + `reload()` / `update()`, **no** por resource? (§4.12)
 - [ ] ¿Params de query con `HttpParams` u objeto `params`, no concatenando strings?
+- [ ] ¿Refrescar con el **mismo id** usa `reload()`? ¿Polling solo en el servicio, con `interval` + `takeUntilDestroyed()` y constante nombrada? ¿Tabla paginada conserva la página anterior con `linkedSignal` mientras carga? (§4.9)
 - [ ] ¿Datos de ruta con `resources` en la `Route` (no `ResolveFn` nuevo)? ¿`nonBlocking()` solo para lo secundario, con `error()` manejado en el template? ([09](./09-performance-zoneless.md) §9.6.2)
 - [ ] ¿Se valida el shape de la respuesta (`parse` con Zod/Valibot) cuando el contrato no es confiable?
 
@@ -84,6 +87,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿El submit se habilita con el estado del form (`form().valid()`)?
 - [ ] ¿`disabled` / `readonly` / `hidden` declarados en el schema con `when`, no en el template? ¿Campos `hidden` envueltos en `@if`?
 - [ ] ¿Controles propios implementan `FormValueControl` / `FormCheckboxControl` (no `ControlValueAccessor`)?
+- [ ] ¿Doble envío bloqueado (`f().submitting()` o signal que vuelve a `false` en éxito **y** error)? ¿Select hijo reseteado al cambiar el padre? (§6.3)
 
 ### HTML / Template ([03](./03-html-templates.md))
 - [ ] ¿Pasa AXE y cumple WCAG AA? ¿Usa `@angular/aria` para patrones complejos?
@@ -102,6 +106,8 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Textos y acciones de contenedores (diálogos, tarjetas) por `<ng-content>`, no un `input()` por texto? (§3.13)
 - [ ] ¿`$event.stopPropagation()` inline, sin directiva para eso? (§3.14)
 - [ ] ¿Directivas con selector sobre lo existente, exclusión con `:not([x])`, alias en el input homónimo y estilos por `host: {}`? (§3.15)
+- [ ] ¿Filtros persistidos con clave natural estable (nunca índice ni id generado) y reconciliados contra las opciones **antes** de filtrar? (§3.6)
+- [ ] ¿El modal no arrastra estado entre aperturas (vive adentro o se resetea en `afterClose`)? ([02](./02-typescript-signals.md) §2.4)
 
 ### SCSS ([07](./07-styles-scss.md))
 - [ ] ¿`@use` / `@forward`, nunca `@import`? ¿`@use` sin ruta relativa (`@use 'modulo/modulo-parte' as x`, vía `includePaths`; si el repo no lo tiene configurado, su convención)? ¿Partials en `assets/styles/<modulo>/`? (§7.1)
@@ -231,6 +237,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Sin secretos en `environment.ts` / `appsettings.json`? ¿Sin PII ni tokens en `console` o storage? ¿Errores genéricos al usuario? (§15.8)
 - [ ] ¿Cabeceras de seguridad en `web.config`? (§15.9)
 - [ ] ¿`npm audit` y `npm audit --omit=dev` corridos después del último cambio de dependencias, con los hallazgos reportados y sin `high`/`critical` de runtime nuevos? ¿`npm ci` en CI? ¿Dependencia nueva evaluada? ¿SRI en scripts externos? (§15.10)
+- [ ] ¿Sin `postinstall` que edite `node_modules`? ¿Paquetes internos con versión exacta y `ng build` tras el upgrade? (§15.10)
 - [ ] ¿Eventos de seguridad reportados sin datos sensibles? (§15.11)
 - [ ] ¿Payload XSS probado a mano en componentes/pipes que renderizan datos externos? (§15.12)
 - [ ] ¿"Auditá" a secas o pedido de seguridad? ¿Auditoría completa red + blue + network con cobertura por área, y pruebas en vivo solo contra hosts autorizados por el usuario? (§15.14)

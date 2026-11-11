@@ -7,7 +7,7 @@
 - 3.3 Clases y estilos dinámicos
 - 3.4 Control flow nativo (`@if` / `@for` / `@switch` / `@let`) y `@defer`
 - 3.5 Templates simples, lógica en `computed`/`@let`
-- 3.6 Tablas (nzTable / Material / nativas)
+- 3.6 Tablas (nzTable / Material / nativas), filtros persistidos
 - 3.7 Two-way binding moderno
 - 3.8 Tooltip solo cuando el texto está truncado (`appOverflowDetector`)
 - 3.9 `nz-select`: ancho del dropdown según el option más largo (`nzDropdownMatchSelectWidth`)
@@ -315,6 +315,23 @@ resource ([04](./04-resource-api.md)), sin llamar al back a mano.
 - `[nzSortFn]="true"` y `[nzFilterFn]="true"` le dicen a la tabla que ordena y filtra el back; el
   `nzColumnKey` es la clave que llega en `sort` y `filter`.
 - `[nzData]` se reemplaza por un array nuevo, nunca se muta: la tabla es OnPush ([09](./09-performance-zoneless.md) §9.2).
+
+#### Filtros persistidos (storage o query params)
+
+Si los filtros de un listado sobreviven a la recarga (`localStorage`, query params, servicio de root):
+
+- **Clave natural estable**: el código que manda el back o el texto normalizado
+  (`valor.trim().toLowerCase()`). Nunca el índice de la opción ni un id que el front genera al
+  armar la lista: cambia entre cargas y el filtro guardado apunta a otra opción o a ninguna.
+- **Orden al cargar: opciones → reconciliar → filtrar.** Primero llegan las opciones; después se
+  cruza el filtro guardado contra ellas y lo que ya no existe se descarta; recién entonces se
+  filtra o se pide al back. Filtrar antes de tener opciones muestra una tabla vacía o un filtro
+  fantasma que el usuario no puede sacar.
+- Todo en signals: el filtro guardado es un `signal`, las opciones vienen del resource, y un
+  `computed` devuelve el filtro válido (intersección); el `params` del resource de datos lee ese
+  `computed`, sin `effect()`. Para forzar el repintado de la tabla tras limpiar un filtro basta
+  cambiar el array (`[nzData]`), no un `key` que remonta el componente.
+- Lo que se persiste **no incluye** datos sensibles ni PII ([15](./15-security.md) §15.8).
 
 #### `mat-table` (Angular Material)
 

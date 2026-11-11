@@ -7,6 +7,20 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- Lecciones de un proyecto real en producción (Angular 21, NG-ZORRO) incorporadas como reglas:
+  - `02` §2.17 constantes de dominio (`as const` único, sin ids sueltos ni duplicados), permisos por flag del
+    backend en un solo `computed` (nunca `idUsuario` / `idArea` hardcodeados en el template) y rutas escritas una
+    vez; §2.4 el modal no arrastra estado entre aperturas (`afterClose`). §15.5 enlaza.
+  - `03` §3.6 filtros persistidos: clave natural estable, reconciliar contra las opciones antes de filtrar, todo en
+    signals.
+  - `04` §4.9 mismo valor de `params` no recarga (`reload()` explícito), polling solo en el servicio con `interval`
+    + `takeUntilDestroyed()`, tabla paginada que conserva la página anterior con `linkedSignal`.
+  - `06` §6.3 doble envío bloqueado (`submitting()` o signal que vuelve a `false` en éxito y error), select hijo
+    reseteado al cambiar el padre.
+  - `09` §9.6.4 un guard no usa `alert()` ni toca el DOM; `11` §11.3 releer el diff también busca `console.log`,
+    código comentado y tipos pasados a `any`; `15` §15.10 nunca `postinstall` que edite `node_modules`, paquetes
+    internos con versión exacta y `ng build` tras cada upgrade.
+  - `checklists.md`: un ítem por cada regla nueva.
 - `10` §10.14 actualizaciones sin cortar al usuario: `@angular/service-worker` como estándar (`ngsw-config.json`
   sin `dataGroups`, `enabled: !isDevMode()`, HTTPS), servicio `AppUpdate` (chequeo al estabilizar, al volver a la
   pestaña y al navegar, tope de 1 cada 5 min, `unrecoverable`), aviso no bloqueante, registro de formularios sucios

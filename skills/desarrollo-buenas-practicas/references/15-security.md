@@ -184,6 +184,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
 - Guards (`canMatch`, `canActivate`) ocultan rutas; **no protegen datos**. Cada endpoint valida
   permisos en el backend. Preferir `canMatch` para no descargar el chunk de una ruta sin permiso.
+- **Permisos en la UI por flag del backend** (`puedeEliminar`), expuesto en un solo `computed`;
+  nunca listas de `idUsuario` o `idArea` en el template ni en el `.ts`: son fáciles de leer en el
+  bundle, se desactualizan con cada alta y no protegen nada ([02](./02-typescript-signals.md) §2.17).
 - En logout: limpiar signals de sesión, stores con datos del usuario y cualquier storage propio.
 - **Logout en todas las pestañas**: con el token en memoria no hay evento `storage` que avise a las
   otras pestañas; usar `BroadcastChannel` (mismo origen) desde el servicio de auth, **sin `effect()`**: el
@@ -374,7 +377,14 @@ Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
 - Antes de sumar una dependencia: mantenimiento activo, descargas, licencia, vulnerabilidades
   conocidas y si la funcionalidad se resuelve con el framework. Menos dependencias, menos superficie.
 - Mantener Angular al día con `ng update` (los parches de seguridad salen para las versiones con
-  soporte).
+  soporte). `ng build` después de cada upgrade: un renombre en una librería interna no lo avisa
+  `npm install`.
+- **Nunca un `postinstall` que edite `node_modules`** para que compile (`scripts/patch-<lib>.js`):
+  esconde la incompatibilidad, se pierde con cada `npm ci` y es código que corre en toda máquina que
+  instala. Fijar la versión compatible, esperar el fix o, si no hay otra salida, `patch-package` con el
+  `.patch` versionado y el motivo en el PR.
+- Paquetes internos de la empresa (`@empresa/*`) con **versión exacta** en `package.json`, sin `^`:
+  su semver no es confiable y un minor puede renombrar exports.
 - Scripts externos (CDN) solo con **Subresource Integrity** (`integrity` + `crossorigin`).
 - Dependabot / Renovate activos en el repo.
 

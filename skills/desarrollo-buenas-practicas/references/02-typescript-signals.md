@@ -13,7 +13,8 @@ Null safety, contrato con el back y mapeo · [2.12](#212-comunicación-entre-com
 Comunicación entre hermanos · [2.13](#213-apis-del-navegador-en-servicios-ejemplo-notifications)
 APIs del navegador en servicios (y `BroadcastChannel`, §2.13.1) · [2.14](#214-servicios-lazy-con-injectasync) Servicios lazy con
 `injectAsync` · [2.15](#215-lenguaje-y-plataforma-satisfies-set-intl) Lenguaje y plataforma ·
-[2.16](#216-ngrx-solo-si-el-repo-ya-lo-usa) NgRx (solo si el repo ya lo usa).
+[2.16](#216-ngrx-solo-si-el-repo-ya-lo-usa) NgRx (solo si el repo ya lo usa) ·
+[2.17](#217-constantes-de-dominio-permisos-y-rutas) Constantes de dominio, permisos y rutas.
 
 ### 2.1 Strict typing
 
@@ -288,6 +289,10 @@ onClickGuardar(): void {
   resuelve; si resuelve `false`, queda abierto (útil para validar antes de cerrar).
 - Desde NG-ZORRO 22, `nzOnOk` / `nzOnCancel` ya no son inputs de `<nz-modal>`: en el template se
   escuchan como outputs (`(nzOnOk)`), y la función con `Promise` va en `NzModalService.create()`.
+- **Un modal no arrastra estado entre aperturas.** La página, los resultados de búsqueda o la
+  selección viven en el componente del modal (nace y muere con él), no en el que lo abre. Si algo
+  tiene que quedar afuera, se vuelve al valor inicial en `afterClose`; si no, la segunda apertura
+  muestra los datos de la primera.
 
 #### Accesibilidad de `MatDialog`
 
@@ -1161,3 +1166,46 @@ pedido. Si el repo ya tiene NgRx:
 | `createEffect()` | `withEventHandlers((store, events = inject(Events)) => ({ ... }))` |
 | `createSelector()` | `withComputed()` |
 | `store.dispatch()` | `injectDispatch(eventos)` o `inject(Dispatcher).dispatch()` |
+
+### 2.17 Constantes de dominio, permisos y rutas
+
+Los tres bugs que más veces vuelven en producción: un id de estado comparado contra el campo
+equivocado, un botón visible para quien no debía y una ruta que se rompió al mover una pantalla.
+
+- **Ids de dominio** (estado, tipo, área, rol, caracter) **nunca sueltos** en el código:
+  ❌ `data.idEstado == 3`, `item.idTipo === 7 || item.idTipo === 8`, `usuario.idArea === 12`. Un
+  solo objeto `as const` por entidad, en `models/` del feature (o en
+  `shared/models/` si lo leen varios), con el nombre del dominio; la comparación se lee sola:
+
+```ts
+// feature/pedidos/models/estado-pedido.ts
+export const ESTADO_PEDIDO = { pendiente: 1, enviado: 2, cancelado: 3 } as const;
+export type EstadoPedido = (typeof ESTADO_PEDIDO)[keyof typeof ESTADO_PEDIDO];
+
+// uso
+readonly cancelado = computed(() => this.pedido().idEstado === ESTADO_PEDIDO.cancelado);
+```
+
+  - Definida **una vez**: dos copias (`CANCELADO: 2` en un archivo, `3` en otro) se desincronizan.
+  - Al cambiar un valor, `grep` de todos los usos: un id que cambia en una pantalla y no en otra
+    deja las dos inconsistentes.
+  - Si el backend ya expone el catálogo (endpoint de paramétricas), la constante solo nombra los ids
+    que el front necesita para decidir; el resto se muestra tal cual llega.
+
+- **Permisos nunca por id de usuario ni de área hardcodeado.** ❌ En el template:
+  `user?.idUsuario == 1001 || user?.idUsuario == 1002 || ...` o `usuario.idArea === 12`. Cada
+  alta de un usuario es un deploy y la lista termina en varios commits de ida y vuelta.
+  - El backend decide y manda el permiso como **flag** (`puedeEliminar`, `puedeEditar`), en la
+    `Response` de la entidad o en el usuario autenticado. El front solo lo muestra; la validación real
+    sigue en el endpoint ([15](./15-security.md) §15.5).
+  - **Un solo `computed`** con ese permiso, en el servicio del feature o en el componente padre;
+    los hijos lo reciben por `input()` o inyectan el servicio. Nunca recalcular la condición en cada
+    pestaña o hijo (`areasHabilitadas?.some(a => a.id === usuario.idArea)` repetido en cada uno):
+    cuando cambia la regla, alguno se olvida.
+  - Si el flag todavía no existe en el contrato, se pide al back y se deja el `computed` como único
+    punto a tocar; la regla provisoria vive ahí, nunca en el template.
+
+- **Rutas en un solo lugar.** Los paths se escriben una vez (`app.routes.ts` y, si se navegan desde
+  código, un objeto `RUTAS` con funciones para los parámetros: `RUTAS.detallePedido(id)`);
+  `router.navigate` y `routerLink` lo usan. Al mover o renombrar una pantalla, `grep` del path viejo
+  en `.ts` y `.html`: una ruta rota no la detecta el build.

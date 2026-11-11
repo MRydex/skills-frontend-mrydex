@@ -219,6 +219,23 @@ Sobre un `value()` ya mapeado con `computed` (§4.6) se itera directo:
 - **No usar resources para mutaciones.** POST/PUT/DELETE van por `HttpClient`; después se recarga con
   `.reload()` o se ajusta el signal de `params` (ver §4.12 para el patrón completo).
 - **No derivar estado con `effect`**: mapear/filtrar el `value()` va en un `computed` (§4.6).
+- **Mismo valor de `params` ⇒ no recarga.** Un signal con el mismo id (volver a un detalle ya
+  abierto, re-seleccionar la misma fila) no dispara el loader. Para datos frescos: `reload()`
+  explícito; nunca `set(undefined)` + `set(id)` para "forzarlo".
+- **Refresco periódico** (badge, contador, lista que cambian otros usuarios) cuando no hay hub
+  ([16](./16-websocket-signalr.md) §16.1): en el **servicio**, `interval(INTERVALO_MS)` con
+  `takeUntilDestroyed()` que llama a `reload()`; intervalo como constante nombrada
+  (`PENDIENTES_POLL_MS = 5 * 60_000`). Nunca `setInterval` suelto ni polling desde el
+  componente: se duplica por cada instancia y sigue vivo al navegar.
+- **Tabla paginada sin parpadeo**: mientras carga la página siguiente, conservar la anterior con
+  `linkedSignal` en vez de mostrar vacío:
+
+```ts
+readonly pagina = linkedSignal<PagedResult<Item> | undefined, PagedResult<Item>>({
+  source: () => (this.itemsResource.hasValue() ? this.itemsResource.value() : undefined),
+  computation: (nueva, previa) => nueva ?? previa?.value ?? PAGINA_VACIA,
+});
+```
 - **La cancelación es automática**: al cambiar `params`/la URL, el resource cancela la petición en
   vuelo (vía `AbortSignal` internamente) antes de lanzar la siguiente. No hace falta `switchMap` ni
   banderas manuales (§4.11 muestra cómo aprovechar ese `AbortSignal` en un `resource()` custom).

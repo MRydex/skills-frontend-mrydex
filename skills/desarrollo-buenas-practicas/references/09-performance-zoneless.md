@@ -381,6 +381,8 @@ export const authGuard: CanActivateFn = (_route, state) =>
   puede **lanzar** el `RedirectCommand` (22.2.4+ para que respete el orden de los guards); preferir
   devolverlo.
   - ❌ `router.navigate()` dentro del guard y `return false`.
+  - ❌ `alert()` / `confirm()` o tocar el DOM (`document.body.innerHTML = ...`) dentro del guard: se
+    devuelve un `UrlTree` a una ruta que explica (`/limite-pestanas`, `/sin-permiso`).
   - `returnUrl` se valida al usarlo (15 §15.7).
 - `canActivateChild` corre una vez por cada ruta hija: un solo guard en el padre en vez de repetirlo.
 - `canMatch` devuelve `false` y el router **sigue probando** las rutas siguientes: sirve para que un
