@@ -7,6 +7,8 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Quitado
 
+- `14` §14.9: skills bajo demanda que no son de desarrollo: `video-lens`, `video-use`, `content-strategy`, `pricing`,
+  `ai-seo` y `canvas-design`. Nunca las instaló el instalador; salen de la tabla y de la lista bajo demanda.
 - Headroom. Medido en 14.558 requests (oct-nov 2026, suscripción): ahorró 1,52% de los tokens de entrada; a cambio el
   proxy se colgaba sin aviso, la tarea de Windows entraba en loop de reinicios (`[winerror 10048]`) y el hook
   `PreToolUse` sumaba hasta 45 s por comando. El instalador ya no lo instala ni lo configura; si quedó de una
