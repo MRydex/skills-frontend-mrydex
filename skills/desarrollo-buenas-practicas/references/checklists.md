@@ -91,6 +91,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Controles propios implementan `FormValueControl` / `FormCheckboxControl` (no `ControlValueAccessor`)?
 - [ ] ¿Doble envío bloqueado (`f().submitting()` o signal que vuelve a `false` en éxito **y** error)? ¿Select hijo reseteado al cambiar el padre? (§6.3)
 - [ ] ¿Errores del servidor devueltos por la `action` como `{ fieldTree, kind: 'server', message }` y mostrados con el mismo `errors()` del campo, sin signal aparte ni toast? (§6.3)
+- [ ] ¿El error de campo es texto visible que dice cómo corregir, no solo color? ¿`aria-invalid` queda en `"false"` explícito y los errores que aparecen solos se anuncian por un único `LiveAnnouncer`? (§6.7)
 
 ### HTML / Template ([03](./03-html-templates.md))
 - [ ] ¿Pasa AXE y cumple WCAG AA? ¿Usa `@angular/aria` para patrones complejos?
@@ -121,6 +122,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] Con Angular Material: ¿tema M3 con `mat.theme()` y `color-scheme`, colores propios desde `--mat-sys-*`, cambios solo con `mat.*-overrides()` (nunca selectores sobre `.mat-mdc-*`), `mat.strong-focus-indicators()` y densidad no menor a `0` en diálogos y menús? (§7.12)
 - [ ] ¿`:focus-visible` para foco accesible? ¿`prefers-reduced-motion` contemplado? (§7.7)
 - [ ] ¿Sin SCSS duplicado? Lo repetido extraído a su capa ITCSS (token, `@mixin`, `.o-*`, `.u-*`); sin `@extend`; el componente solo hace `@use` de `_index.scss` y de la carpeta de su módulo. (§7.10)
+- [ ] ¿`clamp()` con máximo de hasta 2,5 veces el mínimo? ¿`color-scheme` en `:root`? ¿Estados y bordes visibles también con `forced-colors: active`? (§7.2)
 
 ### Sin archivos de test ([08](./08-sin-tests.md))
 - [ ] ¿Ningún `*.spec.ts` / `*.test.ts` nuevo? ¿`angular.json` con `skipTests: true` en los schematics? (§8.1)
@@ -139,6 +141,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Subscripciones inevitables cerradas con `takeUntilDestroyed()` / `DestroyRef`? (§9.11)
 - [ ] ¿Sin `withExperimentalPlatformNavigation()` en producción? (§9.6.3)
 - [ ] ¿Budgets de `angular.json` respetados?
+- [ ] ¿Bucle de 50 a 250 ms troceado cediendo el hilo (`scheduler.yield()` con fallback), y Web Worker solo si no alcanza? ¿`scrollend` en vez de adivinar con `setTimeout`? (§9.9.1, §9.10)
 
 ### Despliegue sin cortar al usuario ([10](./10-environment-tooling.md) §10.14)
 - [ ] ¿`@angular/service-worker` con `ngsw-config.json` sin `dataGroups`, `enabled: !isDevMode()`, ambiente con HTTPS? (§10.14)
@@ -209,6 +212,9 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Elemento nativo antes que `role="…"`? (sin ARIA es mejor que ARIA mal puesta, §12.6)
 - [ ] ¿`<title>` por ruta (`title` en `Route` / `TitleStrategy`) y metadatos SEO? ¿Migas de pan derivadas de ese mismo `title` (`<nav aria-label>` + `<ol>` + `aria-current="page"`), sin `data: { breadcrumb }`? (§12.8)
 - [ ] ¿Foco gestionado al navegar entre vistas? (§12.9)
+- [ ] ¿Botones con el mismo texto (un "Editar" por fila) distinguibles por lector de pantalla? ¿`aria-disabled` donde la acción deshabilitada tiene que poder descubrirse? (§12.6)
+- [ ] `<dialog>` propio: ¿sin `role`, `aria-modal` ni trampa de foco agregados? ¿El cierre con click afuera usa el handler y no solo `closedby`? (§12.7)
+- [ ] ¿Campos de identificadores con `spellcheck="false"`? ¿Pasos o fondo inactivos con `inert`? (§12.7, §12.9)
 
 ### CSS ([13](./13-css3-layouts-animations.md))
 - [ ] ¿`box-sizing: border-box` global?
@@ -228,6 +234,10 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Scroll-driven: `animation-timeline` y `animation-range` después del shorthand `animation`, sin `animation-duration`, con `linear both`? ¿El estado estático es el final y el inicial va solo en `from`? (§13.18)
 - [ ] ¿Scrollytelling con sección alta (`vh`) + hijo `sticky` + `view-timeline` con nombre, `--i` / `--n` desde `@for` con `[style.--i]` (sin `:nth-child`), y `@supports not (animation-timeline: scroll())` que quita la altura extra? (§13.18)
 - [ ] ¿`@media (prefers-reduced-motion: reduce)` contemplado?
+- [ ] ¿Contenedor con scroll sin salto de layout (`scrollbar-gutter`) y, si no tiene controles adentro, alcanzable con teclado (`tabindex="0"` + `role="region"` + nombre)? ¿`::-webkit-scrollbar` solo como fallback dentro de `@supports not`? (§13.5)
+- [ ] ¿Contenedores con texto con `min-block-size` y no `height` fijo? ¿Controles propios de al menos 24 × 24 px? (§13.23)
+- [ ] ¿`allow-discrete` en `transition-behavior`, fuera del shorthand `transition`? ¿Contenido colapsado con `visibility: hidden`? (§13.16, §13.19)
+- [ ] ¿`order`, `*-reverse` y `grid-auto-flow: dense` fuera de contenido interactivo (no cambian el orden de foco)? (§13.12, §13.13)
 
 ---
 
@@ -245,6 +255,8 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Eventos de seguridad reportados sin datos sensibles? (§15.11)
 - [ ] ¿Payload XSS probado a mano en componentes/pipes que renderizan datos externos? (§15.12)
 - [ ] ¿"Auditá" a secas o pedido de seguridad? ¿Auditoría completa red + blue + network con cobertura por área, y pruebas en vivo solo contra hosts autorizados por el usuario? (§15.14)
+- [ ] ¿Cookie de sesión con prefijo `__Host-`? ¿El logout responde `Clear-Site-Data`? ¿`postMessage` rechaza el origen `"null"` y envía con `targetOrigin` explícito? (§15.5, §15.7)
+- [ ] ¿`X-Frame-Options`, `Cross-Origin-Opener-Policy` y `Cross-Origin-Resource-Policy` en el `web.config`? ¿Script de CDN con `integrity`, versión fija y `crossorigin`? (§15.9, §15.10)
 
 ---
 

@@ -716,6 +716,15 @@ Para listas moderadas que no justifican virtualización completa, `content-visib
 contenedor sigue siendo una mejora barata (el navegador se salta el layout/paint de lo que está fuera
 del viewport).
 
+Reglas de `content-visibility` (Baseline desde sep 2025; un navegador anterior la ignora sin romper nada):
+
+- `auto` solo en bloques debajo del pliegue: en lo que se ve al cargar retrasa el primer render. Siempre con
+  `contain-intrinsic-size: auto <alto estimado>`, con el alto derivado del contenido (`lh`, `rem`).
+- Vistas que se alternan y conviene conservar (pestañas, pasos): `content-visibility: hidden` en la inactiva
+  mantiene su estado de render, a diferencia de `display: none`. Lo oculto sale del árbol de accesibilidad y de
+  la búsqueda del navegador.
+- Probar con Tab que el foco cruza bien los bloques que están fuera de pantalla.
+
 #### 9.9.1 Listas que crecen en vivo (chat, logs, feeds)
 
 Síntoma típico: escribir en el input se pone lento a medida que llegan ítems. Cuatro arreglos, en orden:
@@ -755,6 +764,10 @@ agregar(recibido: MensajeRecibido): void {
 }
 ```
 
+**Trabajo al terminar de scrollear** (cargar más, calcular la sección visible): evento `scrollend`
+(`(scrollend)` en el template; Baseline dic 2025), no un `setTimeout` que adivina cuándo paró. En `scroll` va
+solo feedback barato. En un Safari anterior a 26.2 el evento no existe: ahí, debounce de 100 ms sobre `scroll`.
+
 ### 9.10 `computed()` caro y funciones invocadas desde el template
 
 - Un `computed()` **memoiza** por sus dependencias: si ninguna cambió, devuelve el valor cacheado sin
@@ -793,9 +806,31 @@ readonly conPedidos = computed(() => {
 });
 ```
 
+**Tarea larga en el hilo principal** (recorrer miles de filas para armar algo): hasta 50 ms, directo; entre 50
+y 250 ms, trocear el bucle y ceder el hilo cada 50 ms; más que eso, Web Worker (§9.10.1). Se cede con
+`scheduler.yield()`, que retoma antes que las demás tareas en cola; Safari no lo tiene, así que va con
+`setTimeout` de fallback. El corte se mide con `performance.now()`, no por cantidad de vueltas:
+
+```ts
+const programador = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+const cederHilo = (): Promise<void> =>
+  programador?.yield ? programador.yield() : new Promise((resolve) => setTimeout(resolve));
+
+async function procesar(filas: Fila[]): Promise<void> {
+  let limite = performance.now() + 50;
+  for (const fila of filas) {
+    procesarFila(fila);
+    if (performance.now() >= limite) {
+      await cederHilo();
+      limite = performance.now() + 50;
+    }
+  }
+}
+```
+
 #### 9.10.1 Cálculo pesado en un Web Worker
 
-Si un cálculo bloquea la UI más de ~50 ms aun optimizado (parseo de un archivo grande, export,
+Si un cálculo bloquea la UI más de ~50 ms aun optimizado y no alcanza con trocearlo (§9.10) (parseo de un archivo grande, export,
 cálculo sobre miles de filas, búsqueda o filtrado sobre un dataset grande en memoria), va a un Web
 Worker (`ng generate web-worker <nombre>`). Para emparejar cada pedido con su respuesta, un
 **`MessageChannel` por llamada**: el worker contesta por el puerto que recibió, sin ids, sin `Map` de
@@ -919,6 +954,10 @@ export class GeolocationWatcher {
 - **Lighthouse** (integrado en Chrome DevTools) para métricas de Core Web Vitals (LCP, CLS, INP) en
   una carga real — el punto de partida para saber si `priority`/lazy loading/hydration incremental
   están dando resultado.
+- **Interacción lenta (INP)**: en el panel Performance, separar las tres fases: demora de entrada (algo ya
+  ocupaba el hilo), procesamiento (el handler) y presentación (estilo, layout, pintado). Layout alto con
+  lecturas de geometría (`offsetHeight`, `getBoundingClientRect()`) intercaladas con escrituras es layout
+  thrashing: agrupar primero las lecturas y después las escrituras.
 
 ### 9.13 Checklist rápida
 

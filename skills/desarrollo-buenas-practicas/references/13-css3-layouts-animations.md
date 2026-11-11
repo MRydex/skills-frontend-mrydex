@@ -57,6 +57,12 @@
   ampliada **Wide Gamut P3**.
 - **`currentcolor`**: palabra clave que hereda dinámicamente el valor de `color` del contexto
   actual.
+- **Tono derivado de un token** (hover, borde): `color-mix(in oklab, var(--color-primario), white 30%)`.
+  Cambiar solo la luminosidad con color relativo (`oklch(from var(--color-primario) 0.9 c h)`) puede salir de
+  gama y dar un color impredecible.
+- **Texto sobre un fondo que cambia** (color que elige el usuario, etiqueta por estado):
+  `color: contrast-color(var(--fondo))` es Baseline recién desde abril de 2026; va después de un `color` fijo que
+  sirva de fallback. Solo para `color`, nunca para el fondo.
 
 ### 13.3 Motor de CSS: herencia, especificidad y cascada
 
@@ -136,6 +142,42 @@
     cortar.
 - `content-visibility: auto;` → optimización tipo *lazy load del DOM*: el navegador omite render y
   pintado de nodos complejos fuera del viewport.
+- **Solo recorte**: `overflow: clip` (Baseline 2022). `hidden` crea un contenedor de scroll que un script puede
+  desplazar; `clip` no. No usar `clip` si hace falta scroll por código o si el elemento es el contexto de un
+  `position: sticky`. Un desborde de layout no se tapa con `hidden`: se corrige la causa.
+- **Lista o panel con scroll**: `scrollbar-gutter: stable` (Baseline dic 2024) evita el salto de layout cuando
+  aparece la barra; `overscroll-behavior: contain` corta el scroll hacia la página en sidebars y listas
+  anidadas. Ancho completo con `100%` o `100dvw`, nunca `100vw`: ignora la barra y desborda en horizontal.
+- **Contenedor con scroll sin controles adentro** (tabla nativa ancha, bloque de código): `tabindex="0"`,
+  `role="region"` y nombre (`aria-labelledby` al `<caption>`, o `aria-label`); sin eso no se puede desplazar con
+  teclado. Con `thead` sticky, `background` opaco en los `th`.
+- **Truncar en una tabla nativa**: `table-layout: fixed` y ancho en la tabla; con layout automático la celda
+  crece y nunca trunca. Para dejar visible el final (la extensión de un archivo), el nombre va en un `<span>` que
+  trunca y la extensión como texto aparte, con el padre en `display: flex`; nunca cortar el string en TypeScript.
+- **Color de la barra de scroll**: `scrollbar-width` y `scrollbar-color` en el contenedor que scrollea, con una
+  custom property para el pulgar y otra para el fondo, y contraste de 3:1 entre ambos (WCAG 1.4.11).
+  `scrollbar-width` es Baseline desde dic 2024 y `scrollbar-color` desde dic 2025 (Safari 26.2): en un navegador
+  anterior queda la barra nativa, que es aceptable. Si el diseño exige el color también ahí,
+  `::-webkit-scrollbar` va como fallback dentro de `@supports not`, nunca suelto ni en lugar de las estándar:
+
+  ```css
+  .panel {
+    --barra-pulgar: #595959;
+    --barra-fondo: #f0f0f0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--barra-pulgar) var(--barra-fondo);
+  }
+
+  @supports not (scrollbar-color: auto) {
+    .panel::-webkit-scrollbar { width: 8px; height: 8px; }
+    .panel::-webkit-scrollbar-thumb { background: var(--barra-pulgar); }
+    .panel::-webkit-scrollbar-track { background: var(--barra-fondo); }
+  }
+  ```
+- **Indicar que hay más contenido para scrollear**: máscara con gradiente en el contenedor
+  (`mask-image: linear-gradient(to bottom, black 80%, transparent)`, Baseline 2023), no un overlay encima, que
+  bloquea clics y selección. La máscara también recorta el `outline`: si el contenedor recibe foco, el foco se
+  dibuja en un padre sin máscara.
 
 ### 13.6 Posicionamiento (`position`)
 
@@ -149,6 +191,8 @@
   moviéndose **dentro de los límites de su caja padre**.
 - Para posicionar un elemento relativo a **otro elemento arbitrario del DOM** (no un ancestro), ver
   *anchor positioning* (§13.15) en vez de recurrir a JS.
+- **Header sticky**: `scroll-padding-top` en el contenedor de scroll, igual o mayor al alto del header, para
+  que el control que recibe foco no quede tapado (WCAG 2.4.11).
 
 ### 13.7 Profundidad y apilamiento (`z-index`)
 
@@ -295,6 +339,10 @@ Distribuye y alinea elementos en **un solo eje** por contenedor (fila o columna)
     hijos.
 - `order` → reordena visualmente sin alterar el orden del HTML (cuidado con accesibilidad/lectura).
 - `align-self` → un hijo anula el `align-items` del padre.
+- **Trampas de flex**: `align-items: safe center` evita que el contenido quede recortado e inalcanzable cuando
+  el contenedor es más chico que sus hijos. `justify-self` no hace nada en flex: se empuja con
+  `margin-inline-start: auto`. Con `flex-basis` y `width` en el mismo ítem gana `flex-basis`. `order` y
+  `*-reverse` cambian lo visual pero no el orden de foco ni de lectura.
 
 ### 13.13 Grid (bidimensional)
 
@@ -329,6 +377,21 @@ grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   `position: absolute`.
 - **Áreas declarativas**: `grid-template-areas` (en el padre) + `grid-area` (en los hijos) dibujan
   el layout como un mapa de texto; usar `.` para una celda vacía intencional.
+- **Subgrid** (Baseline 2023): para alinear título, cuerpo y acciones entre cards hermanas, la card ocupa las
+  filas del padre y declara `grid-template-rows: subgrid`, con una declaración común antes como fallback:
+
+  ```css
+  .card {
+    grid-row: span 3;
+    display: grid;
+    grid-template-rows: auto 1fr auto; /* navegador sin subgrid */
+    grid-template-rows: subgrid;
+  }
+  ```
+- **Trampas de grid**: `grid-auto-flow: dense` reordena lo visual y rompe el orden de tabulación: no en
+  contenido interactivo. `repeat(auto-fit, minmax())` necesita un contenedor con ancho definido (no
+  `inline-grid` ni un ítem flex sin ancho). `justify-items` alinea dentro de la celda y `justify-content` alinea
+  las pistas: usar el equivocado no da error ni efecto.
 
 ### 13.14 Container queries (`@container`)
 
@@ -366,6 +429,10 @@ insertan, no del tamaño de la pantalla.
   .card { background: black; color: white; }
 }
 ```
+
+- `container-type: size` exige `block-size` definido en el contenedor, o sus hijos colapsan; para consultar solo
+  el ancho, `inline-size`. Las unidades `cq*` sin un ancestro contenedor caen a las del viewport chico
+  (`svw` / `svh`).
 
 ### 13.15 Anchor positioning
 
@@ -463,6 +530,13 @@ activa para todo el documento desde `:root`.
   los navegadores.
 - **Ojo con el contenedor**: si la animación de despliegue "no se ve", la causa más común es que
   falta `overflow: hidden` / `clip` en el elemento que se anima.
+- **Colapsar a `0` no oculta el contenido**: el lector de pantalla lo sigue leyendo y sus enlaces siguen en el
+  orden de Tab. El estado cerrado lleva `visibility: hidden` (abierto: `visible`) y `visibility` se suma a la
+  `transition`, para que el contenido se vea hasta terminar de cerrar.
+- **`translate`, `rotate` y `scale` como propiedades sueltas** (Baseline 2022): en `:hover` se cambia solo una,
+  sin repetir la cadena de `transform`, y un `@keyframes` que anima `translate` no pisa un `scale` de hover.
+  Declarar el valor neutro en el estado base (`scale: 1`): si no, el contexto de apilamiento aparece recién en
+  hover y cambia el `z-index`. Se acumulan con `transform`: `scale: 2` más `transform: scale(3)` da 6.
 
 ### 13.17 Animaciones por keyframes
 
@@ -704,13 +778,16 @@ animar las propiedades **discretas** (`display`, `overlay`) con
 
 ```css
 dialog {
-  /* allow-discrete: permite animar display/overlay (de none↔block, top-layer↔normal) */
-  transition: scale 0.3s ease, display 0.3s ease allow-discrete, overlay 0.3s ease allow-discrete;
+  scale: 0; /* estado cerrado: hacia acá anima la salida */
+  transition-property: scale, display, overlay;
+  transition-duration: 0.3s;
+  /* allow-discrete: permite animar display/overlay (de none↔block, top-layer↔normal).
+     Va aparte del shorthand: dentro de `transition`, un navegador que no lo conoce descarta toda la declaración */
+  transition-behavior: allow-discrete;
 }
 
 dialog[open] {
   scale: 1;
-  transition: scale 0.3s ease-in-out, display 0.3s ease-in-out allow-discrete, overlay 0.3s ease-in-out allow-discrete;
 
   /* estado DESDE el que arranca la animación de entrada */
   @starting-style {
@@ -723,6 +800,9 @@ dialog[open] {
   (sin él, no hay desde dónde interpolar y el navegador "salta" al estado final).
 - `transition-behavior: allow-discrete` → habilita transicionar propiedades que normalmente no se
   animan (`display`, `overlay`), evitando que el elemento desaparezca de golpe al cerrarse.
+- **Soporte real de la salida**: Firefox 129+ acepta `allow-discrete` pero todavía no transiciona `display`, y
+  `overlay` solo existe en Chrome y Edge. Ahí la entrada se anima y la salida es instantánea. Es mejora
+  progresiva: no se agrega JavaScript para igualar la salida.
 
 ### 13.20 `<select>`/`<option>` personalizables (`appearance: base-select`)
 
@@ -802,6 +882,10 @@ textarea {
 - Al ser una feature Baseline muy reciente, seguir probando el navegador mínimo soportado por el
   proyecto (versiones anteriores a mediados de 2026 no lo implementan); el `min-height`/`max-height`
   como fallback no rompe nada donde sí hay soporte.
+- `width` o `height` explícitos anulan `field-sizing`: si un estilo global los fija, volver a `auto`. En un
+  `input`, `min-inline-size` (vacío colapsa y no se puede clickear) y `max-inline-size`. En un `textarea`,
+  `inline-size: 100%`, para que un placeholder largo no lo achique al escribir el primer carácter. Con NG-ZORRO,
+  `nzAutosize` ya resuelve el textarea.
 
 ### 13.22 Carruseles sin JavaScript (`::scroll-marker`/`::scroll-button`)
 
@@ -866,9 +950,22 @@ los pseudo-elementos de **CSS Overflow Level 5** para los controles — sin ning
   transiciones puntuales con el mixin del proyecto si existe (ver
   [07-styles-scss.md](./07-styles-scss.md) §7.7: si no existe, se crea al segundo uso).
 - **Tipografía**: `text-wrap: balance;` (títulos equilibrados) y `text-wrap: pretty;` (evita
-  palabras huérfanas al final del párrafo).
+  palabras huérfanas al final del párrafo). `balance` es para títulos y `th` cortos: pasadas 6 líneas en
+  Chromium o 10 en Firefox vuelve al corte normal, y en un elemento con fondo o borde visibles deja huecos.
+  `pretty` no tiene soporte en Firefox (se ignora). Ninguno va en `*`: tienen costo de render.
 - **Performance**: animar preferentemente `transform` y `opacity` (compositor/GPU); evitar animar
   layout (anchos, márgenes, sombras).
+- El reset global también evita que disparen `animationend` y `transitionend`: el código que espera esos eventos
+  para quitar un nodo o cerrar algo tiene que seguir cuando no hay animación
+  (`elemento.getAnimations().length === 0`). Con la animación apagada el elemento queda en su estado final,
+  nunca en `opacity: 0`.
+- **Contenedores con texto** (botón, badge, tab, card): `min-block-size`, nunca `height` fijo. Con zoom o con el
+  espaciado de texto que pide WCAG 1.4.12 el contenido se corta.
+- **Control propio clickeable** (ícono, chip): al menos 24 × 24 px con `min-inline-size` / `min-block-size` o
+  padding (WCAG 2.5.8).
+- **Texto en `content`**: nunca texto con significado en `::before` / `::after`: va en el DOM. Un ícono
+  decorativo se silencia con texto alternativo vacío (Baseline jul 2024), con la declaración simple antes como
+  fallback: `content: '→'; content: '→' / '';`.
 
 ### 13.24 Imágenes de fondo por densidad de pantalla (`image-set()`)
 
@@ -1078,5 +1175,8 @@ Los valores de los ejemplos de este archivo (§13.23, §13.25, §13.30) salen de
   throttling ×4 en DevTools.
 - `prefers-reduced-motion` (§13.23) anula el movimiento; si el cambio de estado necesita feedback,
   dejar solo un fade de opacidad, nunca un desplazamiento.
+- Movimiento que arranca solo, dura más de 5 s y convive con otro contenido (carrusel, banner): botón visible
+  para pausarlo, operable con teclado (WCAG 2.2.2); `prefers-reduced-motion` no lo reemplaza. Nada parpadea más
+  de 3 veces por segundo (WCAG 2.3.1), tampoco para quien no pidió movimiento reducido.
 
 ---

@@ -81,6 +81,7 @@
   - `<strong>` → importancia semántica (negrita por defecto).
   - `<em>` → énfasis de entonación (cursiva por defecto).
   - `<small>` → comentarios secundarios, notas al pie, avisos legales. **No** por mera estética.
+- **`<search>`** envuelve buscadores y filtros: es el landmark de búsqueda, sin `role="search"`.
 
 ### 12.4 Equipos de etiquetas que van juntas (recetas semánticas)
 
@@ -181,6 +182,19 @@ mejorarla — le miente sobre qué es el elemento y qué hace.
 - **Efecto secundario de los `id`**: un `id` en HTML crea una referencia global en `window` (acceso
   directo desde JS). Se desaconseja abusar por riesgo de colisiones.
 
+**Casos que se hacen mal seguido:**
+
+- **`disabled` saca el control del foco**: quien usa lector de pantalla no se entera de que existe. En una
+  acción que conviene descubrir (botón de una barra, acción de fila), `aria-disabled="true"` y bloquear la acción
+  en el handler:
+  `<button type="button" [attr.aria-disabled]="!puedeGuardar()" (click)="puedeGuardar() && guardar()">`.
+- **Nombres repetidos**: diez botones "Editar" en una tabla se leen iguales. Sumar el dato de la fila con texto
+  oculto (`Editar <span class="u-sr-only">{{ fila.nombre }}</span>`) o con `aria-label`. El nombre accesible
+  contiene el texto visible tal cual (WCAG 2.5.3) y no repite el rol: `<nav aria-label="Principal">`, no
+  "Navegación principal".
+- **`<ul>` sin viñetas en Safari**: con `list-style: none` o `display: flex` Safari deja de anunciarla como
+  lista. Si la lista importa (menú, etiquetas, cards), `role="list"` en ese `<ul>`; en el resto es redundante.
+
 ### 12.7 Formularios nativos y componentes interactivos modernos
 
 - `<form method="post" action="…">` → captura y envío nativo de datos.
@@ -213,6 +227,47 @@ mejorarla — le miente sobre qué es el elemento y qué hace.
   entrada/salida en [13-css3-layouts-animations.md](./13-css3-layouts-animations.md) §13.19). Maneja
   foco y `Escape` nativamente: al abrir con `showModal()`, el navegador atrapa el foco adentro solo;
   no hace falta un `cdkTrapFocus` para un `<dialog>` nativo.
+- **`<dialog>` propio, lo que se hace mal** (con librería de UI, el modal es el de la librería):
+  - No agregar `role="dialog"`, `aria-modal`, trampa de foco, `inert` ni handler de Escape: `showModal()` ya lo
+    hace y devuelve el foco al botón que abrió. Nombre con `aria-labelledby`.
+  - Abrir desde el template con `(click)="dialogo.showModal()"` sobre una template ref. `command` /
+    `commandfor` son Baseline recién desde dic 2025: en un navegador anterior el botón no hace nada.
+  - Cerrar con `<form method="dialog">`. En una confirmación destructiva, `autofocus` en la acción segura
+    (Cancelar). No poner `display` en `dialog` sin `[open]`: pisa el estado cerrado.
+  - **Cerrar con click afuera**: `closedby="any"` no funciona en Safari. Si el pedido lo exige, va un handler,
+    que anda en todos los navegadores. Compara la posición del puntero con la caja: `event.target` solo no
+    alcanza, porque un click en el padding del diálogo también lo tiene como target.
+
+    ```html
+    <dialog #ayuda aria-labelledby="ayuda-titulo" (click)="onClickFuera($event, ayuda)">
+    ```
+
+    ```ts
+    protected onClickFuera(event: MouseEvent, dialogo: HTMLDialogElement): void {
+      if (event.target !== dialogo) return; // click en el contenido, o Enter sobre un botón interno
+      const caja = dialogo.getBoundingClientRect();
+      const adentro =
+        event.clientX >= caja.left && event.clientX <= caja.right &&
+        event.clientY >= caja.top && event.clientY <= caja.bottom;
+      if (!adentro) dialogo.close();
+    }
+    ```
+  - **Cambios sin guardar**: la guarda va en el evento `cancel` (`event.preventDefault()` y pedir confirmación);
+    así cubre Escape además del botón.
+  - **Scroll del fondo**: `showModal()` no lo bloquea. No tocar `overflow` de `body` (mueve el layout y rompe
+    `sticky`). Mejora progresiva, sin soporte en Safari:
+    `dialog::backdrop { overflow: hidden; overscroll-behavior: contain; }`.
+- **Qué overlay propio**: interrumpe y bloquea (confirmar, formulario) → `<dialog>` modal. El usuario sigue
+  trabajando (menú, ayuda contextual) → `popover` (Baseline ene 2025) sobre un elemento semántico, no `<dialog>`.
+- **`<details>`**: sin headings, enlaces ni botones dentro de `<summary>` (varios lectores lo exponen como botón
+  y el heading se pierde). `name` compartido entre varios los hace excluyentes sin JS (Baseline sep 2024).
+- **Botón de copiar**: `navigator.clipboard.writeText()` dentro de `try` / `catch` (solo funciona en HTTPS). El
+  resultado, también el fallo, se anuncia en un `<span role="status">` que ya está en el DOM vacío, no creado
+  con `@if`. No deshabilitar el botón al copiar: pierde el foco.
+- **Campos de identificadores** (DNI, CUIT, expediente, usuario): `spellcheck="false"`, `autocapitalize="none"`
+  y `autocorrect="off"`, para que el navegador no subraye ni corrija el valor.
+- **`autocomplete` describe datos de quien escribe.** Un campo con datos de un tercero (un imputado, un
+  testigo) no lleva token de datos personales como `name` o `email`.
 
 ### 12.8 SEO y metadatos en Angular (`Title` / `Meta`, SSR)
 
@@ -331,6 +386,9 @@ ruta.
   el contexto de la página es desorientador. Evitarlo en la carga inicial de una página completa;
   aceptable en un `<dialog>` que el usuario **acaba de abrir** con una acción explícita (ya tiene
   contexto).
+- **`inert`** en lo que no debe recibir foco ni leerse: el fondo de un overlay propio (el overlay no puede ser
+  descendiente del nodo `inert`) y los pasos inactivos de un wizard que siguen en el DOM:
+  `[attr.inert]="activo() ? null : ''"`. Un `<dialog>` abierto con `showModal()` ya deja inerte el fondo.
 - **Skip link**: un enlace oculto visualmente pero enfocable, primero en el `<body>`, que salta la
   navegación repetitiva e va directo al contenido principal — indispensable para quien navega por
   teclado en una página con un header/nav largo:

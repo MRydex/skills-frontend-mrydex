@@ -341,9 +341,14 @@ validateHttp(path.email, {
   ```
 - El error de campo se asocia con `aria-describedby` + `aria-invalid`, sin `role="alert"` por campo (al enviar
   dispararía varias alertas juntas). Al enviar con errores: un resumen con `role="alert"` y foco en el primer
-  campo inválido. `aria-live="polite"` en el contenedor del mensaje solo si se valida mientras se escribe, para que se anuncie cuando
-  aparece dinámicamente (al perder foco, al fallar el submit), sin esperar a que el usuario vuelva a
-  navegar hacia ahí.
+  campo inválido. Un error que aparece al salir del campo o mientras se escribe se anuncia con **una sola**
+  región `polite` para toda la página (`LiveAnnouncer` del CDK), no con `aria-live` en cada mensaje: una región
+  que se inserta ya con texto (un `@if`) no se anuncia de forma confiable.
+- `[attr.aria-invalid]` con un booleano deja `aria-invalid="false"` explícito, y es lo correcto: sin el atributo,
+  Firefox y Safari anuncian como inválido un `required` vacío desde la carga. No cambiarlo por `null`.
+- El mensaje es texto visible que dice cómo corregir ("Ingresá un correo con formato usuario@dominio"), nunca
+  solo borde o color rojo. La ayuda del campo va arriba del input (abajo la tapa el autocompletado del navegador)
+  y primero en `aria-describedby`: `'email-ayuda email-error'`.
 - Error del guardado: si el interceptor global ya lo muestra (modal o toast), no repetirlo inline;
   para mostrarlo solo inline, `SKIP_ERROR_HANDLER` en esa request (§5.4).
 - **Resumen de errores en submit fallido**: `f().errorSummary()` da la lista completa de errores del

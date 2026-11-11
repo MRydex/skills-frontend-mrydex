@@ -161,11 +161,19 @@ this.html = this._sanitizer.bypassSecurityTrustHtml(respuesta.descripcion);
 - Toda CSP nueva o endurecida se despliega primero como **`Content-Security-Policy-Report-Only`**,
   se revisan los reportes y después se pasa a modo bloqueo.
 - **Nunca** `'unsafe-eval'`. `'unsafe-inline'` en `script-src` tampoco.
+- **Política propia de Trusted Types**: nunca de paso directo (`createHTML: (valor) => valor` anula la
+  protección), y su nombre va en la directiva `trusted-types` de la CSP. Trusted Types es Baseline recién desde
+  feb 2026 (Firefox 148): en un navegador anterior no protege, así que no reemplaza al sanitizador.
+- **Reportes de CSP**: `report-to` solo funciona si el servidor manda también
+  `Reporting-Endpoints: default="https://<api>/csp"`. `'report-sample'` en `script-src` suma al reporte el
+  inicio del script bloqueado. El reporte sigue activo con la CSP ya aplicada, no solo en Report-Only.
 
 ### 15.5 Autenticación, tokens y autorización
 
 - **Preferir cookies de sesión `HttpOnly; Secure; SameSite=Strict|Lax`** emitidas por el backend
-  (patrón BFF). JavaScript no puede leerlas, así que un XSS no las roba.
+  (patrón BFF). JavaScript no puede leerlas, así que un XSS no las roba. Nombre con prefijo `__Host-`
+  (`__Host-sesion`): el navegador solo la acepta con `Secure`, `Path=/` y sin `Domain`, así un subdominio no
+  puede pisarla.
 - Si se usa bearer token (OIDC/OAuth con PKCE), guardarlo **en memoria** (signal de un servicio),
   nunca en `localStorage`/`sessionStorage`. Refresh token solo en cookie `HttpOnly`.
 - El `authInterceptor` agrega el header **solo** si la request va al origen de la API propia.
@@ -187,7 +195,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 - **Permisos en la UI por flag del backend** (`puedeEliminar`), expuesto en un solo `computed`;
   nunca listas de `idUsuario` o `idArea` en el template ni en el `.ts`: son fáciles de leer en el
   bundle, se desactualizan con cada alta y no protegen nada ([02](./02-typescript-signals.md) §2.17).
-- En logout: limpiar signals de sesión, stores con datos del usuario y cualquier storage propio.
+- En logout: limpiar signals de sesión, stores con datos del usuario y cualquier storage propio. El endpoint
+  de logout del backend responde además `Clear-Site-Data: "cookies", "storage", "cache"`, que borra en el
+  navegador lo que el código pudo dejar.
 - **Logout en todas las pestañas**: con el token en memoria no hay evento `storage` que avise a las
   otras pestañas; usar `BroadcastChannel` (mismo origen) desde el servicio de auth, **sin `effect()`**: el
   método que cierra la sesión también avisa, y `onmessage` escribe el signal. El mensaje es un evento
@@ -315,7 +325,9 @@ this._router.navigateByUrl(destino);
 - Links externos: `target="_blank" rel="noopener noreferrer"`.
 - URLs dinámicas en `[href]`: validar esquema `https:` (o `mailto:`/`tel:` si aplica). Angular
   marca `javascript:` como `unsafe:`, pero no validar el dominio.
-- `postMessage`: validar siempre `event.origin` contra una lista blanca y la forma del `data`.
+- `postMessage`: validar siempre `event.origin` contra una lista blanca y la forma del `data`. Rechazar antes
+  `event.origin === 'null'` (los iframes `sandbox` y las URLs `data:` comparten ese valor) y comparar con
+  `new URL(origen).origin`, nunca con `startsWith` / `includes`. Al enviar, `targetOrigin` explícito, nunca `'*'`.
 
 ### 15.8 Datos sensibles y secretos en el front
 
@@ -353,6 +365,9 @@ Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
     <remove name="X-Powered-By" />
     <add name="Strict-Transport-Security" value="max-age=31536000; includeSubDomains" />
     <add name="X-Content-Type-Options" value="nosniff" />
+    <add name="X-Frame-Options" value="DENY" />
+    <add name="Cross-Origin-Opener-Policy" value="same-origin-allow-popups" />
+    <add name="Cross-Origin-Resource-Policy" value="same-origin" />
     <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
     <add name="Permissions-Policy" value="camera=(), microphone=(), geolocation=()" />
     <!-- script-src lo define autoCsp (§15.4); acá solo lo que el meta tag no cubre -->
@@ -368,6 +383,14 @@ Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
   `includeSubDomains`).
 - Ajustar `Permissions-Policy` a lo que la app usa de verdad.
 - Verificar el resultado con las DevTools (pestaña Network → Headers) después del deploy.
+- `X-Frame-Options: DENY` acompaña a `frame-ancestors 'none'` para navegadores viejos. Si la app se embebe
+  desde otro origen permitido, se quita (no sabe expresar listas) y manda `frame-ancestors`.
+- `Cross-Origin-Opener-Policy: same-origin-allow-popups` aísla la ventana de quien la abrió y deja funcionar
+  el popup de login OIDC. `Cross-Origin-Resource-Policy: same-origin` impide que otro sitio cargue estos
+  archivos: si otro origen los consume (un remote de microfrontends, [17](./17-microfrontends.md)), va
+  `same-site` o `cross-origin`.
+- HSTS nuevo en un dominio: empezar con `max-age` corto (300) y subirlo al confirmar que todo responde por
+  HTTPS. Un `max-age` largo mal puesto deja el sitio inaccesible hasta que vence.
 
 ### 15.10 Supply chain: dependencias y build
 
@@ -385,7 +408,10 @@ Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
   `.patch` versionado y el motivo en el PR.
 - Paquetes internos de la empresa (`@empresa/*`) con **versión exacta** en `package.json`, sin `^`:
   su semver no es confiable y un minor puede renombrar exports.
-- Scripts externos (CDN) solo con **Subresource Integrity** (`integrity` + `crossorigin`).
+- Scripts externos (CDN) solo con **Subresource Integrity** (`integrity` + `crossorigin`): hash `sha384-` del
+  archivo conocido, URL con versión fija (nunca `latest`), `crossorigin="anonymous"` (sin él el recurso se
+  bloquea) y `referrerpolicy="no-referrer"`. Un script que su dueño cambia en el lugar no admite `integrity`: se
+  limita con CSP.
 - Dependabot / Renovate activos en el repo.
 
 #### Auditoría de dependencias: siempre, no solo en CI

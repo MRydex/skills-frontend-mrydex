@@ -396,36 +396,61 @@ function pipInstall(pkg) {
   };
   if (pipCandidates(pkg).some(attempt)) return { ok: true, lastError };
   if (!runCommand('uv', ['--version']).ok && bootstrapUv() && attempt(pipCandidates(pkg).at(-1))) return { ok: true, lastError };
-  if (installSignedPython(pkg) && pipCandidates(pkg).slice(0, -1).some(attempt)) return { ok: true, lastError };
+  // Por ruta absoluta: `python` a secas puede seguir resolviendo al alias de la Tienda (WindowsApps)
+  const pythonDir = installSignedPython(pkg);
+  if (pythonDir) {
+    lastError = '';
+    if (attempt([path.join(pythonDir, 'python.exe'), ['-m', 'pip', ...PIP_ARGS, pkg]])) return { ok: true, lastError };
+  }
   return { ok: false, lastError };
+}
+
+// Carpeta del Python oficial (por usuario o para todos), o null. Primero el 3.13 que instala winget:
+// uno más nuevo puede no tener wheels publicados todavía y pip fallaría con `--only-binary`.
+function findOfficialPython() {
+  const rank = (name) => (name === 'Python313' ? Infinity : Number(name.slice(6)));
+  const roots = [
+    path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), 'AppData', 'Local'), 'Programs', 'Python'),
+    process.env.ProgramFiles,
+  ].filter(Boolean);
+  for (const root of roots) {
+    let names = [];
+    try {
+      names = fs.readdirSync(root).filter((name) => /^Python3\d+$/.test(name))
+        .sort((a, b) => rank(b) - rank(a));
+    } catch {
+      // sin carpeta: se prueba la siguiente
+    }
+    const found = names.find((name) => fs.existsSync(path.join(root, name, 'python.exe')));
+    if (found) return path.join(root, found);
+  }
+  return null;
 }
 
 // Windows con Smart App Control bloquea el Python que trae uv (no está firmado; "Una directiva de Control de
 // aplicaciones bloqueó este archivo", os error 4551). Plan B: el Python oficial (firmado por la PSF) por
 // winget, por usuario y sin admin, y se saca el shim roto de uv para que no tape al `graphify` de pip.
 function installSignedPython(pkg) {
-  if (process.platform !== 'win32' || !runCommand('winget', ['--version']).ok) return false;
+  if (process.platform !== 'win32' || !runCommand('winget', ['--version']).ok) return null;
   console.log(`  ${colors.dim}Instalando Python 3.13 oficial con winget (el de uv quedó bloqueado o no hay Python)...${colors.reset}`);
   const result = runCommand('winget', ['install', '--id', 'Python.Python.3.13', '-e', '--scope', 'user', '--silent',
     '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity']);
   if (!result.ok && !/already installed|upgrade found|ya está instalado|actualización aplicable/i.test(result.output)) {
     console.log(`  ${colors.yellow}⚠${colors.reset} winget no pudo instalar Python: ${errorTail(result.output)}`);
-    return false;
+    return null;
   }
-  // La terminal actual no ve el PATH nuevo: se suman las carpetas del Python por usuario a este proceso
-  const programs = path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), 'AppData', 'Local'), 'Programs', 'Python');
-  let dirs = [];
-  try {
-    dirs = fs.readdirSync(programs).filter((name) => /^Python3\d+$/.test(name)).sort().reverse()
-      .flatMap((name) => [path.join(programs, name), path.join(programs, name, 'Scripts')]);
-  } catch {
-    // sin carpeta: queda el PATH como está
+  const pythonDir = findOfficialPython();
+  if (!pythonDir) {
+    console.log(`  ${colors.yellow}⚠${colors.reset} winget terminó, pero no hay Python en %LOCALAPPDATA%\\Programs\\Python ni en %ProgramFiles% (¿se instaló en el perfil de otro usuario?)`);
+    return null;
   }
+  // La terminal actual no ve el PATH nuevo: se suman las carpetas de ese Python a este proceso
   const current = process.env.PATH.split(path.delimiter);
+  const dirs = [pythonDir, path.join(pythonDir, 'Scripts')];
   process.env.PATH = [...dirs.filter((dir) => !current.includes(dir)), ...current].join(path.delimiter);
   runCommand('uv', ['tool', 'uninstall', pkg]);
-  logOk('Python oficial instalado');
-  return true;
+  logOk(`Python oficial instalado en ${pythonDir}`);
+  return pythonDir;
 }
 
 // Últimas líneas de un error de instalación, en una sola línea
@@ -450,10 +475,14 @@ function ensureGraphifyCli() {
     return graphifyReady;
   }
 
-  const { lastError } = pipInstall('graphifyy');
+  const { ok: pipOk, lastError } = pipInstall('graphifyy');
   const check = runCommand('graphify', ['--help']);
   if (!check.ok) {
-    console.log(`  ${colors.yellow}⚠ No se pudo instalar graphify${colors.reset}${lastError ? `: ${errorTail(lastError)}` : ' (sin pip/python/uv y falló la instalación de uv)'}`);
+    // Con pip en verde el error viejo de otro intento confunde: se muestra por qué no corre `graphify`
+    const cause = pipOk
+      ? `pip instaló el paquete, pero \`graphify\` no corre: ${errorTail(check.output) || 'no está en el PATH'}`
+      : lastError ? errorTail(lastError) : 'sin pip/python/uv y falló la instalación de uv';
+    console.log(`  ${colors.yellow}⚠ No se pudo instalar graphify${colors.reset}: ${cause}`);
     console.log(`  ${colors.dim}Instalar a mano: Python 3.13 oficial (python.org o winget install Python.Python.3.13) y correr: pip install graphifyy && graphify install${colors.reset}`);
     graphifyReady = false;
     return graphifyReady;

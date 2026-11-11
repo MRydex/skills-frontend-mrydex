@@ -142,6 +142,9 @@ $font-size-large:  clamp(1.5rem, -0.875rem + 8.333vw, 2.5rem);
 > El término `IDEAL` con `rem` negativo es normal: sale de interpolar el tamaño entre dos anchos de
 > viewport. No tocarlo a mano; generarlo con una calculadora de *fluid type scale* y guardarlo como
 > token.
+>
+> El máximo no supera 2,5 veces el mínimo y los dos van en `rem`: si no, el zoom del navegador no llega a
+> agrandar el texto al 200% (WCAG 1.4.4). Nunca `vw` solo como tamaño de fuente.
 
 #### Tema claro/oscuro con `light-dark()` y `color-scheme`
 
@@ -163,8 +166,19 @@ h1 { color: light-dark(var.$color-text-light, var.$color-text-dark); } // primer
   scrollbars y controles de formulario nativos).
 - `color-scheme: dark` (o `light`) fijo en `:root` o en una clase/atributo (`[data-theme='dark']`)
   → fuerza el tema desde un toggle propio de la UI, sin depender del SO.
-- `light-dark()` también acepta `<image>` y custom properties como argumentos
-  (`light-dark(var(--icon-light), var(--icon-dark))`), no solo colores.
+- `light-dark()` también acepta custom properties como argumentos
+  (`light-dark(var(--icon-light), var(--icon-dark))`), no solo colores. Con imágenes (`url()`) es Baseline recién
+  desde septiembre de 2026: para un ícono o fondo por tema, una custom property por imagen que cambia en
+  `@media (prefers-color-scheme: dark)`.
+- `color-scheme` va en `:root`, no en `body`: si no, el scrollbar y el fondo raíz quedan claros.
+  `<meta name="color-scheme" content="light dark">` en `index.html` reduce el destello blanco al cargar.
+- `light-dark()` se resuelve al calcular el valor: `color`, `fill` y las demás propiedades heredadas llegan a
+  los hijos ya resueltas. Al fijar `color-scheme` en un contenedor (`.panel--oscuro`), volver a declarar ahí
+  `color` y `background` con el mismo token.
+- **Alto contraste del sistema** (`forced-colors: active`): `box-shadow` y los fondos desaparecen. Un estado o
+  un borde que se marca solo con ellos necesita `outline` o `border` con un color de sistema (`Highlight`,
+  `CanvasText`) dentro de `@media (forced-colors: active)`. Ningún estado se indica solo con color: lleva
+  además ícono o texto.
 
 ### 7.3 Selectores anidados con BEM
 

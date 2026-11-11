@@ -19,6 +19,37 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 - Instalador: si Windows Smart App Control bloquea el Python que trae uv ("Una directiva de Control de aplicaciones
   bloqueó este archivo", os error 4551) o no hay Python, instala el Python 3.13 oficial con `winget` (firmado, por
   usuario, sin admin), saca el shim roto `uv tool uninstall graphifyy` y reintenta `pip install graphifyy`.
+- Reglas de plataforma web tomadas de las guías oficiales de
+  [modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance) (Chrome, Edge, Firefox y MDN;
+  Apache-2.0), escritas como texto en cada referencia, sin instalar nada. De 75 guías revisadas quedó solo lo que
+  la skill no cubría y sirve en una app Angular con librería de UI:
+  - `13`: barra de scroll (`scrollbar-color` con fallback), `overflow: clip`, `scrollbar-gutter`, región con
+    scroll accesible, truncado en tablas, subgrid, trampas de flex y grid, `translate` / `scale` como propiedades
+    sueltas, colapsar sin dejar contenido leíble, límites de `text-wrap`, texto alternativo en `content`, pausa
+    del movimiento automático. §13.19 corregido: `allow-discrete` va en `transition-behavior`, no dentro del
+    shorthand `transition`.
+  - `07` §7.2: tope de `clamp()` para el zoom, `color-scheme` en `:root`, `light-dark()` con imágenes, alto
+    contraste del sistema.
+  - `12`: `<dialog>` propio (qué no agregar, click afuera con handler, cambios sin guardar), `aria-disabled`,
+    nombres repetidos, `role="list"` en Safari, `inert`, `<search>`, botón de copiar, campos de identificadores.
+  - `06` §6.7: un solo anunciador de errores (`LiveAnnouncer`), `aria-invalid="false"` explícito, error con
+    texto visible.
+  - `09`: `scheduler.yield()` para tareas de 50 a 250 ms, reglas de `content-visibility`, `scrollend`, fases de
+    INP.
+  - `15`: cookie `__Host-`, `Clear-Site-Data` en logout, `X-Frame-Options` / COOP / CORP en IIS, HSTS gradual,
+    SRI completo, origen `"null"` en `postMessage`, `Reporting-Endpoints`.
+
+  El CLI y la skill de ese repo no se instalan. Probado con 8 corridas de subagente: sin un permiso permanente
+  para ejecutar `npx` de un paquete externo la guía no llega al agente, y su telemetría manda a Google el texto
+  de cada búsqueda.
+
+### Corregido
+
+- Instalador: después de instalar Python con `winget`, graphify seguía fallando con "Python was not found; run
+  without arguments to install from the Microsoft Store" porque `python` resolvía al alias de la Tienda
+  (`WindowsApps\python.exe`). Ahora ubica el `python.exe` oficial en `%LOCALAPPDATA%\Programs\Python` o
+  `%ProgramFiles%` y corre pip por ruta absoluta. Si `winget` termina y no hay Python en esas carpetas, lo dice;
+  si pip instala pero `graphify` no arranca, muestra ese error y no el de un intento anterior.
 - `02` §2.1: `strict: true` ya incluye `strictNullChecks` y los demás flags estrictos; nunca apagarlos. `20` §20.3
   Paso 1: en un legacy con `strict: false`, activar de a un flag (`strictNullChecks` primero, después
   `noImplicitAny`, después `strict`), corrigiendo con angostado y no con `!`. Checklist TypeScript: ítem nuevo.
