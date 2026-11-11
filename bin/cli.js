@@ -395,9 +395,37 @@ function pipInstall(pkg) {
     return result.ok;
   };
   if (pipCandidates(pkg).some(attempt)) return { ok: true, lastError };
-  if (runCommand('uv', ['--version']).ok || !bootstrapUv()) return { ok: false, lastError };
-  const ok = attempt(pipCandidates(pkg).at(-1));
-  return { ok, lastError };
+  if (!runCommand('uv', ['--version']).ok && bootstrapUv() && attempt(pipCandidates(pkg).at(-1))) return { ok: true, lastError };
+  if (installSignedPython(pkg) && pipCandidates(pkg).slice(0, -1).some(attempt)) return { ok: true, lastError };
+  return { ok: false, lastError };
+}
+
+// Windows con Smart App Control bloquea el Python que trae uv (no está firmado; "Una directiva de Control de
+// aplicaciones bloqueó este archivo", os error 4551). Plan B: el Python oficial (firmado por la PSF) por
+// winget, por usuario y sin admin, y se saca el shim roto de uv para que no tape al `graphify` de pip.
+function installSignedPython(pkg) {
+  if (process.platform !== 'win32' || !runCommand('winget', ['--version']).ok) return false;
+  console.log(`  ${colors.dim}Instalando Python 3.13 oficial con winget (el de uv quedó bloqueado o no hay Python)...${colors.reset}`);
+  const result = runCommand('winget', ['install', '--id', 'Python.Python.3.13', '-e', '--scope', 'user', '--silent',
+    '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity']);
+  if (!result.ok && !/already installed|upgrade found|ya está instalado|actualización aplicable/i.test(result.output)) {
+    console.log(`  ${colors.yellow}⚠${colors.reset} winget no pudo instalar Python: ${errorTail(result.output)}`);
+    return false;
+  }
+  // La terminal actual no ve el PATH nuevo: se suman las carpetas del Python por usuario a este proceso
+  const programs = path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), 'AppData', 'Local'), 'Programs', 'Python');
+  let dirs = [];
+  try {
+    dirs = fs.readdirSync(programs).filter((name) => /^Python3\d+$/.test(name)).sort().reverse()
+      .flatMap((name) => [path.join(programs, name), path.join(programs, name, 'Scripts')]);
+  } catch {
+    // sin carpeta: queda el PATH como está
+  }
+  const current = process.env.PATH.split(path.delimiter);
+  process.env.PATH = [...dirs.filter((dir) => !current.includes(dir)), ...current].join(path.delimiter);
+  runCommand('uv', ['tool', 'uninstall', pkg]);
+  logOk('Python oficial instalado');
+  return true;
 }
 
 // Últimas líneas de un error de instalación, en una sola línea
@@ -426,7 +454,7 @@ function ensureGraphifyCli() {
   const check = runCommand('graphify', ['--help']);
   if (!check.ok) {
     console.log(`  ${colors.yellow}⚠ No se pudo instalar graphify${colors.reset}${lastError ? `: ${errorTail(lastError)}` : ' (sin pip/python/uv y falló la instalación de uv)'}`);
-    console.log(`  ${colors.dim}Instalar a mano: instalar uv (https://docs.astral.sh/uv/) y correr: uv tool install --python 3.13 graphifyy && graphify install${colors.reset}`);
+    console.log(`  ${colors.dim}Instalar a mano: Python 3.13 oficial (python.org o winget install Python.Python.3.13) y correr: pip install graphifyy && graphify install${colors.reset}`);
     graphifyReady = false;
     return graphifyReady;
   }

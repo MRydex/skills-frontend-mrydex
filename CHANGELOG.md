@@ -16,6 +16,9 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- Instalador: si Windows Smart App Control bloquea el Python que trae uv ("Una directiva de Control de aplicaciones
+  bloqueó este archivo", os error 4551) o no hay Python, instala el Python 3.13 oficial con `winget` (firmado, por
+  usuario, sin admin), saca el shim roto `uv tool uninstall graphifyy` y reintenta `pip install graphifyy`.
 - `02` §2.1: `strict: true` ya incluye `strictNullChecks` y los demás flags estrictos; nunca apagarlos. `20` §20.3
   Paso 1: en un legacy con `strict: false`, activar de a un flag (`strictNullChecks` primero, después
   `noImplicitAny`, después `strict`), corrigiendo con angostado y no con `!`. Checklist TypeScript: ítem nuevo.
