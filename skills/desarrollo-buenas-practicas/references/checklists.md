@@ -27,6 +27,8 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿`inject()` (no constructor injection)? ¿Servicios nuevos con `@Service()`?
 - [ ] ¿Modales creados por TS reciben `nzViewContainerRef` cuando comparten providers?
 - [ ] ¿Sin `any`? (`unknown` si es incierto) ¿Tipos explícitos cuando la inferencia no alcanza?
+- [ ] ¿`strict: true` en `tsconfig.json` (incluye `strictNullChecks`) y `strictTemplates: true`, sin
+      flags en `false` que los apaguen? ¿`null` / `undefined` angostados sin `!`?
 - [ ] ¿El estado usa **signals**? ¿El derivado usa `computed()` / `linkedSignal()`?
 - [ ] ¿Sin mutación in-place de arrays/objetos dentro de signals (siempre nueva referencia)?
 - [ ] ¿Lecturas dentro de `computed()` que no deben recalcular envueltas en `untracked()`? (§2.5)

@@ -131,9 +131,7 @@ Siempre instala todo; no hay flags para saltear partes.
   [agent-browser](https://github.com/vercel-labs/agent-browser) de Vercel,
   [grill-me](https://github.com/mattpocock/skills) y [find-skills](https://github.com/vercel-labs/skills).
   Plugin `claude-code-setup` en Claude Code.
-- **[Headroom](https://github.com/chopratejas/headroom)**: proxy que comprime el contexto
-  (`headroom init -g`). En Claude Code, hook `SessionStart` (levanta Headroom y carga `tasks/lessons.md` del proyecto) y autocompactación al 40%.
-  No funciona con Remote Control de Claude Code.
+- **Hook `SessionStart`** de Claude Code: carga `tasks/lessons.md` del proyecto como contexto; autocompactación al 40%.
 - **Claude Code, extras** (cada uno solo si el usuario no lo configuró antes, salvo `permissions.deny`, que se suma):
   - `permissions.deny` para que el agente no lea secretos (`~/.ssh`, `.env*`, `*.pem`, `*.key`...); se suman a las reglas del usuario.
   - MCP [Context7](https://github.com/upstash/context7) (docs vigentes de librerías, gratis).
@@ -146,23 +144,6 @@ Siempre instala todo; no hay flags para saltear partes.
     activa; se cobra al precio del advisor, solo con la API de Anthropic. `--advisor off` quita el que haya.
   - Subagentes con `effort` (`low` el revisor y `Explore`, `medium` el resto).
 - **`.gitignore`**: agrega los archivos de IA y agentes.
-
-## Si Headroom se cae
-
-Vuelve solo. En Windows la tarea oculta `headroom-init-user-health` lo revisa cada 2 minutos y lo relanza;
-Claude Code reintenta cada llamada unos 3 minutos, así que la respuesta sigue sin hacer nada. En macOS /
-Linux lo levantan los hooks de Headroom al iniciar sesión y antes de cada comando.
-
-Si sigue caído (`ECONNREFUSED` después de los reintentos), en una terminal fuera de Claude:
-
-```bash
-schtasks /Run /TN headroom-init-user-health   # Windows
-headroom proxy --port 8787                    # macOS / Linux (dejar la terminal abierta)
-headroom doctor                               # con "proxy ✓ pass", reintentar en Claude
-```
-
-Si no levanta, `headroom unwrap claude` y reiniciar el editor: Claude Code va directo a Anthropic, sin
-compresión. Para volver a usarlo: `headroom init -g claude` (o reinstalar la skill).
 
 ## Opciones
 

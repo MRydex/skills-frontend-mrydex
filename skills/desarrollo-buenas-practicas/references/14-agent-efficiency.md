@@ -581,7 +581,7 @@ Causas conocidas:
 - `Failed building wheel for tree-sitter` / `Microsoft Visual C++ 14.0 or greater is required` →
   el Python del sistema es más nuevo que los wheels publicados (ej. 3.15). Usar
   `uv tool install --python 3.13 graphifyy` (uv: `irm https://astral.sh/uv/install.ps1 | iex` en
-  Windows) y abrir una terminal nueva. Lo mismo para `headroom-ai[all]`.
+  Windows) y abrir una terminal nueva.
 - `[Errno 2] No such file or directory` en `graphify-out/cache` (Windows) → ruta del proyecto
   demasiado larga (MAX_PATH). Proponer mover el repo a una ruta corta o habilitar rutas largas
   (`LongPathsEnabled` en el registro, requiere admin). El usuario decide.
@@ -653,40 +653,23 @@ estas reglas para que rijan en todas las sesiones.
 | [ponytail](https://github.com/DietrichGebert/ponytail) | Reglas de código mínimo: menos líneas, plataforma antes que dependencias | `npx skills add DietrichGebert/ponytail --skill '*' -g` | Escribir solo el código necesario; `ponytail-review` sobre el diff en todo cambio que no sea trivial (§11.3); `ponytail-help` y `ponytail-gain` solo las pide el usuario |
 | [agent-skills](https://github.com/addyosmani/agent-skills) | Skills de ingeniería por fase (spec, plan, build, review, ship) | `npx skills add addyosmani/agent-skills -g --skill <todas menos test-driven-development y browser-testing-with-devtools>` (lista en `bin/cli.js`) | Usar la skill de la fase en curso. Las de tests no se instalan (§8) |
 | [claude-code-setup](https://github.com/anthropics/claude-plugins-official) | Recomienda hooks, subagentes, skills y MCP para el repo (Claude Code) | `/plugin install claude-code-setup@claude-plugins-official` | En un repo sin setup de Claude Code: correr `claude-automation-recommender` una vez y proponer el resultado |
-| [Headroom](https://github.com/chopratejas/headroom) | Proxy local que comprime el contexto de entrada | `uv tool install --python 3.13 "headroom-ai[all]"` (o `pip install "headroom-ai[all]"`) | Automático por agente (tabla de abajo). Si un agente quedó sin integrar: `headroom init -g <agente>` o `headroom wrap <agente>` |
 
 - **Claude Code**: el instalador instala claude-code-setup y claude-security (escaneo de vulnerabilidades
   del código propio, oficial de Anthropic) con `claude plugin install` (si no hay CLI,
   lo activa en `enabledPlugins`). No se usa claude-mem: su memoria hosteada es paga y, sin
   suscripción, resume las sesiones con el plan de Anthropic (gasta tokens). Las skills (ponytail, agent-skills) quedan en todos los agentes detectados por `npx skills`.
-- **Headroom en cada agente.** El instalador usa la integración durable oficial (`headroom init -g
-  --port 8787 <agente>`): apunta el agente al proxy y agrega hooks que lo levantan solo al iniciar
-  sesión y antes de cada comando.
-
-  | Agente | Integración | Proxy arranca solo |
-  | :--- | :--- | :--- |
-  | Claude Code (CLI y extensión de VS Code) | `headroom init -g claude`: `env.ANTHROPIC_BASE_URL`, hooks `SessionStart` / `PreToolUse`, plugin y MCP `headroom`. Remote Control no anda así: exige `api.anthropic.com` | Sí |
-  | Copilot CLI | `headroom init -g copilot` | Sí |
-  | Codex (macOS / Linux) | `headroom init -g codex`: `model_provider = "headroom"` en `~/.codex/config.toml` | Sí |
-  | Codex (Windows) | `headroom wrap codex` al lanzarlo. Codex no corre hooks en Windows: con `init` fallaría si el proxy está caído | Con `wrap` |
-  | Cursor / VS Code Copilot | `headroom wrap cursor` / `headroom wrap vscode` (instrucciones y settings) | No |
-  | Gemini CLI / Antigravity | Headroom no los soporta | — |
-
-  En Windows el proxy corre como tarea programada oculta (`headroom-init-user-health`), así ningún hook
-  abre consolas. Deshacer: `headroom unwrap <agente>`.
 - **Arranque automático en Claude Code (hook `SessionStart`).** El instalador copia
   `bin/hooks/session-start.js` a `~/.claude/hooks/skills-frontend-mrydex/` y lo registra en
   `~/.claude/settings.json`. En cada sesión:
-  - Respaldo de Headroom: si `ANTHROPIC_BASE_URL` apunta al puerto 8787 y el proxy no
-    corre, lo levanta (en Windows con la tarea programada oculta) (6 s en frío, 0,1 s si ya está arriba). Si no levanta en 20 s, avisa al usuario con el
-    comando para arreglarlo: sin proxy cada llamada al modelo reintenta ~3 min y falla (`ECONNREFUSED`).
-  - Inyecta `tasks/lessons.md` del proyecto como contexto (tope 12.000 caracteres, §11.8). Si el
-    proxy anda (o no se usa), no agrega avisos.
-- Medido (Claude Code + Headroom, suscripción): la autenticación pasa sin API key; en una tarea
-  chica que leyó 2 archivos, Headroom ahorró 63.204 tokens (casi todo en schemas de tools) y 24,4%
-  del costo.
-- **Desactivar Headroom**: `headroom unwrap claude` (o quitar `ANTHROPIC_BASE_URL` del `env` de `~/.claude/settings.json`).
-  **Desactivar el hook**: quitar la entrada `skills-frontend-mrydex` de `hooks.SessionStart`.
+  - Inyecta `tasks/lessons.md` del proyecto como contexto (tope 12.000 caracteres, §11.8).
+- **Headroom se retiró** (nov 2026). Medido en 14.558 requests (oct-nov 2026, suscripción): ahorró 1,52% de los
+  tokens de entrada (mejor día 2,5%), contra cuelgues silenciosos del proxy, loops de reinicio de la tarea de
+  Windows (`[winerror 10048]`) y hasta 45 s por comando en su hook `PreToolUse`. La caché de prompt de Anthropic
+  (98-99% de hit en esos logs) ya hace ese trabajo. Si quedó de una versión anterior: `headroom install remove
+  --profile init-user`, `headroom unwrap claude`, borrar la tarea `headroom-init-user-health` y las variables de
+  usuario `ANTHROPIC_BASE_URL` y `HEADROOM_*`; el instalador quita la ruta al proxy y sus hooks de
+  `~/.claude/settings.json`.
+- **Desactivar el hook**: quitar la entrada `skills-frontend-mrydex` de `hooks.SessionStart`.
 - **Hooks de edición en Claude Code** (`guard-spec`, `guard-secrets`, `format-prettier`): ver §10.12.
 - Las reglas del equipo ganan ante un conflicto: sin archivos de test, pero todo probado (§8), caveman, graphify primero y la
   delegación de §14.3 siguen vigentes.

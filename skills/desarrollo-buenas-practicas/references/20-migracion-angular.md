@@ -70,6 +70,12 @@ ng update @angular/core@20 @angular/cli@20     # N = el siguiente major, nunca s
 - Librerías que van atadas a Angular (`ng-zorro-antd`, `@angular/material`, `angular-eslint`): `ng
   update` también, en el mismo paso. Las que no tienen versión compatible se reportan, no se parchean.
 - Actualizar Node y TypeScript a lo que pide cada major (se ve en el error de `ng update` o en la doc).
+- `tsconfig.json` con `strict: false` (o sin `strict`): activar de a un flag, en este orden, corrigiendo
+  los errores de cada uno antes del siguiente: `strictNullChecks: true` (el que más errores saca y más
+  bugs evita: `null` / `undefined` sin chequear), `noImplicitAny: true`, después `strict: true` y borrar
+  los flags sueltos; en `angularCompilerOptions`, `strictTemplates: true`. Corregir con angostado
+  (`if (!x) return`, `?.`, `??`), nunca con `!` ni `as` en masa. Si un flag deja cientos de errores,
+  commitear por carpeta (`src/app/<feature>`), sin mezclar con el `ng update`.
 
 **Paso 2 — Sacar `tslint` y `codelyzer`.** Están discontinuados. `ng add angular-eslint` y
 migrar las reglas (`ng generate angular-eslint:...` según versión; verificá con `--help`). Borrar

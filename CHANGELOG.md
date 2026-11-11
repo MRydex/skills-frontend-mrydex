@@ -5,8 +5,20 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ## [Unreleased]
 
+### Quitado
+
+- Headroom. Medido en 14.558 requests (oct-nov 2026, suscripción): ahorró 1,52% de los tokens de entrada; a cambio el
+  proxy se colgaba sin aviso, la tarea de Windows entraba en loop de reinicios (`[winerror 10048]`) y el hook
+  `PreToolUse` sumaba hasta 45 s por comando. El instalador ya no lo instala ni lo configura; si quedó de una
+  versión anterior, quita `env.ANTHROPIC_BASE_URL` (`http://127.0.0.1:8787`) y los hooks `headroom init hook ensure`
+  de `~/.claude/settings.json`. Para el resto (tarea `headroom-init-user-health`, variables de usuario `HEADROOM_*`):
+  `headroom install remove --profile init-user` y `headroom unwrap claude`. `14` §14.8 documenta la medición.
+
 ### Agregado
 
+- `02` §2.1: `strict: true` ya incluye `strictNullChecks` y los demás flags estrictos; nunca apagarlos. `20` §20.3
+  Paso 1: en un legacy con `strict: false`, activar de a un flag (`strictNullChecks` primero, después
+  `noImplicitAny`, después `strict`), corrigiendo con angostado y no con `!`. Checklist TypeScript: ítem nuevo.
 - `06` §6.2 / §6.3 errores del servidor como errores de campo: la `action` de `submission` devuelve
   `{ fieldTree, kind: 'server', message }` por campo rechazado (o `undefined` en éxito) y el template los muestra
   con el mismo `errors()` que los validadores; mapeo de `ProblemDetails.errors` en la `action`. Checklist nuevo.

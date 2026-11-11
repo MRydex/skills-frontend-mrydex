@@ -277,7 +277,7 @@ const pipCandidates = (pkg) => [
 ];
 
 // Carpeta donde uv deja sus ejecutables. Se suma al PATH de este proceso: en una PC recién
-// preparada todavía no está y `graphify` / `headroom` no se encontrarían aunque estén instalados.
+// preparada todavía no está y `graphify` no se encontraría aunque esté instalado.
 function addUvBinToPath() {
   const binDir = path.join(os.homedir(), '.local', 'bin');
   if (!process.env.PATH.split(path.delimiter).includes(binDir)) process.env.PATH = `${binDir}${path.delimiter}${process.env.PATH}`;
@@ -528,7 +528,6 @@ function doctor(homeDir, repoRoot) {
     ['skill en ~/.agents/skills (Codex)', fs.existsSync(path.join(homeDir, '.agents', 'skills', SKILL_NAME, 'SKILL.md'))],
     ['subagentes Claude Code', fs.existsSync(path.join(homeDir, '.claude', 'agents', 'ejecutor.md'))],
     ['graphify', runCommand('graphify', ['--help']).ok],
-    ['headroom', runCommand('headroom', ['--help']).ok],
     ['hook SessionStart', JSON.stringify(settings.hooks?.SessionStart ?? []).includes(HOOK_MARKER)],
     ['hooks de edición', EDIT_HOOKS.every(({ event, file }) => JSON.stringify(settings.hooks?.[event] ?? []).includes(file))],
     ['permissions.deny', Array.isArray(settings.permissions?.deny)],
@@ -857,68 +856,31 @@ const CLAUDE_PLUGINS = [
   { id: 'claude-security@claude-plugins-official', repo: null },
 ];
 
-// Herramientas de eficiencia: Headroom (PyPI) comprime el contexto (§14.8 de la skill).
-// Integración durable con `headroom init -g` donde el agente lo soporta; si no, `headroom wrap <agente>` (§14.8 de la skill).
+// Herramientas del agente: plugins de Claude Code y hooks (§14.8 de la skill).
 function installAgentTools(homeDir) {
   console.log(`
-${colors.bold}${colors.cyan}Herramientas del agente:${colors.reset} Headroom y claude-code-setup...`);
+${colors.bold}${colors.cyan}Herramientas del agente:${colors.reset} claude-code-setup y hooks...`);
   if (isDryRun) {
-    console.log(`${colors.dim}[dry-run] pip install --upgrade "headroom-ai[all]"${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: activar ${CLAUDE_PLUGINS.map(({ id }) => id).join(', ')}${colors.reset}`);
-    console.log(`${colors.dim}[dry-run] Claude Code: hooks SessionStart, guard-spec, guard-secrets, format-prettier + ANTHROPIC_BASE_URL=${HEADROOM_URL} + CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=${AUTOCOMPACT_PCT} + CLAUDE_CODE_SUBAGENT_MODEL=${SUBAGENT_MODEL}${colors.reset}`);
+    console.log(`${colors.dim}[dry-run] Claude Code: hooks SessionStart, guard-spec, guard-secrets, format-prettier + CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=${AUTOCOMPACT_PCT} + CLAUDE_CODE_SUBAGENT_MODEL=${SUBAGENT_MODEL}${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: permissions.deny de secretos, MCP context7${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: advisorModel=${advisorArg ?? 'sin cambios (no se configura por defecto)'}${colors.reset}`);
     return;
   }
 
   addUvBinToPath();
-  // En Windows el proxy (tarea programada al iniciar sesión) bloquea los ejecutables de Headroom y
-  // reinstalar falla a medias ("failed to remove directory ...\Scripts: Acceso denegado"). Se frena
-  // la tarea y el proxy, se reinstala y se vuelve a arrancar.
-  const restart = process.platform === 'win32' && stopHeadroom();
-  const { lastError } = pipInstall('headroom-ai[all]');
-  if (restart) startHeadroomTask();
-  if (runCommand('headroom', ['--help']).ok) {
-    logOk('headroom listo');
-    initHeadroom(homeDir);
-  } else {
-    console.log(`  ${colors.yellow}⚠${colors.reset} headroom falló${lastError ? `: ${errorTail(lastError)}` : ''}`);
-    console.log(`  ${colors.dim}Instalar a mano: uv tool install --force --python 3.13 "headroom-ai[all]"${colors.reset}`);
-  }
-
   installClaudePlugins(homeDir);
   installSessionStartHook(homeDir);
 }
 
 // Comandos instalados por npm (.cmd en Windows): necesitan shell. Solo se pasan líneas fijas.
-// Frena las tareas programadas `headroom*` y los procesos de Headroom. true si había tarea.
-function stopHeadroom() {
-  const { ok } = runCommand('powershell', ['-NoProfile', '-Command', `
-    $ErrorActionPreference = 'SilentlyContinue'
-    $tasks = @(Get-ScheduledTask -TaskName 'headroom*')
-    $tasks | Stop-ScheduledTask
-    $procs = @(Get-Process | Where-Object { $_.Path -like '*headroom*' })
-    $procs | Stop-Process -Force
-    $procs | Wait-Process -Timeout 15
-    if ($tasks.Count -eq 0) { exit 3 }`]);
-  if (ok) logOk('headroom: proxy y tarea programada frenados para reinstalar');
-  return ok;
-}
-
-function startHeadroomTask() {
-  const { ok, output } = runCommand('powershell', ['-NoProfile', '-Command',
-    "Get-ScheduledTask -TaskName 'headroom*' | Start-ScheduledTask"]);
-  if (ok) logOk('headroom: tarea programada arrancada de nuevo');
-  else console.log(`  ${colors.yellow}⚠${colors.reset} headroom: no se pudo arrancar la tarea: ${errorTail(output)}`);
-}
-
 function runShell(commandLine, cwd) {
   const result = spawnSync(commandLine, { cwd, shell: true, encoding: 'utf8' });
   return { ok: result.status === 0, output: `${result.stdout || ''}${result.stderr || ''}` };
 }
 
 // Plugins con el CLI de Claude Code, que los descarga en el momento: activarlos solo en settings.json
-// puede dejarlos registrados sin descargar. El CLI en el PATH también lo usa `headroom init`.
+// puede dejarlos registrados sin descargar.
 function installClaudePlugins(homeDir) {
   if (!fs.existsSync(path.join(homeDir, '.claude'))) return;
   if (!runShell('claude --version').ok) runNpmCli('npm', ['install', '-g', '@anthropic-ai/claude-code'], homeDir);
@@ -958,72 +920,10 @@ function installClaudePlugins(homeDir) {
 
 const CONTEXT7_URL = 'https://mcp.context7.com/mcp';
 
-// `claude` suele no estar en el PATH cuando solo se usa la extensión de VS Code: se usa su binario
-function claudeBinDir(homeDir) {
-  // Con shell: instalado por npm en Windows es `claude.cmd`, que spawn sin shell no encuentra
-  if (runShell('claude --version').ok) return null;
-  const extensionsDir = path.join(homeDir, '.vscode', 'extensions');
-  if (!fs.existsSync(extensionsDir)) return null;
-  const latest = fs.readdirSync(extensionsDir)
-    .filter((name) => name.startsWith('anthropic.claude-code-'))
-    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-    .pop();
-  const binDir = latest && path.join(extensionsDir, latest, 'resources', 'native-binary');
-  return binDir && fs.existsSync(binDir) ? binDir : null;
-}
 
-// Integración durable oficial de Headroom: env del agente apuntando al proxy + hooks que lo levantan
-// solos al iniciar sesión y antes de cada comando. En Windows Codex no corre hooks: sin hook el proxy
-// no arranca solo y Codex fallaría, así que ahí se usa `headroom wrap codex`.
-function initHeadroom(homeDir) {
-  const binDir = claudeBinDir(homeDir);
-  const env = { ...process.env, HEADROOM_UPDATE_CHECK: 'off' };
-  // En Windows la clave es `Path`: se reutiliza la existente para no duplicarla
-  const pathKey = Object.keys(env).find((key) => key.toUpperCase() === 'PATH') ?? 'PATH';
-  if (binDir) env[pathKey] = `${binDir}${path.delimiter}${env[pathKey] ?? ''}`;
 
-  const targets = [
-    { agent: 'claude', label: 'Claude Code', present: fs.existsSync(path.join(homeDir, '.claude')) },
-    { agent: 'copilot', label: 'Copilot CLI', present: runShell('copilot --version').ok },
-    { agent: 'codex', label: 'Codex', present: process.platform !== 'win32' && runCommand('codex', ['--version']).ok },
-  ];
-  for (const { agent, label } of targets.filter((target) => target.present)) {
-    const { ok, output } = runCommand('headroom', ['init', '-g', '--port', '8787', agent], homeDir, env);
-    if (ok) logOk(`headroom: ${label} pasa siempre por Headroom (el proxy arranca solo)`);
-    else console.log(`  ${colors.yellow}⚠${colors.reset} headroom init ${agent} falló: ${output.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
-  }
-  // Windows: si el hook tiene que levantar el proxy, abre una consola. Con la tarea programada
-  // (oculta, al iniciar sesión) el proxy ya está arriba cuando corre el hook.
-  if (process.platform === 'win32' && targets[0].present) {
-    // Reinstalar con la tarea ya creada falla: Headroom no logra frenar el proxy que está corriendo
-    // ("is still answering ... after stop"). La tarea existente ya sirve, no se vuelve a aplicar.
-    const taskExists = runCommand('schtasks', ['/Query', '/TN', 'headroom-init-user-health']).ok;
-    const { ok, output } = taskExists ? { ok: true, output: '' }
-      : runCommand('headroom', ['install', 'apply', '--preset', 'persistent-task', '--profile', 'init-user',
-        '--providers', 'manual', '--target', 'claude', '--port', '8787', '--no-rate-limit'], homeDir, env);
-    if (taskExists) logOk('headroom: tarea programada ya instalada');
-    else if (ok) logOk('headroom: proxy como tarea programada (al iniciar sesión)');
-    else console.log(`  ${colors.yellow}⚠${colors.reset} headroom install apply falló: ${output.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
-    // Si Windows rechaza S4U (cuenta de dominio), Headroom deja solo la tarea -health con token
-    // interactivo: muestra consola cada 5 min y no corre al iniciar sesión. Se corre sin consola
-    // (conhost --headless) y se le suma un disparador de inicio de sesión.
-    const fix = runCommand('powershell', ['-NoProfile', '-Command', `
-      $n = 'headroom-init-user-health'
-      $t = Get-ScheduledTask -TaskName $n -ErrorAction Stop
-      $cmd = $t.Actions[0].Execute
-      $a = if ($cmd -like '*conhost.exe') { $t.Actions } else { New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless \`"$cmd\`"" }
-      $trig = @($t.Triggers | Where-Object { $_.CimClass.CimClassName -ne 'MSFT_TaskLogonTrigger' }) + (New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\\$env:USERNAME")
-      # Cada 2 min (Headroom usa 5): un proxy caído vuelve antes de que Claude Code agote sus reintentos (~3 min)
-      $trig | Where-Object { $_.Repetition.Interval } | ForEach-Object { $_.Repetition.Interval = 'PT2M' }
-      Set-ScheduledTask -TaskName $n -Action $a -Trigger $trig | Out-Null`]);
-    if (ok && fix.ok) logOk('headroom: tarea sin consola, revisa el proxy cada 2 min');
-    else if (ok) console.log(`  ${colors.yellow}⚠${colors.reset} headroom: no se pudo ocultar la tarea: ${fix.output.trim().split(/\r?\n/).pop()}`);
-  }
-  console.log(`  ${colors.dim}Codex en Windows: headroom wrap codex · Cursor: headroom wrap cursor · VS Code Copilot: headroom wrap vscode`);
-  console.log(`  Gemini CLI y Antigravity: Headroom todavía no los soporta${colors.reset}`);
-}
-
-const HEADROOM_URL = 'http://127.0.0.1:8787';
+// Ruta al proxy de Headroom que dejaban versiones anteriores del instalador
+const LEGACY_HEADROOM_URL = 'http://127.0.0.1:8787';
 const HOOK_MARKER = 'skills-frontend-mrydex';
 const SIBLING_HOOK_MARKERS = ['skills-frontend-mrydex', 'skills-backend-mrydex'];
 const AUTOCOMPACT_PCT = 40;
@@ -1039,8 +939,8 @@ const EDIT_HOOKS = [
 const SECRET_DENY = ['Read(~/.ssh/**)', 'Read(~/.aws/credentials)', 'Read(**/.env)', 'Read(**/.env.*)',
   'Read(**/*.pem)', 'Read(**/*.key)', 'Read(**/*.pfx)', 'Read(**/secrets/**)'];
 
-// Hook SessionStart: levanta Headroom si hace falta y carga tasks/lessons.md del proyecto. Claude Code pasa por Headroom solo si `headroom`
-// funciona y no hay otra ANTHROPIC_BASE_URL; compacta al 40% del contexto.
+// Hook SessionStart: carga tasks/lessons.md del proyecto; compacta al 40% del contexto. Quita lo que dejó
+// Headroom en versiones anteriores (ruta al proxy y sus hooks): sin el proxy, cada llamada al modelo falla.
 function installSessionStartHook(homeDir) {
   const claudeDir = path.join(homeDir, '.claude');
   if (!fs.existsSync(claudeDir)) return;
@@ -1077,21 +977,22 @@ function installSessionStartHook(homeDir) {
   }
 
   // Hooks de caveman sueltos que versiones anteriores dejaban junto al plugin (cada evento se
-  // inyectaba dos veces). El de subagentes se queda: el plugin no lo trae.
+  // inyectaba dos veces). El de subagentes se queda: el plugin no lo trae. También los hooks
+  // `headroom init hook ensure` de versiones anteriores.
   const cavemanPlugin = settings.enabledPlugins?.['caveman@caveman'] === true;
-  const stale = (hook) => (cavemanPlugin && /\.claude[\\/]+hooks[\\/]+caveman-(activate|mode-tracker)\.js"?$/.test(hook.command ?? ''));
+  const stale = (hook) => (cavemanPlugin && /\.claude[\\/]+hooks[\\/]+caveman-(activate|mode-tracker)\.js"?$/.test(hook.command ?? ''))
+    || /headroom(\.exe)?"? init hook ensure/i.test(hook.command ?? '');
   for (const event of Object.keys(settings.hooks)) {
     if (!Array.isArray(settings.hooks[event])) continue;
     settings.hooks[event] = settings.hooks[event].filter((entry) => !entry.hooks?.some(stale));
     if (settings.hooks[event].length === 0) delete settings.hooks[event];
   }
 
-  const headroomOk = runCommand('headroom', ['--help']).ok;
   settings.env ??= {};
+  if (settings.env.ANTHROPIC_BASE_URL === LEGACY_HEADROOM_URL) delete settings.env.ANTHROPIC_BASE_URL;
   // No pisar un gateway o proveedor propio (variable del sistema, Bedrock o Vertex)
   const ownRoute = ['ANTHROPIC_BASE_URL', 'CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX']
-    .some((key) => settings.env[key] || process.env[key]);
-  if (headroomOk && !ownRoute) settings.env.ANTHROPIC_BASE_URL = HEADROOM_URL;
+    .some((key) => [settings.env[key], process.env[key]].some((value) => value && value !== LEGACY_HEADROOM_URL));
   settings.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE ??= String(AUTOCOMPACT_PCT);
   settings.env.CLAUDE_CODE_SUBAGENT_MODEL ??= SUBAGENT_MODEL;
   const advisorNote = configureAdvisor(settings, ownRoute);
@@ -1101,10 +1002,9 @@ function installSessionStartHook(homeDir) {
 
   writeFileSafe(settingsPath, `${JSON.stringify(settings, null, 2)}
 `);
-  logOk('Claude Code: hook SessionStart (Headroom + tasks/lessons.md)');
+  logOk('Claude Code: hook SessionStart (tasks/lessons.md)');
   logOk('Claude Code: hooks guard-spec, guard-secrets y format-prettier');
-  if (settings.env.ANTHROPIC_BASE_URL === HEADROOM_URL) logOk(`Claude Code: modelo vía Headroom (${HEADROOM_URL})`);
-  else if (ownRoute) console.log(`  ${colors.dim}Ya hay otra ruta al modelo (ANTHROPIC_BASE_URL, Bedrock o Vertex): no se cambió${colors.reset}`);
+  if (ownRoute) console.log(`  ${colors.dim}Ya hay otra ruta al modelo (ANTHROPIC_BASE_URL, Bedrock o Vertex): no se cambió${colors.reset}`);
   logOk(`Claude Code: autocompactación al ${settings.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE}% del contexto`);
   logOk(`Claude Code: subagentes sin modelo propio en ${settings.env.CLAUDE_CODE_SUBAGENT_MODEL} (CLAUDE_CODE_SUBAGENT_MODEL)`);
   console.log(advisorNote);

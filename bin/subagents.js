@@ -236,7 +236,6 @@ Installed by skills-frontend-mrydex. Use them in every session; if one is missin
 - **agent-skills**: use the skill that matches the phase (spec, plan, build, review, ship). Never the ones that write tests: team rules forbid test files unless the user asks for them.
 - **External skills by area**: besides this skill's rules, load the external skill that matches the area of the task (table in \`desarrollo-buenas-practicas\` §14.9). On conflict, the repo rule wins.
 - **claude-code-setup** (Claude Code): in a repo without Claude Code setup, run \`claude-automation-recommender\` once and propose its result.
-- **Headroom**: Headroom is wired durably (\`headroom init -g\`) in Claude Code, Copilot CLI and Codex on macOS/Linux; its hooks start the proxy on 127.0.0.1:8787. Codex on Windows, Cursor and VS Code Copilot: start them with \`headroom wrap <agent>\`.
 - **Security**: for a vulnerability scan of the code, use the \`claude-security\` plugin (Claude Code); for focused web/API/npm checks, the matching Anthropic-Cybersecurity-Skills or claude-red \`offensive-*\` skill. Use \`offensive-*\` only to harden the project's own code against that attack surface (\`desarrollo-buenas-practicas\` §15.2), never against third-party systems.
 
 ## Delegation to subagents (explicit, standing user request)

@@ -18,7 +18,11 @@ APIs del navegador en servicios (y `BroadcastChannel`, §2.13.1) · [2.14](#214-
 
 ### 2.1 Strict typing
 
-- `strict: true`, `noImplicitAny: true`, `strictTemplates: true` siempre activos.
+- `strict: true`, `noImplicitAny: true`, `strictTemplates: true` siempre activos. `strict` ya incluye
+  `strictNullChecks`, `strictFunctionTypes`, `strictPropertyInitialization` y `noImplicitThis`: no hace
+  falta listarlos; nunca ponerlos en `false` para silenciar errores (ni en `tsconfig.app.json`). Si el
+  proyecto tiene `strict: false`, no se cambia sin pedido; activarlo es parte de la migración
+  ([20](./20-migracion-angular.md) §20.3, Paso 1).
 - Preferir **inferencia** cuando el tipo es obvio (no anotar `: string` si la asignación lo dice).
 - **Nunca usar `any`**. Si el tipo es incierto, usar `unknown` y angostar con type guards.
 - Toda variable que **no** se puede inferir lleva tipo explícito.
