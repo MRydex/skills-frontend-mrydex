@@ -50,6 +50,9 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
   (`WindowsApps\python.exe`). Ahora ubica el `python.exe` oficial en `%LOCALAPPDATA%\Programs\Python` o
   `%ProgramFiles%` y corre pip por ruta absoluta. Si `winget` termina y no hay Python en esas carpetas, lo dice;
   si pip instala pero `graphify` no arranca, muestra ese error y no el de un intento anterior.
+- Instalador: prueba `python -m pip`, `py -m pip` y `python3 -m pip` antes que `pip` a secas. En Windows con Smart
+  App Control, `pip.exe` no está firmado y cada instalación mostraba un aviso de Seguridad de Windows, aunque
+  graphify quedaba bien instalado.
 - `02` §2.1: `strict: true` ya incluye `strictNullChecks` y los demás flags estrictos; nunca apagarlos. `20` §20.3
   Paso 1: en un legacy con `strict: false`, activar de a un flag (`strictNullChecks` primero, después
   `noImplicitAny`, después `strict`), corrigiendo con angostado y no con `!`. Checklist TypeScript: ítem nuevo.

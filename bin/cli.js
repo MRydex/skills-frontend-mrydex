@@ -265,10 +265,12 @@ function ensureAiGitignore(projectRoot, extraEntries = []) {
 // pasa a uv, que usa su propio Python 3.13.
 const PIP_ARGS = ['install', '--upgrade', '--only-binary=:all:'];
 const pipCandidates = (pkg) => [
-  ['pip', [...PIP_ARGS, pkg]],
+  // `pip` a secas va último: en Windows con Smart App Control, `pip.exe` no está firmado y cada intento
+  // muestra un aviso de Seguridad de Windows, aunque después se instale bien por `python -m pip`.
   ['python', ['-m', 'pip', ...PIP_ARGS, pkg]],
   ['py', ['-m', 'pip', ...PIP_ARGS, pkg]],
   ['python3', ['-m', 'pip', ...PIP_ARGS, pkg]],
+  ['pip', [...PIP_ARGS, pkg]],
   // Python 3.13 propio de uv: el Python del sistema puede ser uno que las dependencias no soportan todavía
   ['uv', ['tool', 'install', '--upgrade', '--python', '3.13', pkg]],
 ];
