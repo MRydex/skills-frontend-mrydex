@@ -393,7 +393,7 @@ Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
 El agente corre `npm audit` por su cuenta. No espera al CI ni a que se lo pidan.
 
 **Cuándo:**
-- Al empezar a trabajar en un proyecto, junto al Paso 0 (graphify).
+- Al empezar a trabajar en un proyecto.
 - Después de cualquier cambio en `package.json` o `package-lock.json`: `npm install`, `npm update`, `ng update` o una dependencia nueva.
 - Sin cambios de dependencias no se repite antes de entregar: el lockfile es el mismo y el CI lo vuelve a
   correr con la base de vulnerabilidades del día.
@@ -457,14 +457,14 @@ saltea en silencio, y la profundidad de cada una la decide el agente según lo q
 
 1. **Delimitar el alcance.** Sin alcance en el pedido, todo el repo, sin preguntar; si no, lo indicado: el diff actual, una feature, un
    módulo o todo el repo.
-2. **Orientar con graphify** (`graphify query`) para ubicar entradas, interceptores, render de datos
+2. **Orientar con `grep -rl`** (`graphify query` solo sin nombre conocido) para ubicar entradas, interceptores, render de datos
    externos, auth, uploads, llamadas a terceros y límites de confianza. Una sola pasada alimenta a
    todas las herramientas. Alcance feature o repo: modelo de amenazas primero
    (`performing-threat-modeling-with-owasp-threat-dragon`) para ordenar qué se ataca. En una pregunta
    o un pedido de solo lectura, STRIDE inline (`security-and-hardening`; una línea por amenaza: dónde, control o hueco), sin Threat Dragon (genera archivos). Pregunta sobre una parte (por ejemplo, el manejo de errores): sin modelo de amenazas. Alcance sin superficie
    (sin entradas, HTTP ni auth): sin modelo de amenazas.
 3. **Revisión base de todas las áreas.** Recorrer la tabla de abajo completa. Las áreas ausentes del
-   alcance (sin uploads, sin WebSocket, sin SSR) se cierran juntas como N/A con un `graphify query` o
+   alcance (sin uploads, sin WebSocket, sin SSR) se cierran juntas como N/A con un `grep` o `graphify query`
    `grep` que lo pruebe. Cada área termina en
    uno de tres estados: **OK** (con la evidencia, `archivo:línea`), **hallazgo** o **N/A** (con el
    motivo: "no hay uploads en el alcance"). Incluye la tabla de §15.2 (Red Team), las defensas de

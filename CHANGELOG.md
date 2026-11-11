@@ -38,6 +38,16 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Cambiado
 
+- Graphify sin ceremonia (medido en nov 2026 contra `grep` en los dos repos de skills y en una app de 12.598 nodos:
+  `grep -l` costó de 10 a 120 veces menos que `graphify query`, también en el repo grande; sin nombre conocido el
+  grafo devolvió ruido). Paso 0 queda en `graphify update .` (gratis); `graphify query` pasa a último recurso con
+  `--budget 800`. El instalador deja de correr `graphify <agente> install` por proyecto y el modo `--strict`
+  (hook `hook-guard` que sumaba 130-180 tokens a cada `Bash` / `Grep` / `Read` / `Glob`), y quita ese hook de
+  `~/.claude/settings.json`. `14` §14.5 reescrita con la medición; templates, subagentes y bloque global al día.
+  Segunda medición: `graphify update .` sin cambios tarda 0,7 s (584 nodos), 1 s (1.247) y 17,4 s (12.598); Paso 0
+  queda sin comando (el hook git actualiza en cada commit; `update` solo justo antes de un `query`). El hook
+  `SessionStart` poda los snapshots diarios `graphify-out/AAAA-MM-DD` (graphify no los borra: 442 MB en 27
+  carpetas en el repo grande), quedan los 2 más nuevos.
 - Instalador: el advisor ya no se configura por defecto (Anthropic, nov 2026: ningún pareo superó claramente al
   ejecutor solo; el equipo midió 10x con un advisor del mismo nivel). `--advisor fable|opus` lo activa, `--advisor
   off` quita el que haya. §14.3.4, §14.3.5, README (sección nueva "Modelos: qué corre dónde": qué modelo corre cada

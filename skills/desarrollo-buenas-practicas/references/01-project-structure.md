@@ -368,7 +368,7 @@ tabla de un tipo de dato, buscador, paginador, modal de confirmación, badge de 
 
 **Antes de crear un componente**, buscar si ya existe uno que resuelve lo mismo:
 
-1. `graphify query "componente que selecciona usuario"` (§14.5).
+1. `grep -ril "select" src/app --include=*.ts` o `Glob` por nombre; sin nombre conocido, `graphify query "componente que selecciona usuario" --budget 800` (§14.5).
 2. `shared/components/` y las carpetas de la feature.
 3. Búsqueda por nombre o selector (`selector-usuario`, `usuario-select`, `user-picker`).
 

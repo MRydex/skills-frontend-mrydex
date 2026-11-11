@@ -259,9 +259,6 @@ function ensureAiGitignore(projectRoot, extraEntries = []) {
   console.log(`  ${colors.dim}Si alguno ya estaba commiteado, sacarlo del índice con: git rm --cached <archivo>${colors.reset}`);
 }
 
-// Integraciones de graphify por agente (proyecto). Claude Code además en modo estricto:
-// bloquea la primera lectura de archivos hasta que se haga un `graphify query`.
-const GRAPHIFY_AGENTS = ['claude', 'cursor', 'codex', 'gemini', 'vscode', 'antigravity'];
 // Instaladores Python en orden de preferencia para un paquete PyPI
 // pip solo con wheels precompilados: con un Python más nuevo que los wheels publicados (ej. 3.15),
 // pip intenta compilar tree-sitter / pyyaml y falla sin Visual C++ Build Tools. Así falla rápido y
@@ -449,16 +446,14 @@ function ensureGraphifyCli() {
   return graphifyReady;
 }
 
-// Paso 0 de la skill hecho por el instalador: integra todos los agentes, hooks git y arma el grafo.
+// Infraestructura graphify de la skill (§14.5): hooks git y grafo inicial. Sin integración por agente.
 function setupGraphifyProject(projectRoot) {
   if (!ensureGraphifyCli()) return;
 
   const hadGitattributes = fs.existsSync(path.join(projectRoot, '.gitattributes'));
-  const steps = [
-    ...GRAPHIFY_AGENTS.map((agent) => ({ label: `integración ${agent}`, args: [agent, 'install'] })),
-    { label: 'modo estricto Claude Code', args: ['install', '--project', '--strict', '--platform', 'claude'] },
-    { label: 'hooks git', args: ['hook', 'install'] },
-  ];
+  // Solo hooks git (reconstruyen el grafo sin LLM). Sin `graphify <agente> install` ni `--strict`: la regla la
+  // traen la skill y los templates; el hook `hook-guard` sumaba 130-180 tokens a cada tool call (§14.5).
+  const steps = [{ label: 'hooks git', args: ['hook', 'install'] }];
 
   console.log(`\n${colors.bold}${colors.cyan}Graphify en el proyecto:${colors.reset} ${colors.dim}${projectRoot}${colors.reset}`);
   if (isDryRun) {
@@ -978,10 +973,11 @@ function installSessionStartHook(homeDir) {
 
   // Hooks de caveman sueltos que versiones anteriores dejaban junto al plugin (cada evento se
   // inyectaba dos veces). El de subagentes se queda: el plugin no lo trae. También los hooks
-  // `headroom init hook ensure` de versiones anteriores.
+  // `headroom init hook ensure` y `graphify hook-guard` de versiones anteriores (§14.5).
   const cavemanPlugin = settings.enabledPlugins?.['caveman@caveman'] === true;
   const stale = (hook) => (cavemanPlugin && /\.claude[\\/]+hooks[\\/]+caveman-(activate|mode-tracker)\.js"?$/.test(hook.command ?? ''))
-    || /headroom(\.exe)?"? init hook ensure/i.test(hook.command ?? '');
+    || /headroom(\.exe)?"? init hook ensure/i.test(hook.command ?? '')
+    || /graphify(\.exe)?"? hook-guard/i.test(hook.command ?? '');
   for (const event of Object.keys(settings.hooks)) {
     if (!Array.isArray(settings.hooks[event])) continue;
     settings.hooks[event] = settings.hooks[event].filter((entry) => !entry.hooks?.some(stale));

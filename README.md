@@ -108,9 +108,10 @@ Fuera de un repo git instala solo global. Dentro de un repo instala además en l
 
 Siempre instala todo; no hay flags para saltear partes.
 
-- **graphify**: CLI y skill, integración en cada agente, hooks git `post-commit` / `post-checkout`
-  y grafo inicial (`graphify update .`, sin costo de tokens). Claude Code queda en modo estricto:
-  consulta el grafo antes de leer archivos.
+- **graphify**: CLI y skill, hooks git `post-commit` / `post-checkout` y grafo inicial (`graphify update .`,
+  sin costo de tokens). Sin integración por agente ni modo estricto: medido, `grep` cuesta de 10 a 120 veces
+  menos que `graphify query` (§14.5 de la skill), así que el grafo queda para preguntas de flujo sin nombre
+  conocido. En Claude Code, `graphify` corre sin pedir aprobación.
 - **Subagentes** `investigador`, `ejecutor`, `revisor-checklist`, `migrador-angular`,
   `Explore` (solo Claude Code, Haiku),
   `auditor-contrato-api` y `revisor-auth` en el formato de cada agente.

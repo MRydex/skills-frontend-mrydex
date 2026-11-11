@@ -291,8 +291,8 @@ En **Opciones → Editor de texto**:
 ### 10.7 Graphify (mapa del repo para asistentes AI)
 
 Graphify convierte el repo en un grafo de conocimiento (`graphify-out/graph.json` +
-`graphify-out/GRAPH_REPORT.md`) que el agente consulta en vez de leer archivos enteros. El agente lo
-instala, lo integra, lo consulta y lo actualiza **por su cuenta**: el procedimiento completo está en
+`graphify-out/GRAPH_REPORT.md`). Actualizarlo es gratis; consultarlo cuesta más que `grep` (medido) y queda
+para preguntas de flujo sin nombre conocido. Reglas y medición en
 [14-agent-efficiency.md](./14-agent-efficiency.md) §14.5.
 
 Resumen de comandos (fuente: [github.com/safishamsi/graphify](https://github.com/safishamsi/graphify) y `graphify --help`):
@@ -300,14 +300,12 @@ Resumen de comandos (fuente: [github.com/safishamsi/graphify](https://github.com
 ```bash
 pip install graphifyy && graphify install   # una vez por máquina (el paquete PyPI lleva doble "y")
 graphify hook install                       # una vez por repo: reconstruye el grafo en cada commit, sin LLM
-graphify claude install                     # una vez por repo, según el agente (cursor / codex / gemini / vscode / ...)
-/graphify .                                 # primer build completo (slash command dentro del asistente)
-graphify query "¿quién usa Auth?"    # consultar
-graphify update .                           # al arrancar y al cerrar toda tarea que editó archivos, sin LLM
+graphify query "<pregunta de flujo>" --budget 800   # solo sin nombre conocido; con nombre, grep (§14.5)
+graphify update .                           # solo justo antes de un query (el hook git lo hace en cada commit), sin LLM
 ```
 
-`graphify <agente> install` es un comando de **terminal**. `/graphify` (con barra) es el slash command
-que corre el pipeline dentro del asistente.
+`/graphify .` (con barra) es el slash command que corre el build completo con LLM dentro del asistente: solo
+si hacen falta docs e imágenes en el grafo. No instalar `graphify <agente> install` por proyecto (§14.5).
 
 ### 10.8 AI / MCP Server de Angular CLI
 

@@ -19,7 +19,7 @@ cómo verificar antes de decir "terminado" y cómo aprender de las correcciones.
 - Un pedido de solo lectura (pregunta, explicación, revisión, "¿cómo funciona X?") **sigue siendo de
   solo lectura**: se responde sin editar archivos. Si la respuesta sugiere un cambio, proponerlo en una
   línea y esperar a que el usuario lo pida.
-- Antes de tocar un archivo: leer lo que se edita con su contexto (no solo la línea del pedido; el grafo dice dónde, §14.5) y revisar quién lo usa
+- Antes de tocar un archivo: leer lo que se edita con su contexto (no solo la línea del pedido) y revisar quién lo usa
   (callers, tipos relacionados). Editar a ciegas sobre un fragmento genera regresiones que el
   diff no deja ver.
 - Buscar la convención ya usada en el módulo/feature (naming, estructura, forma de resolver un caso
@@ -183,7 +183,7 @@ revisarlo: la revisión no agrega features.
 - Cambio mínimo necesario: tocar solo lo que la tarea requiere. Reescribir alrededor "para dejarlo
   prolijo" es scope creep (§11.5), no una mejora gratis.
 - Lo que un comando puede responder lo responde el comando: contar, buscar usos, validar tipos,
-  formatear y comparar los resuelven `graphify query`, `grep`, el compilador o un script; el
+  formatear y comparar los resuelven `grep`, `graphify query`, el compilador o un script; el
   modelo queda para las decisiones de criterio.
 - Los límites de tamaño de archivo y la regla anti-monolito (componentizar en vez de acumular
   responsabilidades) ya están definidos en [01-project-structure.md](./01-project-structure.md) §1.4: no
@@ -284,8 +284,8 @@ motivo). Ninguna se saltea en silencio.
 
 **Pasos:**
 
-1. **Orientar con el grafo.** `graphify query` para mapear usos. Un símbolo sin referencias en el grafo
-   es candidato, no prueba.
+1. **Orientar con `grep -rl`** para mapear usos (`graphify query` solo sin nombre conocido). Un símbolo sin
+   referencias es candidato, no prueba.
 2. **Correr las herramientas** (gratis, con `npx`, sin sumarlas al `package.json`) y revisar a mano lo
    que no ven: calidad y eficiencia se leen en el código, no solo en el reporte de una herramienta.
 3. **Verificar cada candidato** antes de reportarlo o borrarlo. Uso dinámico que las herramientas no

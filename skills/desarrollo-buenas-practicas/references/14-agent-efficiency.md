@@ -468,116 +468,80 @@ errores sin resolver. Descartar: salidas de tools ya procesadas, exploración de
 
 ---
 
-### 14.5 Graphify: consultar el grafo antes de leer archivos
+### 14.5 Graphify: grafo por hook git, consulta solo sin nombre conocido
 
-[Graphify](https://github.com/safishamsi/graphify) indexa el repo en un grafo de conocimiento. Una
-consulta al grafo devuelve en pocos cientos de tokens lo que costaría leer decenas de archivos. El
-agente lo instala, integra, consulta y actualiza **por su cuenta**.
+[Graphify](https://github.com/safishamsi/graphify) indexa el repo en un grafo (`graphify-out/graph.json`).
+Armarlo y actualizarlo con `graphify update .` no usa LLM: cuesta cero tokens. Consultarlo sí cuesta: cada
+`graphify query` devuelve un subgrafo de 500 a 6.000 tokens.
 
-**0. Arranque obligatorio al inicio de cada sesión.** Es el Paso 0 de `SKILL.md`: la primera acción
-de la sesión, antes de buscar, leer o editar. Se corre **siempre**, aunque graphify ya esté
-instalado, porque cubre los tres fallos reales:
+**1. Qué ahorra y qué no (medido, nov 2026).** Preguntas reales, misma máquina, tokens aproximados
+(caracteres / 4):
 
-- **Falta el CLI** → paso 1.
-- **Versión desfasada** entre el paquete y la skill (el CLI imprime
-  `warning: skill is from graphify X, package is Y`) → `pip install --upgrade graphifyy && graphify install`.
-  Con el paquete viejo faltan comandos y hooks, y el agente deja de usar el grafo.
-- **Grafo desactualizado** o repo sin integrar → `graphify update .` en cada arranque (solo código,
-  sin LLM) y pasos 2–3.
+| Repo | Pregunta | `graphify query` | `grep -rl` equivalente |
+| :--- | :--- | :--- | :--- |
+| skills frontend (584 nodos, 73% headings de docs) | cómo se instala el hook SessionStart | 3.128 | 48 |
+| skills frontend | qué hace guard-secrets | 2.194 | 342 (`head -20`) |
+| skills backend (356 nodos) | reglas de Dapper y transacciones | 4.292 | 88 (headings) |
+| app .NET + Angular (12.598 nodos) | qué componentes usan `<Servicio>` | 1.630 | 100 |
+| app .NET + Angular | qué handlers usan `I<X>Repository` | 5.829 | 48 (4 archivos, 251 líneas en total) |
+| app .NET + Angular | flujo de login hasta el guard (sin nombre) | 1.629, nodos sin relación (`sync-version.mjs`, `WeatherForecast`) | 100 (`grep -rli "guard\|auth"`) |
 
-El instalador de la skill (`npx github:MRydex/skills-frontend-mrydex` en el proyecto) ya ejecuta los pasos 1–3 para
-todos los agentes, deja Claude Code en modo estricto (`graphify install --project --strict --platform
-claude`) y arma el grafo. Los pasos siguen documentados para repos configurados sin el instalador.
+Doce preguntas, dos repos chicos y uno grande: `grep` ganó en todas, de 10 a 120 veces. Con un nombre
+(símbolo, archivo, texto literal) el grafo nunca gana: `grep -rl` lista los archivos en 50 tokens y la lectura
+se limita a las líneas que hacen falta. Sin nombre, el grafo devolvió ruido en los dos casos probados. Queda
+como último recurso, no como primer paso.
 
-**1. Instalar si falta (una vez por máquina, sin preguntar).** Chequear con `graphify --help`. Si el
-comando no existe:
+**2. Infraestructura (gratis, la deja el instalador).** `graphify hook install` (hooks git `post-commit` /
+`post-checkout` / `post-merge`: reconstruyen el grafo de código sin LLM) y `graphify-out/` + `.gitattributes`
+en `.gitignore` (§10.9). Sin instalador: `pip install graphifyy && graphify install` (fuera de Claude
+Code, `--platform <agente>`) y `graphify hook install`. No hace falta `graphify <agente> install` por proyecto:
+esa integración escribe la regla vieja ("query antes de leer") en `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` y, en
+Claude Code, un hook `PreToolUse` (`hook-guard`) que suma 130 a 180 tokens a cada `Bash`, `Grep`, `Read` y
+`Glob` (medido: 3.000 tokens en una sesión de 19 comandos) y en modo `--strict` bloquea la primera lectura
+hasta hacer un query. El instalador quita ese hook de `~/.claude/settings.json`; si un proyecto lo tiene en
+`.claude/settings.json`, borrarlo. La skill y los templates ya traen la regla correcta para todos los agentes.
 
-```bash
-pip install graphifyy && graphify install          # el paquete PyPI lleva doble "y"
-# alternativa aislada: uv tool install graphifyy && graphify install
-```
+  Los snapshots diarios (`graphify-out/AAAA-MM-DD`, copia completa de `graph.json` por día cuando el grafo tiene
+  etiquetas; graphify no los borra: medido 442 MB en 27 carpetas en un repo de 12.600 nodos, 58 MB en otro) los
+  poda el hook `SessionStart` del instalador: quedan los 2 más nuevos.
 
-- `graphify install` copia la skill al agente por defecto (Claude Code). Para otros:
-  `graphify install --platform <cursor|codex|gemini|antigravity|opencode|kiro|...>`.
-- Si el CLI avisa `skill is from graphify X, package is Y`, actualizar:
-  `pip install --upgrade graphifyy && graphify install`.
-- Avisar al usuario en una línea. Si no hay Python/pip o la instalación falla, avisar con el error
-  exacto y recién ahí seguir con búsqueda normal.
-
-**2. Integrar en el repo (una vez por proyecto).** Si el repo todavía no tiene la integración:
-
-```bash
-graphify hook install          # siempre: hooks git post-commit/post-checkout, reconstruyen el grafo de código sin LLM
-graphify <agente> install      # según el agente que está corriendo (tabla abajo)
-```
-
-| Agente que corre la skill | Comando | Qué deja |
-| :--- | :--- | :--- |
-| Claude Code | `graphify claude install` | Sección en `CLAUDE.md` + hook `PreToolUse` |
-| Cursor | `graphify cursor install` | `.cursor/rules/graphify.mdc` |
-| Codex | `graphify codex install` | Sección en `AGENTS.md` |
-| Gemini CLI | `graphify gemini install` | Sección en `GEMINI.md` + hook `BeforeTool` |
-| Copilot en VS Code | `graphify vscode install` | Skill + `.github/copilot-instructions.md` |
-| Copilot CLI | `graphify copilot install` | Skill en `~/.copilot/skills` |
-| Antigravity | `graphify antigravity install` | `.agent/rules` + `.agent/workflows` + skill |
-| OpenCode / Aider / Kiro / Trae | `graphify opencode install` (o `aider`, `kiro`, `trae`) | Sección en `AGENTS.md` o steering |
-
-Si el repo lo usan varios agentes, correr el comando de cada uno.
-
-**3. Primer build.** Si no existe `graphify-out/graph.json`: correr `/graphify .` dentro del
-asistente (build completo: código con AST, docs e imágenes con LLM). Sin asistente con la skill,
-`graphify update .` arma el grafo solo de código, sin LLM.
-
-**4. Consultar siempre primero.** Ante cualquier pregunta sobre el código (dónde está X, quién usa Y,
-cómo fluye Z), antes de `grep` o de leer archivos. `grep`, `Glob` o `Read` de exploración van después
-de la consulta: el grafo dice dónde mirar con muchos menos tokens. Excepción: el usuario nombró el
-archivo y la línea exactos. En Claude Code, el hook `PreToolUse` que deja `graphify claude install`
-(`hook-guard`) lo recuerda en cada búsqueda:
+**3. Cuándo consultar.** Solo cuando la pregunta es de flujo y no hay ningún nombre para `grep` ("cómo llega
+el pedido del controller al SQL", "dónde se arma el PDF"), después de que un `grep` razonable no encontró
+nada, y con tope:
 
 ```bash
-graphify query "¿qué componentes usan UserService?" --budget 1500   # contexto amplio (BFS)
-graphify query "flujo de login hasta el guard" --dfs                # seguir un camino puntual
-graphify path "LoginPage" "authGuard"                               # camino más corto entre dos nodos
-graphify explain "HttpErrorInterceptor"                             # un nodo y sus vecinos
+graphify query "<pregunta>" --budget 800      # subgrafo acotado
+graphify query "<pregunta>" --dfs             # seguir un camino puntual
+graphify path "<A>" "<B>"                     # camino más corto entre dos nodos conocidos
+graphify explain "<Nodo>"                     # un nodo y sus vecinos
 ```
 
-- Para orientarse en un repo nuevo, leer `graphify-out/GRAPH_REPORT.md` (god nodes, comunidades).
-- El grafo indica **dónde** mirar. Para editar, leer solo los archivos y líneas que señaló
-  (`source_location`).
-- Si el grafo no tiene la respuesta o parece desactualizado, recién ahí usar búsqueda normal.
+Si el resultado trae nodos de otra comunidad (archivos sin relación con la pregunta), descartarlo y seguir
+con `grep`. Repo desconocido: `graphify-out/GRAPH_REPORT.md` (god nodes, comunidades) orienta en una lectura,
+más barato que varios query. Con `grep`: `-rl` primero (archivos), después `-n` en esos archivos; leer solo el
+rango que hace falta.
 
-**5. Actualizar después de editar.** Antes de la respuesta final de toda tarea que editó archivos, y
-antes de compactar el contexto (§14.4):
+**4. Actualizar solo antes de consultar.** `graphify update .` justo antes de un `graphify query`, nunca al
+arrancar ni después de editar: el hook de git ya reconstruye en cada commit y el grafo solo se lee en el query.
+Medido sin cambios: 0,7 s (584 nodos), 1 s (1.247), 17,4 s (12.598); dos o tres corridas por tarea en el repo
+grande eran casi un minuto para un grafo que no se consulta. Docs o imágenes cambiados: `/graphify . --update`
+usa LLM, solo cuando valga la pena. Verificar la salida, no el exit code: `Rebuild failed`, `worker failed` o
+`Nothing to update or rebuild failed` es fallo aunque devuelva 0.
 
-```bash
-graphify update .      # re-extrae solo el código cambiado, sin LLM: no gasta tokens
-```
+**5. Si algo falla** (instalación, hooks o `graphify update .`): **siempre avisar al usuario** con el
+comando, el error exacto y la causa probable. Nunca seguir en silencio. Recién después, búsqueda normal.
 
-- El hook de git ya reconstruye en cada commit. `graphify update .` cubre el trabajo todavía sin
-  commitear.
-- Si cambiaron muchos docs o imágenes (el hook y `update` los ignoran), correr `/graphify . --update`.
-  Usa LLM, así que solo cuando valga la pena.
-- **Verificar la salida, no solo el exit code.** `graphify update .` puede terminar en 0 aunque haya
-  fallado. Si la salida dice `Rebuild failed`, `worker failed` o `Nothing to update or rebuild failed`,
-  falló: avisar al usuario con el error exacto y la causa probable
-  (ver "Si algo falla" abajo). Nunca dar la tarea por cerrada callando el fallo.
-
-**Si algo falla** (instalación, hooks, integración o armado del grafo, en el Paso 0 o al actualizar
-en el paso 5): **siempre avisar al usuario** con el comando, el error exacto y la causa probable.
-Nunca seguir en silencio. Recién después seguir con búsqueda normal.
-
-| Resultado del Paso 0 | Acción |
+| Resultado | Acción |
 | :--- | :--- |
 | `command not found` | `pip install graphifyy && graphify install` (`--platform <agente>` fuera de Claude Code) |
-| `warning: skill is from graphify X, package is Y` | `pip install --upgrade graphifyy && graphify install` |
-| `post-commit: not installed` (`graphify hook status`) | `graphify hook install` |
-| El agente no tiene la integración (Claude Code: sin `hook-guard` en `.claude/settings.json`) | `graphify <agente> install` (tabla del paso 2) |
-| No existe `graphify-out/graph.json` | `/graphify .` dentro del asistente (build completo) |
+| `warning: skill is from graphify X, package is Y` | `pip install --upgrade graphifyy && graphify install`, y `graphify install --platform <agente>` por cada agente que lo imprima |
+| `post-commit: not installed` (`graphify hook status`) | `graphify hook install` (en un git worktree no: los hooks son del repo principal) |
+| No existe `graphify-out/graph.json` | `graphify update .` (solo código, gratis); `/graphify .` dentro del asistente solo si hacen falta docs e imágenes (usa LLM) |
 | La salida dice `Rebuild failed`, `worker failed` o `Nothing to update or rebuild failed` | Falló aunque el exit code sea 0: avisar (causas abajo) |
 
 Causas conocidas:
 
-- Sin Python/pip → instalar Python 3.10+ y repetir el Paso 0.
+- Sin Python/pip → instalar Python 3.10+ y repetir el paso 2.
 - `Failed building wheel for tree-sitter` / `Microsoft Visual C++ 14.0 or greater is required` →
   el Python del sistema es más nuevo que los wheels publicados (ej. 3.15). Usar
   `uv tool install --python 3.13 graphifyy` (uv: `irm https://astral.sh/uv/install.ps1 | iex` en
@@ -588,6 +552,7 @@ Causas conocidas:
 - Sin repo git → no hay hooks: el grafo solo se actualiza con `graphify update .` manual.
 
 ---
+
 
 ### 14.6 Regla de oro
 
@@ -622,12 +587,11 @@ comando se aplica **traducida al agente y a los modelos que usa la persona**.
 | Consultar a otra sesión abierta | `ListAgents` + `SendMessage` | Medio nativo del agente; si no hay, saltar al paso siguiente de §14.2 |
 | Preguntar con opciones | `AskUserQuestion` | Tool de preguntas del agente; si no hay, una lista numerada en un solo mensaje, con la opción recomendada marcada |
 | Compactar / limpiar contexto | `/compact <foco>`, `/clear` | Comando de resumen del agente, o chat nuevo con el resumen de `tasks/todo.md` |
-| Integrar graphify | `graphify claude install` | `graphify <agente> install` (§14.5) |
 
 **3. Adaptar sin romper las reglas.** Lo que cambia es la sintaxis, nunca la regla:
 - El modelo seleccionado orquesta, decide y revisa **siempre**, aunque no sea Opus (§14.3.5).
 - La delegación sigue yendo al modelo **más barato** que resuelva la subtarea.
-- Caveman, preguntar todo antes de empezar, autocompactar y graphify primero siguen vigentes.
+- Caveman, preguntar todo antes de empezar, autocompactar y graphify sin ceremonia siguen vigentes.
 - Si el agente no tiene ninguna forma de aplicar una regla (ej. no permite otro modelo ni
   subagentes), aplicar el fallback documentado y seguir. No bloquear la tarea ni inventar comandos.
 
@@ -671,7 +635,7 @@ estas reglas para que rijan en todas las sesiones.
   `~/.claude/settings.json`.
 - **Desactivar el hook**: quitar la entrada `skills-frontend-mrydex` de `hooks.SessionStart`.
 - **Hooks de edición en Claude Code** (`guard-spec`, `guard-secrets`, `format-prettier`): ver §10.12.
-- Las reglas del equipo ganan ante un conflicto: sin archivos de test, pero todo probado (§8), caveman, graphify primero y la
+- Las reglas del equipo ganan ante un conflicto: sin archivos de test, pero todo probado (§8), caveman, graphify sin ceremonia y la
   delegación de §14.3 siguen vigentes.
 
 ### 14.9 Skills externas por área

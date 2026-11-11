@@ -182,7 +182,7 @@ a `signal()` privado + `asReadonly()` (§2.3), y RxJS queda solo para flujos ([0
 **Paso 12 — jQuery y frameworks CSS legacy** (Bootstrap viejo, plugins jQuery). Último y por
 pantalla: reemplazar por HTML semántico ([12](./12-html5-semantics-seo.md)), la librería de UI del
 proyecto y SCSS con BEM ([07](./07-styles-scss.md)). Sacar el paquete recién cuando no queda ningún uso
-(`graphify query` o `grep` del import/global `$`). No mezclar este paso con otros.
+(`grep` del import/global `$`). No mezclar este paso con otros.
 
 ### 20.7 Qué hacer si falla
 

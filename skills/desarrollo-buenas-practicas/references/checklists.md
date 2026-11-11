@@ -266,8 +266,7 @@ Antes de publicar un sitio o una app nueva, además de los bloques anteriores:
 - [ ] ¿Las dudas que cambian el resultado se preguntaron juntas, antes de empezar, con opción recomendada? (§11.6)
 - [ ] ¿Estado guardado en `tasks/todo.md` y compactación propuesta al cerrar cada fase? (§14.4)
 - [ ] ¿Corrección del usuario registrada en `tasks/lessons.md`? (§11.8)
-- [ ] ¿Paso 0 de graphify corrido al inicio de la sesión (instalado, versión al día, hooks, `graphify update .`)?
-- [ ] ¿Se consultó `graphify query` antes de buscar o leer archivos? ¿`graphify update .` al cerrar la tarea? (§14.5)
+- [ ] ¿Búsqueda por nombre con `grep` / `Glob`; `graphify query` solo sin nombre conocido, con `graphify update .` justo antes? (§14.5)
 - [ ] ¿Todo resultado de un ejecutor revisado por el modelo seleccionado antes de entregarlo? (§14.3.5)
 - [ ] ¿Tarea clasificada chica/grande? ¿La grande tiene `tasks/todo.md` con L1, Specs, Tasks y Log? (§11.2)
 - [ ] ¿Revisión según el riesgo del cambio (trivial / medio / alto)? (§11.3)
