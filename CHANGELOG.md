@@ -18,6 +18,9 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- Hook `guard-rules` (Claude Code, `Stop`): en repos Angular revisa las líneas agregadas y los archivos nuevos del
+  turno contra las reglas que más se violan y devuelve el turno una vez con la lista. Sin hallazgos no imprime nada.
+  `--reporte` para otros agentes o CI. `10` §10.12.
 - `09` §9.3: `@if` no es lazy loading; bloque pesado que se muestra y oculta va con `@defer (on immediate)` adentro
   del `@if`. §9.6: `focusReset: 'manual'` (`@experimental 22.3`, solo con `withExperimentalPlatformNavigation()`).
 - `03` §3.15: directiva sobre más de un tag con `inject(HOST_TAG_NAME)` (`disabled` en `<button>`, `aria-disabled` en `<a>`).

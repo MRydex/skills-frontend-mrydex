@@ -118,7 +118,8 @@ Siempre instala todo; no hay flags para saltear partes.
   Bloque global en `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` y `~/.gemini/GEMINI.md`: cargar
   siempre la skill y delegar solo cuando baja el total de tokens.
 - **Hooks de Claude Code**: `guard-spec` (pide confirmación antes de crear specs en repos Angular),
-  `guard-secrets` (bloquea escribir secretos con Edit/Write) y `format-prettier` (Prettier local
+  `guard-secrets` (bloquea escribir secretos con Edit/Write), `guard-rules` (al cerrar el turno revisa lo que cambió contra las reglas
+  de la skill y lo devuelve una vez si rompe alguna) y `format-prettier` (Prettier local
   sobre el archivo editado, solo si el proyecto ya lo usa).
 - **caveman**: respuestas cortas (sin él salen 33% más largas).
 - **Seguridad**: [security-audit](https://github.com/cloudflare/security-audit-skill),

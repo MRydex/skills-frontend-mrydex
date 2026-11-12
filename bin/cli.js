@@ -916,7 +916,7 @@ function installAgentTools(homeDir) {
 ${colors.bold}${colors.cyan}Herramientas del agente:${colors.reset} claude-code-setup y hooks...`);
   if (isDryRun) {
     console.log(`${colors.dim}[dry-run] Claude Code: activar ${CLAUDE_PLUGINS.map(({ id }) => id).join(', ')}${colors.reset}`);
-    console.log(`${colors.dim}[dry-run] Claude Code: hooks SessionStart, guard-spec, guard-secrets, format-prettier + CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=${AUTOCOMPACT_PCT} + CLAUDE_CODE_SUBAGENT_MODEL=${SUBAGENT_MODEL}${colors.reset}`);
+    console.log(`${colors.dim}[dry-run] Claude Code: hooks SessionStart, guard-spec, guard-secrets, format-prettier, guard-rules + CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=${AUTOCOMPACT_PCT} + CLAUDE_CODE_SUBAGENT_MODEL=${SUBAGENT_MODEL}${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: permissions.deny de secretos, MCP context7${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: advisorModel=${advisorArg ?? 'sin cambios (no se configura por defecto)'}${colors.reset}`);
     return;
@@ -989,6 +989,7 @@ const EDIT_HOOKS = [
   { event: 'PreToolUse', matcher: 'Write', file: 'guard-spec.js', timeout: 10 },
   { event: 'PreToolUse', matcher: 'Edit|Write|MultiEdit|NotebookEdit', file: 'guard-secrets.js', timeout: 10, shared: true },
   { event: 'PostToolUse', matcher: 'Edit|Write|MultiEdit', file: 'format-prettier.js', timeout: 40 },
+  { event: 'Stop', file: 'guard-rules.js', timeout: 30 },
 ];
 const SECRET_DENY = ['Read(~/.ssh/**)', 'Read(~/.aws/credentials)', 'Read(**/.env)', 'Read(**/.env.*)',
   'Read(**/*.pem)', 'Read(**/*.key)', 'Read(**/*.pfx)', 'Read(**/secrets/**)'];
@@ -1058,7 +1059,7 @@ function installSessionStartHook(homeDir) {
   writeFileSafe(settingsPath, `${JSON.stringify(settings, null, 2)}
 `);
   logOk('Claude Code: hook SessionStart (tasks/lessons.md)');
-  logOk('Claude Code: hooks guard-spec, guard-secrets y format-prettier');
+  logOk('Claude Code: hooks guard-spec, guard-secrets, format-prettier y guard-rules');
   if (ownRoute) console.log(`  ${colors.dim}Ya hay otra ruta al modelo (ANTHROPIC_BASE_URL, Bedrock o Vertex): no se cambió${colors.reset}`);
   logOk(`Claude Code: autocompactación al ${settings.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE}% del contexto`);
   logOk(`Claude Code: subagentes sin modelo propio en ${settings.env.CLAUDE_CODE_SUBAGENT_MODEL} (CLAUDE_CODE_SUBAGENT_MODEL)`);

@@ -473,7 +473,7 @@ App en un solo idioma: `LOCALE_ID` fijo (§10.10) y nada más. Multi-idioma:
 
 ### 10.12 Hooks de Claude Code que instala el paquete
 
-Solo en Claude Code. El instalador agrega tres hooks globales (los copia a
+Solo en Claude Code. El instalador agrega cuatro hooks globales (los copia a
 `~/.claude/hooks/skills-frontend-mrydex/` y los registra en `~/.claude/settings.json`; se instalan
 fuera del repo; `format-prettier` sí reescribe el archivo editado). Saber qué hacen evita pelearse con ellos:
 
@@ -482,9 +482,13 @@ fuera del repo; `format-prettier` sí reescribe el archivo editado). Saber qué 
 | `guard-spec` | Pide confirmación antes de crear `*.spec.ts` / `*.test.ts` en repos Angular (§8). Aprobar **solo** si el usuario pidió tests |
 | `guard-secrets` | Bloquea escribir secretos: claves privadas, tokens de npm, connection strings, `"Password"` en JSON, valores literales entre comillas de `Password` / `ApiKey` de 8+ caracteres, claves y tokens de formatos conocidos; ignora valores con `(` o `[` (regex o código). Revisa solo Edit / Write / MultiEdit (no Bash); no revisa `.md` / `.mdx`; acepta placeholders (`${VAR}`, `#{token}#`, `<valor>`, `{0}`, `%VAR%`) |
 | `format-prettier` | Corre el `prettier` **local** sobre el archivo editado, busca la config y `prettier` en `node_modules` subiendo hasta la raíz del repo (sirve para librerías en `projects/`). Si el archivo está versionado y en HEAD no pasaba `prettier --check`, no lo formatea (no ensucia el diff). Nunca descarga nada |
+| `guard-rules` | Al cerrar el turno (hook `Stop`), en repos Angular: revisa las líneas agregadas y los archivos nuevos contra las reglas que más se violan (`effect()`, `@Input`, `*ngIf`, `style` inline, `row` / `col-*`, `::ng-deep`, `components/` fuera de `shared/`, límites de líneas; según la versión: Reactive Forms, `standalone: true`, `OnPush`). Con hallazgos devuelve el turno una vez con la lista. Sin hallazgos no imprime nada |
 
 - Si `guard-secrets` bloquea, el contenido es un secreto de verdad o lo parece: sacarlo a una variable
   de entorno o al secreto del pipeline (§15.8). No se "desactiva" el hook.
+- Si `guard-rules` devuelve el turno: corregir, o decir en la respuesta final que es una excepción pedida o una
+  convención que el repo ya tenía. Fuera de Claude Code o en CI:
+  `node ~/.claude/hooks/skills-frontend-mrydex/guard-rules.js --reporte` (sale con 1 si hay hallazgos).
 - `format-prettier` no crea la config de prettier: sin ella, no formatea.
 
 ### 10.13 Despliegue: `baseHref`, configuraciones, HTTPS local y Docker
