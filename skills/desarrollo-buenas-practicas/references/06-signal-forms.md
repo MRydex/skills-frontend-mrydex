@@ -378,15 +378,52 @@ validateHttp(path.email, {
 > y setup base (adaptador de fechas, i18n): [10](./10-environment-tooling.md) §10.10.
 
 - **Controles propios**: implementar `FormValueControl<T>` (expone `value = model<T>()`) o
-  `FormCheckboxControl` (expone `checked`) para que `[formField]` pueda bindearlos — es el mecanismo
-  **preferido** para controles nuevos. `[formField]` también puede bindear directo a un componente que
-  provee `ControlValueAccessor` (interop de compatibilidad con Reactive/Template-driven Forms,
-  documentado en la propia API de `FormField`), pero es soporte de compatibilidad, no la vía nativa de
-  Signal Forms: usarlo solo cuando el control de terceros ya trae CVA y no expone otra API (ver
-  ejemplo con `nz-input-number` más abajo). Si el control contiene varios inputs nativos, implementar
-  además `focus()` para que funcione `focusBoundControl()`; si el control es una directiva que envuelve
-  un elemento host, `registerAsBinding()` permite registrarlo sin implementar `FormValueControl`
-  completo.
+  `FormCheckboxControl` (expone `checked = model<boolean>()`) para que `[formField]` pueda bindearlos.
+  Es la **única** vía para controles nuevos: **prohibido escribir un `ControlValueAccessor` propio**
+  (ni `NG_VALUE_ACCESSOR`, `writeValue`, `registerOnChange`, `registerOnTouched`). El hook
+  `guard-rules` lo marca ([10](./10-environment-tooling.md) §10.12).
+  ```ts
+  @Component({
+    selector: 'app-estrellas',
+    template: `
+      @for (estrella of [1, 2, 3, 4, 5]; track estrella) {
+        <button
+          type="button"
+          class="estrellas__boton"
+          [class.estrellas__boton--activa]="estrella <= value()"
+          [disabled]="disabled()"
+          [attr.aria-label]="estrella + ' de 5'"
+          [attr.aria-pressed]="estrella <= value()"
+          (click)="value.set(estrella)"
+          (blur)="touch.emit()"
+        >★</button>
+      }
+    `,
+  })
+  export class Estrellas implements FormValueControl<number> {
+    readonly value = model(0);          // único obligatorio
+    readonly disabled = input(false);   // opcional: lo llena [formField]
+    readonly touch = output<void>();    // opcional: marca el campo como touched
+  }
+  ```
+  ```html
+  <app-estrellas [formField]="resenaForm.puntaje" />
+  ```
+  Solo `value` (o `checked`) es obligatorio. El resto son **inputs opcionales** que `[formField]` llena
+  solo si el control los declara: declarar únicamente los que el template usa.
+  - Estado: `disabled`, `disabledReasons`, `readonly`, `hidden`, `invalid`, `pending`, `touched`,
+    `dirty`, `errors`, `name`.
+  - Restricciones del schema: `required`, `min`, `max`, `minLength`, `maxLength`, `pattern`.
+  - Salida `touch = output<void>()`: emitir en `blur`. Métodos opcionales `focus()` y `reset()`.
+
+  Si el control contiene varios inputs nativos, implementar `focus()` para que funcione
+  `focusBoundControl()`; si el control es una directiva que envuelve un elemento host,
+  `registerAsBinding()` permite registrarlo sin implementar `FormValueControl` completo.
+- **CVA de terceros**: `[formField]` también bindea directo a un componente que provee
+  `ControlValueAccessor` (interop de compatibilidad con Reactive/Template-driven Forms, documentado en
+  la propia API de `FormField`). Es soporte de compatibilidad, no la vía nativa de Signal Forms: solo
+  se **consume** cuando el control de terceros ya trae CVA y no expone otra API (ver `nz-input-number`
+  más abajo).
 - **`nz-input-number`** (y cualquier otro control NG-ZORRO que ya provea `ControlValueAccessor`): **no
   hace falta armar un wrapper**. `nz-input-number` registra su propio `NG_VALUE_ACCESSOR`
   (`useExisting: NzInputNumberComponent`), así que `[formField]` lo bindea directo, vía el caso de

@@ -24,6 +24,7 @@ const LINE_RULES = [
   [['.ts'], /(^|[^\w.])effect\s*\(/, 'effect(): computed / linkedSignal / resource, salvo las excepciones de 02 §2.7'],
   [['.ts'], /new\s+BehaviorSubject\b/, 'BehaviorSubject como estado: usar signal (02)'],
   [['.ts'], /\b(FormGroup|FormControl|FormBuilder|UntypedForm\w*|ReactiveFormsModule|FormsModule)\b/, `Reactive Forms / FormsModule: ${FORMS_MSG}`, 22],
+  [['.ts'], /\b(ControlValueAccessor|NG_VALUE_ACCESSOR)\b/, 'ControlValueAccessor propio: usar FormValueControl / FormCheckboxControl (06 §6.9)', 22],
   [['.html'], /\[\(?ngModel\)?\]|\(ngModelChange\)|formControlName|\[formGroup\]/, `ngModel / Reactive Forms en el template: ${FORMS_MSG}`, 22],
   [['.html'], /\*ng(If|For|Switch)\b|\[ng(Class|Style)\]/, 'Directiva legacy: @if / @for / @switch y [class.x] / [style.x] (03)', 17],
   [['.ts'], /@(Input|Output)\s*\(/, '@Input / @Output: usar input() / output() (02)', 17],
