@@ -18,6 +18,12 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- `09` §9.3: `@if` no es lazy loading; bloque pesado que se muestra y oculta va con `@defer (on immediate)` adentro
+  del `@if`. §9.6: `focusReset: 'manual'` (`@experimental 22.3`, solo con `withExperimentalPlatformNavigation()`).
+- `03` §3.15: directiva sobre más de un tag con `inject(HOST_TAG_NAME)` (`disabled` en `<button>`, `aria-disabled` en `<a>`).
+- `15` §15.6: versión mínima de `@angular/common` por la fuga del token XSRF (GHSA-jfgx-762w-99vr): 20.3.34 / 21.0.3.
+  §15.7: `esRutaInterna` compara el origen con `URL.parse`, como resuelve el navegador (antes miraba prefijos y
+  dejaba pasar `/\t/evil.example`).
 - Instalador: si Windows Smart App Control bloquea el Python que trae uv ("Una directiva de Control de aplicaciones
   bloqueó este archivo", os error 4551) o no hay Python, instala el Python 3.13 oficial con `winget` (firmado, por
   usuario, sin admin), saca el shim roto `uv tool uninstall graphifyy` y reintenta `pip install graphifyy`.

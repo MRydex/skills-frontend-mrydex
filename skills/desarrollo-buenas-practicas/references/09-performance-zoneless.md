@@ -124,6 +124,21 @@ render "lazy" con un prefetch más agresivo:
 Para servicios pesados (no componentes), usar `injectAsync()` en vez de `@defer` (ver
 [02-typescript-signals.md](./02-typescript-signals.md) §2.14).
 
+**`@if` no es lazy loading**: oculta el componente, pero su código ya viajó en el bundle inicial. Para
+un bloque pesado que se muestra y se oculta (tab, panel), `@defer` adentro del `@if`: el `@if` decide
+si se ve y el `@defer` baja el chunk la primera vez. `when` solo no alcanza: dispara una vez y después
+no vuelve a ocultar.
+
+```html
+@if (tabActiva() === 'graficos') {
+  @defer (on immediate) {
+    <app-analitica [data]="datos()" />
+  } @placeholder {
+    <app-skeleton />
+  }
+}
+```
+
 Cuándo `@defer` **no** separa el código (el componente termina igual en el bundle inicial):
 
 - La dependencia se usa fuera del `@defer` en el mismo archivo, o en un `viewChild()`.
@@ -432,6 +447,12 @@ provideRouter(
 ```html
 <a routerLink="." [queryParams]="{ tab: 'resenas' }" scroll="manual">Reseñas</a>
 ```
+- **`focusReset: 'manual'`** (`@experimental 22.3`): solo tiene efecto con
+  `withExperimentalPlatformNavigation()`. Con ese modo el navegador mueve el foco al `<body>` (o al
+  primer `autofocus`) al terminar cada navegación: un buscador que escribe el query param mientras se
+  tipea pierde el foco en cada tecla. En esa navegación:
+  `this._router.navigate([], { queryParams: { q }, focusReset: 'manual' })`. Sin Navigation API no
+  hace falta.
 - `withPreloading(PreloadAllModules)`: descarga los chunks lazy en segundo plano después del
   arranque. Con muchas features pesadas, una `PreloadingStrategy` propia que precargue solo las
   rutas marcadas (`data: { precargar: true }`):

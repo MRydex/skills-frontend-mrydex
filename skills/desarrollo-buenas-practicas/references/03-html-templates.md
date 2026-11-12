@@ -772,6 +772,26 @@ export class TextoTruncado {
 - **Input con el mismo nombre del selector**: alias (`input.required({ alias: 'appX' })`) y nombre
   descriptivo en la clase.
 - **Estilos y listeners por `host: {}`** con `computed()`, nunca `ElementRef.nativeElement.style`.
+- **Directiva sobre más de un tag** (`button[appAccion], a[appAccion]`): el tag se lee con
+  `inject(HOST_TAG_NAME)` (`@angular/core`), no con `ElementRef.nativeElement.tagName` (toca el DOM,
+  llega en mayúsculas). Sirve para lo que cambia según el elemento: `disabled` existe en `<button>`
+  pero no en `<a>`, que lleva `aria-disabled` y `preventDefault()` ([12](./12-html5-semantics-seo.md) §12.6):
+
+```ts
+@Directive({
+  selector: 'button[appAccion], a[appAccion]',
+  host: {
+    '[attr.disabled]': '!esLink && inactiva() ? "" : null',
+    '[attr.aria-disabled]': '(esLink && inactiva()) || null',
+    '(click)': 'esLink && inactiva() && $event.preventDefault()',
+  },
+})
+export class Accion {
+  protected readonly esLink = inject(HOST_TAG_NAME) === 'a';
+  readonly inactiva = input(false, { transform: booleanAttribute });
+}
+```
+
 - **Evento custom reutilizable** (ej. `(ctrl.click)`): un `EventManagerPlugin` registrado en
   `EVENT_MANAGER_PLUGINS`, no una directiva con `output()` que hay que importar en cada lugar.
 - Sin `standalone: true` (default desde v19) ni `public` explícito (§2.2).

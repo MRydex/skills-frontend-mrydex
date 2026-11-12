@@ -306,6 +306,11 @@ provideHttpClient(
 );
 ```
 
+- **Versión mínima** (GHSA-jfgx-762w-99vr, oct 2026; arreglo incompleto de CVE-2025-66035): el
+  interceptor decidía "URL relativa" con una regex y el navegador resuelve distinto (`/\evil.example`,
+  `/\t/evil.example` van a otro origen), así que el token salía a un dominio ajeno. `@angular/common`
+  **>= 20.3.34** o **>= 21.0.3**; 22.x no está afectada; <= 19 no tiene parche. Nunca armar la URL de
+  un request con un valor del usuario sin validar.
 - El backend .NET valida el token (antiforgery) y usa `SameSite` en la cookie de sesión.
 - **Nunca** mutar estado con `GET`.
 
@@ -314,8 +319,10 @@ provideHttpClient(
 - **Open redirect**: `returnUrl` / `next` se aceptan solo si son rutas internas.
 
 ```ts
+// Se resuelve como el navegador (WHATWG), no con regex ni prefijos: `/\evil.example` y
+// `/\t/evil.example` empiezan con una sola `/` y van a otro origen
 const esRutaInterna = (url: string): boolean =>
-  url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/\\');
+  url.startsWith('/') && URL.parse(url, location.origin)?.origin === location.origin;
 
 const destino = esRutaInterna(returnUrl) ? returnUrl : '/inicio';
 this._router.navigateByUrl(destino);
