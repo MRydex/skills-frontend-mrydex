@@ -18,6 +18,8 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- `04` §4.3: método HTTP `QUERY` (RFC 10008) y `HttpClient.query()`, anunciado para Angular 22.3 (hoy en
+  `22.3.0-rc.0`). Nota con las tres condiciones para usarlo; hasta entonces sigue `GET` o `POST`.
 - Aviso de versión nueva (Claude Code): el hook `SessionStart` compara la versión instalada con la de GitHub una vez
   por día y muestra una línea con el comando para actualizar. Cubre las dos skills (front y backend). No gasta
   tokens ni actualiza solo. Empieza a avisar después de reinstalar con esta versión. `14` §14.8.

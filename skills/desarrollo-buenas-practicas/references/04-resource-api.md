@@ -70,6 +70,19 @@ protected readonly results = httpResource<Result[]>(() => ({
 }));
 ```
 
+**Anunciado para v22.3** (en `22.3.0-rc.0`, no está en la estable 22.2): método HTTP `QUERY` (RFC 10008, junio
+2026). Es una lectura como `GET` (segura, idempotente, cacheable) que lleva los filtros en el body: reemplaza al
+`POST` de búsqueda de arriba cuando los filtros no entran en la URL. En el servicio, `this._http.query<Result[]>(url,
+filtros)`; en `httpResource`, `method: 'QUERY'` (acepta cualquier string; no verificado con body en una estable).
+Usarlo solo si se cumplen las tres:
+
+- el `@angular/common` instalado trae `HttpClient.query()` (si no, no compila);
+- el backend ya expone ese endpoint con `QUERY` (en .NET 10 no hay `[HttpQuery]` ni sale en el OpenAPI: se acuerda
+  con el back, no se asume);
+- IIS, el proxy y CORS lo dejan pasar: `QUERY` dispara preflight y necesita `Access-Control-Allow-Methods: QUERY`.
+
+Si falta alguna, se sigue con `GET` + query params, o `POST` si los filtros no entran en la URL.
+
 **Parseo de la respuesta.** Por defecto `httpResource` parsea la respuesta como **JSON**. Para otros
 formatos existen las variantes `httpResource.text()`, `httpResource.blob()` y
 `httpResource.arrayBuffer()`, con la misma firma (`url`/`request`, `options`):
