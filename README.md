@@ -133,7 +133,7 @@ Siempre instala todo; no hay flags para saltear partes.
   [agent-browser](https://github.com/vercel-labs/agent-browser) de Vercel,
   [grill-me](https://github.com/mattpocock/skills) y [find-skills](https://github.com/vercel-labs/skills).
   Plugin `claude-code-setup` en Claude Code.
-- **Hook `SessionStart`** de Claude Code: carga `tasks/lessons.md` del proyecto como contexto; autocompactación al 40%.
+- **Hook `SessionStart`** de Claude Code: carga `tasks/lessons.md` del proyecto como contexto y avisa una vez por día si hay una versión nueva de la skill; autocompactación al 40%.
 - **Claude Code, extras** (cada uno solo si el usuario no lo configuró antes, salvo `permissions.deny`, que se suma):
   - `permissions.deny` para que el agente no lea secretos (`~/.ssh`, `.env*`, `*.pem`, `*.key`...); se suman a las reglas del usuario.
   - MCP [Context7](https://github.com/upstash/context7) (docs vigentes de librerías, gratis).

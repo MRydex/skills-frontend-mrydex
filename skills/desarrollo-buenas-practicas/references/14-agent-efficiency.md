@@ -626,6 +626,9 @@ estas reglas para que rijan en todas las sesiones.
   `bin/hooks/session-start.js` a `~/.claude/hooks/skills-frontend-mrydex/` y lo registra en
   `~/.claude/settings.json`. En cada sesión:
   - Inyecta `tasks/lessons.md` del proyecto como contexto (tope 12.000 caracteres, §11.8).
+  - Avisa si hay una versión nueva de `skills-frontend-mrydex` o `skills-backend-mrydex`: compara el archivo
+    `version` que deja el instalador con el `package.json` de GitHub. Una consulta por día, 3 s de tope, sin red
+    no dice nada. Una línea para el usuario (`systemMessage`), sin tokens del modelo. No actualiza solo.
 - **Headroom se retiró** (nov 2026). Medido en 14.558 requests (oct-nov 2026, suscripción): ahorró 1,52% de los
   tokens de entrada (mejor día 2,5%), contra cuelgues silenciosos del proxy, loops de reinicio de la tarea de
   Windows (`[winerror 10048]`) y hasta 45 s por comando en su hook `PreToolUse`. La caché de prompt de Anthropic

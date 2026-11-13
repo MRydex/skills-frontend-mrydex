@@ -18,6 +18,9 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- Aviso de versión nueva (Claude Code): el hook `SessionStart` compara la versión instalada con la de GitHub una vez
+  por día y muestra una línea con el comando para actualizar. Cubre las dos skills (front y backend). No gasta
+  tokens ni actualiza solo. Empieza a avisar después de reinstalar con esta versión. `14` §14.8.
 - Hook `guard-rules` (Claude Code, `Stop`): en repos Angular revisa las líneas agregadas y los archivos nuevos del
   turno contra las reglas que más se violan y devuelve el turno una vez con la lista. Sin hallazgos no imprime nada.
   `--reporte` para otros agentes o CI. `10` §10.12.

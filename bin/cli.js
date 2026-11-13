@@ -1010,6 +1010,8 @@ function installSessionStartHook(homeDir) {
   const hookPath = path.join(hookDir, 'session-start.js');
   fs.mkdirSync(hookDir, { recursive: true });
   fs.copyFileSync(path.join(__dirname, 'hooks', 'session-start.js'), hookPath);
+  // Versión instalada: el hook la compara con la de GitHub para avisar que hay una nueva
+  fs.writeFileSync(path.join(hookDir, 'version'), pkgVersion);
 
   // Reinstalar reemplaza solo la entrada propia; el resto de los hooks no se toca
   settings.hooks ??= {};

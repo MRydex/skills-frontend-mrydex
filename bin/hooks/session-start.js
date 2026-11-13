@@ -3,7 +3,8 @@
 /**
  * Hook SessionStart de Claude Code (skills-frontend-mrydex).
  * Carga `tasks/lessons.md` del proyecto (skill §11.8) como contexto, así las lecciones se aplican
- * sin depender de que el agente lo lea, y poda los snapshots diarios de graphify (§14.5).
+ * sin depender de que el agente lo lea, poda los snapshots diarios de graphify (§14.5) y avisa una vez
+ * por día si hay una versión nueva de la skill.
  */
 
 const fs = require('fs');
@@ -16,6 +17,9 @@ const LESSONS_MAX_CHARS = 12000;
 const SNAPSHOTS_KEEP = 2;
 const SNAPSHOT_FILES = new Set(['graph.json', 'GRAPH_REPORT.md', 'manifest.json', 'cost.json', '.graphify_labels.json',
   '.graphify_analysis.json', '.graphify_semantic_marker']);
+const SKILL_PACKAGES = ['skills-frontend-mrydex', 'skills-backend-mrydex'];
+const UPDATE_CHECK_HOURS = 24;
+const UPDATE_CHECK_TIMEOUT_MS = 3000;
 
 // Claude Code manda el evento por stdin (incluye `cwd`); sin stdin, el directorio actual
 function readCwd() {
@@ -80,13 +84,45 @@ function pruneGraphifySnapshots(cwd) {
   return removed;
 }
 
+function isNewer(remote, local) {
+  const [a, b] = [remote, local].map((version) => version.split('.').map(Number));
+  for (let i = 0; i < 3; i++) {
+    if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0);
+  }
+  return false;
+}
+
+// Aviso de versión nueva. Este hook es uno solo para las dos skills (el instalador deja una entrada),
+// así que revisa las dos carpetas hermanas. Una consulta por día y por skill: el sello se escribe antes
+// de consultar, así sin red no se reintenta en cada sesión. Va por `systemMessage`: lo ve el usuario y
+// no entra al contexto del modelo. Nunca actualiza solo.
+async function updateNotice(name) {
+  const dir = path.join(__dirname, '..', name);
+  try {
+    const installed = fs.readFileSync(path.join(dir, 'version'), 'utf8').trim();
+    const stamp = path.join(dir, 'update-check');
+    const last = fs.existsSync(stamp) ? fs.statSync(stamp).mtimeMs : 0;
+    if (Date.now() - last < UPDATE_CHECK_HOURS * 3600e3) return '';
+    fs.writeFileSync(stamp, '');
+    const response = await fetch(`https://raw.githubusercontent.com/MRydex/${name}/main/package.json`,
+      { signal: AbortSignal.timeout(UPDATE_CHECK_TIMEOUT_MS) });
+    if (!response.ok) return '';
+    const latest = String((await response.json()).version);
+    return isNewer(latest, installed) ? `${name} ${installed} → ${latest}. Actualizar: npx -y github:MRydex/${name}` : '';
+  } catch {
+    return ''; // skill no instalada, sin red o respuesta rara: sin aviso
+  }
+}
+
 async function main() {
   const cwd = await readCwd();
   const output = {};
   const additionalContext = lessonsContext(cwd);
   if (additionalContext) output.hookSpecificOutput = { hookEventName: 'SessionStart', additionalContext };
+  const messages = (await Promise.all(SKILL_PACKAGES.map(updateNotice))).filter(Boolean);
   const pruned = pruneGraphifySnapshots(cwd);
-  if (pruned) output.systemMessage = `graphify: ${pruned} snapshots diarios viejos borrados de graphify-out/ (quedan ${SNAPSHOTS_KEEP})`;
+  if (pruned) messages.push(`graphify: ${pruned} snapshots diarios viejos borrados de graphify-out/ (quedan ${SNAPSHOTS_KEEP})`);
+  if (messages.length) output.systemMessage = messages.join('\n');
   if (Object.keys(output).length) process.stdout.write(JSON.stringify(output));
 }
 
