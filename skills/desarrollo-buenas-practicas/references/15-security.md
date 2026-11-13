@@ -445,6 +445,26 @@ npm audit              # completo: incluye el tooling de build (dev)
 - **Sin fix disponible**: reportarlo y proponer una salida, sin aplicarla sin aprobación. Opciones: `overrides` en `package.json`, reemplazar la dependencia o sacarla si se resuelve con el framework.
 - Vulnerabilidades solo en `dev`: reportar con menor prioridad. No llegan al usuario, pero sí corren en las máquinas de build.
 
+**Lo que `npm audit` no ve: Zero Wire (Cloudflare Radar).** Feed público y gratis de avisos sobre vulnerabilidades
+críticas en software expuesto a internet. Las de paquetes npm ya las marca `npm audit`; el feed suma **Node** (build
+y SSR), **IIS** y **Angular SSR**. Son pocos avisos y la mayoría no toca un front: no reemplaza a `npm audit`.
+
+- **Cuándo:** solo en la auditoría de seguridad (§15.14 paso 3), una lectura por pedido. Nunca en un hook ni en una
+  tarea programada.
+- **Cómo:** leer solo título, link y resumen de cada aviso (unos 3 KB). El feed entero pesa unos 68 KB: no leerlo
+  completo. Abrir el `<link>` solo del aviso que coincide.
+  ```bash
+  node -e "fetch('https://radar.cloudflare.com/zero-wire/rss').then(r=>r.text()).then(x=>{for(const i of x.split('<item>').slice(1))console.log(['title','link','description'].map(t=>(i.match(new RegExp('<'+t+'>([^]*?)</'+t+'>'))||[])[1]).join(' | '))})"
+  ```
+  Solo se descarga el feed: no mandar afuera la lista de paquetes ni el nombre del proyecto.
+- **Contra qué cruzarlo:** versión de Node (`engines`, `.nvmrc`, pipeline), `@angular/ssr` si el proyecto lo usa, e
+  IIS (§15.9).
+- **Resultado:** solo las coincidencias, una línea cada una: aviso, componente afectado (`archivo:línea`), versión
+  con fix y link. Una coincidencia se trata como `high` / `critical`. Sin coincidencias, una línea: "Zero Wire: sin
+  avisos que apliquen (leído el <fecha>)". Lo que el repo no declara (versión de IIS o de Node en el servidor) se
+  anota como "no verificable desde el repo".
+- Si el feed no responde, decirlo con el error exacto y seguir. Nunca darlo por leído.
+
 ### 15.11 Blue Team: detección, logging y respuesta
 
 - El `errorInterceptor` (§5.3) reporta al backend los eventos de seguridad: 401 y 403 repetidos,
@@ -501,8 +521,8 @@ saltea en silencio, y la profundidad de cada una la decide el agente según lo q
    `grep` que lo pruebe. Cada área termina en
    uno de tres estados: **OK** (con la evidencia, `archivo:línea`), **hallazgo** o **N/A** (con el
    motivo: "no hay uploads en el alcance"). Incluye la tabla de §15.2 (Red Team), las defensas de
-   §15.3–15.11 (Blue Team) y `npm audit --omit=dev` + `npm audit` (§15.10; en .NET, `dotnet list
-   package --vulnerable`).
+   §15.3–15.11 (Blue Team), `npm audit --omit=dev` + `npm audit` y el feed Zero Wire (§15.10; en .NET,
+   `dotnet list package --vulnerable`).
 4. **Profundizar donde haga falta.** Por cada área, invocar su herramienta profunda (tabla) cuando se
    da **cualquiera** de estas condiciones:
    - la revisión base encontró un hallazgo o una señal dudosa;

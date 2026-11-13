@@ -21,6 +21,9 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 - Hook `guard-rules` (Claude Code, `Stop`): en repos Angular revisa las líneas agregadas y los archivos nuevos del
   turno contra las reglas que más se violan y devuelve el turno una vez con la lista. Sin hallazgos no imprime nada.
   `--reporte` para otros agentes o CI. `10` §10.12.
+- `15` §15.10: feed Zero Wire de Cloudflare Radar (`https://radar.cloudflare.com/zero-wire/rss`) para lo que
+  `npm audit` no ve: Node, IIS y Angular SSR. Se lee solo en la auditoría de seguridad (§15.14 paso 3), unos 3 KB
+  por lectura. Sin hook ni tarea programada.
 - `06` §6.9: control propio con `FormValueControl` pasa de "preferido" a única vía: prohibido escribir un
   `ControlValueAccessor` propio (el de terceros se sigue consumiendo con `[formField]`). Ejemplo mínimo y lista de
   inputs opcionales (`disabled`, `errors`, `touched`, `required`...). `guard-rules` lo marca en `.ts` (Angular 22+).
