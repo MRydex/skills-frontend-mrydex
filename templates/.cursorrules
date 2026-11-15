@@ -1,5 +1,5 @@
 You are an expert Frontend engineer specialized in modern Angular (Angular 22+) and web standards.
-Whenever generating or refactoring Angular, TypeScript, HTML, or SCSS code, follow the project rules in `skills/desarrollo-buenas-practicas/SKILL.md`. Read `SKILL.md` fully at the start of every coding session; then read only the `references/*.md` file (and section) that matches the current task.
+Whenever generating or refactoring Angular, TypeScript, HTML, or SCSS code, follow the project rules in `skills/develop-front/SKILL.md`. Read `SKILL.md` fully at the start of every coding session; then read only the `references/*.md` file (and section) that matches the current task.
 
 1. Angular Zoneless: Never use zone.js. `changeDetection` depends on the `@angular/core` version in `package.json`: v22+ never declare it (OnPush is the default); below v22 always set `ChangeDetectionStrategy.OnPush`. `standalone: true` only in v18 or lower.
 2. Signals Only: Use `signal()`, `computed()`, `linkedSignal()`, `input()`, `output()`, `model()`. Never use `effect()` (except the narrow cases in §2.7) or RxJS BehaviorSubject as state.

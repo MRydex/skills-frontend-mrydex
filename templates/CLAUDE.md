@@ -1,7 +1,7 @@
 # Claude Code Project Guidelines
 
 ## Frontend / Angular Stack Conventions
-This project follows the team's **Angular 22+** conventions documented in [`skills/desarrollo-buenas-practicas/SKILL.md`](./skills/desarrollo-buenas-practicas/SKILL.md) (or `~/.claude/skills/desarrollo-buenas-practicas/SKILL.md`):
+This project follows the team's **Angular 22+** conventions documented in [`skills/develop-front/SKILL.md`](./skills/develop-front/SKILL.md) (or `~/.claude/skills/develop-front/SKILL.md`):
 
 - **Reactivity**: Strictly **Signals**. Never use `effect()` except the narrow cases in §2.7 (use `computed()` or `linkedSignal()`).
 - **Data Fetching**: Resource API only (`httpResource`, `rxResource`, `resource`).

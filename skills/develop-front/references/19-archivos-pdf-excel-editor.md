@@ -185,7 +185,7 @@ export function sanitizeCell(value: string): string {
 - En CSV, además, escapar comillas (`"` → `""`) y encerrar el campo entre comillas si tiene coma,
   salto de línea o comilla.
 - Números reales (`typeof === 'number'`) no se prefijan: el `-` de un negativo es válido.
-- Mismo criterio si el export lo genera el backend: pedírselo (skill `desarrollo-backend-buenas-practicas`).
+- Mismo criterio si el export lo genera el backend: pedírselo (skill `develop-back`).
 
 ### 19.6 Visor de PDF
 

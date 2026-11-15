@@ -94,8 +94,9 @@ function isNewer(remote, local) {
 
 // Aviso de versión nueva. Este hook es uno solo para las dos skills (el instalador deja una entrada),
 // así que revisa las dos carpetas hermanas. Una consulta por día y por skill: el sello se escribe antes
-// de consultar, así sin red no se reintenta en cada sesión. Va por `systemMessage`: lo ve el usuario y
-// no entra al contexto del modelo. Nunca actualiza solo.
+// de consultar, así sin red no se reintenta en cada sesión. Va por `systemMessage` (la terminal lo muestra)
+// y por `additionalContext`, para que el modelo lo diga: en la extensión de VS Code `systemMessage` puede no verse.
+// Cuesta unos 60 tokens, solo en la sesión con aviso. Nunca actualiza solo.
 async function updateNotice(name) {
   const dir = path.join(__dirname, '..', name);
   try {
@@ -117,9 +118,12 @@ async function updateNotice(name) {
 async function main() {
   const cwd = await readCwd();
   const output = {};
-  const additionalContext = lessonsContext(cwd);
-  if (additionalContext) output.hookSpecificOutput = { hookEventName: 'SessionStart', additionalContext };
   const messages = (await Promise.all(SKILL_PACKAGES.map(updateNotice))).filter(Boolean);
+  const updateContext = messages.length
+    ? `Hay una versión nueva de la skill. Avisale al usuario en una línea al empezar tu primera respuesta:\n${messages.join('\n')}`
+    : '';
+  const additionalContext = [lessonsContext(cwd), updateContext].filter(Boolean).join('\n\n');
+  if (additionalContext) output.hookSpecificOutput = { hookEventName: 'SessionStart', additionalContext };
   const pruned = pruneGraphifySnapshots(cwd);
   if (pruned) messages.push(`graphify: ${pruned} snapshots diarios viejos borrados de graphify-out/ (quedan ${SNAPSHOTS_KEEP})`);
   if (messages.length) output.systemMessage = messages.join('\n');

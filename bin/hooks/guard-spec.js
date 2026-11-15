@@ -43,7 +43,7 @@ async function main() {
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
       permissionDecision: 'ask',
-      permissionDecisionReason: 'guard-spec: la skill desarrollo-buenas-practicas no crea archivos de test (§08). '
+      permissionDecisionReason: 'guard-spec: la skill develop-front no crea archivos de test (§08). '
         + 'Aprobá solo si pediste tests explícitamente.',
     },
   }));

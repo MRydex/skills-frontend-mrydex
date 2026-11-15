@@ -143,7 +143,7 @@ if (reportMode) {
 
 if (findings.length && !event.stop_hook_active) {
   const reason = [
-    'guard-rules (desarrollo-buenas-practicas): el cambio rompe reglas de la skill.',
+    'guard-rules (develop-front): el cambio rompe reglas de la skill.',
     ...findings,
     'Corregí cada uno. Si alguno es una excepción que pidió el usuario o una convención que el repo ya tenía, decilo en la respuesta final.',
   ].join('\n');

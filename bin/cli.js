@@ -13,7 +13,7 @@ const readline = require('readline');
 const { spawnSync } = require('child_process');
 const crypto = require('crypto');
 const zlib = require('zlib');
-const { installSubagents, readClaudeSettings, writeFileSafe } = require('./subagents');
+const { installSubagents, readClaudeSettings, writeFileSafe, snapshotBlocks, restoreBlocks } = require('./subagents');
 
 // ANSI color helpers
 const colors = {
@@ -119,7 +119,7 @@ if (args.includes('--advisor') && (!advisorArg || (!ADVISOR_ALIASES.includes(adv
   process.exit(1);
 }
 
-const sourceSkillDir = path.join(__dirname, '..', 'skills', 'desarrollo-buenas-practicas');
+const sourceSkillDir = path.join(__dirname, '..', 'skills', 'develop-front');
 const templatesDir = path.join(__dirname, '..', 'templates');
 
 if (!fs.existsSync(sourceSkillDir)) {
@@ -183,7 +183,7 @@ function copyBridgeFiles(projectRoot) {
     const destFile = path.join(projectRoot, b.dest);
     if (fs.existsSync(srcFile) && !isLinkedRepoPath(projectRoot, destFile)) {
       // Un archivo propio del proyecto (sin el nombre de la skill) no se pisa
-      if (fs.existsSync(destFile) && !fs.readFileSync(destFile, 'utf8').includes(SKILL_NAME)) {
+      if (fs.existsSync(destFile) && !SKILL_NAMES.some((name) => fs.readFileSync(destFile, 'utf8').includes(name))) {
         console.log(`  ${colors.yellow}⚠${colors.reset} ${b.dest} ya existe y no es de la skill: no se reemplazó`);
         continue;
       }
@@ -208,7 +208,7 @@ const AI_GITIGNORE_ENTRIES = [
   '.clinerules/',
   '.opencode/',
   '.aider*',
-  'skills/desarrollo-buenas-practicas/',
+  'skills/develop-front/',
   'CLAUDE.md',
   'CLAUDE.local.md',
   'AGENTS.md',
@@ -540,10 +540,10 @@ function setupGraphifyProject(projectRoot) {
   }
 }
 
-// Instalación propia: SKILL.md con `name: <esta skill>`. Otra skill (que también tiene SKILL.md) no se toca.
+// Instalación propia: SKILL.md con `name: <esta skill>` (o su nombre anterior). Otra skill (que también tiene SKILL.md) no se toca.
 function isOwnInstall(dir) {
   try {
-    return new RegExp(`^name:\\s*${SKILL_NAME}\\s*$`, 'm').test(fs.readFileSync(path.join(dir, 'SKILL.md'), 'utf8'));
+    return new RegExp(`^name:\\s*(${SKILL_NAMES.join('|')})\\s*$`, 'm').test(fs.readFileSync(path.join(dir, 'SKILL.md'), 'utf8'));
   } catch {
     return false;
   }
@@ -565,11 +565,20 @@ function installTarget(destDir, label) {
     fs.rmSync(destDir, { recursive: true, force: true });
   }
 
+  // La skill cambió de nombre: la carpeta con el nombre anterior quedaría duplicada al lado
+  const oldDir = path.join(path.dirname(destDir), OLD_SKILL_NAME);
+  if (path.basename(destDir) === SKILL_NAME && isOwnInstall(oldDir)) {
+    if (!isDryRun) fs.rmSync(oldDir, { recursive: true, force: true });
+    console.log(`  ${colors.dim}${isDryRun ? '[dry-run] Quitar' : 'Quitada'} la carpeta con el nombre anterior: ${oldDir}${colors.reset}`);
+  }
+
   copyFolderRecursive(sourceSkillDir, destDir);
   console.log(`  ${colors.green}✔ ${isUpdate ? 'Actualización' : 'Instalación'} completada con éxito (v${pkgVersion}).${colors.reset}`);
 }
 
-const SKILL_NAME = 'desarrollo-buenas-practicas';
+const SKILL_NAME = 'develop-front';
+const OLD_SKILL_NAME = 'desarrollo-buenas-practicas';
+const SKILL_NAMES = [SKILL_NAME, OLD_SKILL_NAME];
 
 const logOk = (msg) => console.log(`  ${colors.green}✔${colors.reset} ${msg}`);
 
@@ -595,7 +604,8 @@ function doctor(homeDir, repoRoot) {
   if (checks.some(([, ok]) => !ok)) console.log(`${colors.dim}Para completar: npx -y github:MRydex/skills-frontend-mrydex${colors.reset}`);
 }
 // Subagentes y bloque global se escriben al final (finish): `graphify install` reescribe
-// ~/.claude/CLAUDE.md y borraría el bloque si corriera después.
+// ~/.claude/CLAUDE.md y borraría el bloque si corriera después. Los bloques que ya estaban (este, en una
+// instalación con --target, y el de la skill hermana) se guardan antes y se devuelven después.
 let pendingSubagents = null;
 
 function installCodexGlobal(homeDir) {
@@ -1088,19 +1098,21 @@ function configureAdvisor(settings, ownRoute) {
 }
 
 function finish() {
+  const savedBlocks = isDryRun ? [] : snapshotBlocks(os.homedir());
   for (const root of projectRoots) ensureAiGitignore(root);
   if (projectRoots.size === 0) ensureGraphifyCli();
   for (const root of projectRoots) setupGraphifyProject(root);
   installCaveman(os.homedir(), [...projectRoots]);
   installExternalSkills(os.homedir());
   installAgentTools(os.homedir());
+  restoreBlocks(savedBlocks);
   if (pendingSubagents) installSubagents({ ...pendingSubagents, isDryRun, log: logOk });
 
   console.log(`
 ${colors.bold}${colors.green}✔ ¡Configuración completada!${colors.reset}
 
 ${colors.bold}¿Cómo lo usan los agentes de IA?${colors.reset}
-- ${colors.bold}Antigravity:${colors.reset} Detecta automáticamente el skill ${colors.cyan}desarrollo-buenas-practicas${colors.reset}.
+- ${colors.bold}Antigravity:${colors.reset} Detecta automáticamente el skill ${colors.cyan}develop-front${colors.reset}.
 - ${colors.bold}Claude Code:${colors.reset} Lee las directivas desde ${colors.cyan}~/.claude/skills/${colors.reset} o ${colors.cyan}CLAUDE.md${colors.reset}.
 - ${colors.bold}Cursor / Windsurf:${colors.reset} Guiado por ${colors.cyan}.cursorrules${colors.reset} referenciando las reglas modulares.
 - ${colors.bold}Codex / Copilot Workspace:${colors.reset} Sigue el estándar ${colors.cyan}AGENTS.md${colors.reset} en la raíz del proyecto.

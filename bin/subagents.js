@@ -32,7 +32,7 @@ const ROLES = [
       'Use to implement a concrete brief from the main model when it saves tokens (mechanical edits with a clear pattern across 8+ files, independent units run in parallel, or the next tasks/todo.md task handed to a fresh context). Returns a short caveman report: files changed, decisions the brief left open, problems. Skip small edits the main model can do inline.',
     instructions: `Implementá exactamente el brief que te pasa el modelo principal. Nada más.
 
-1. Seguí las reglas compactas del brief (\`tasks/brief-<tarea>.md\`). Abrí una referencia de la skill \`desarrollo-buenas-practicas\` solo si el brief la cita.
+1. Seguí las reglas compactas del brief (\`tasks/brief-<tarea>.md\`). Abrí una referencia de la skill \`develop-front\` solo si el brief la cita.
 2. Antes de buscar código: \`grep\` / \`Glob\` por nombre; \`graphify query\` solo sin nombre conocido.
 3. No amplíes el alcance. No crees archivos de test, pero verificá que funcione. No agregues abstracciones que el brief no pide.
 4. Si el brief es ambiguo o te trabás, no adivines: devolvé \`NECESITA_ADVISOR: <duda>\`.
@@ -44,8 +44,8 @@ const ROLES = [
     readonly: true,
     cheap: true,
     description:
-      'Use after large code changes (3+ files) to check the diff against the desarrollo-buenas-practicas checklists (Angular, SCSS, security, no test files, no over-engineering). Read-only. Returns one line per finding. Pass the verbatim request (L1), the specs and the diff scope. Ends with a verdict: LISTO / CORREGIR Y LISTO / REHACER. Not a substitute for the final review by the main model.',
-    instructions: `Revisá el diff que te pasa el orquestador (o \`git diff\` si podés correrlo) contra \`references/checklists.md\` de la skill \`desarrollo-buenas-practicas\`.
+      'Use after large code changes (3+ files) to check the diff against the develop-front checklists (Angular, SCSS, security, no test files, no over-engineering). Read-only. Returns one line per finding. Pass the verbatim request (L1), the specs and the diff scope. Ends with a verdict: LISTO / CORREGIR Y LISTO / REHACER. Not a substitute for the final review by the main model.',
+    instructions: `Revisá el diff que te pasa el orquestador (o \`git diff\` si podés correrlo) contra \`references/checklists.md\` de la skill \`develop-front\`.
 
 1. Una línea por hallazgo: \`archivo:línea: [ALTO|MEDIO|BAJO] problema. arreglo.\` Sin elogios, sin resumen.
 2. Solo reglas del checklist y lo que piden el pedido y las specs que te pasen. Nada de gustos personales ni formato.
@@ -60,7 +60,7 @@ const ROLES = [
     cheap: false,
     description:
       'Use only when the user asks to upgrade or migrate an Angular project (major versions, NgModule to standalone, control flow, signal inputs, application builder, zoneless). Runs one migration step at a time with the official schematics, keeps the build green and reports per step. Not for regular feature work.',
-    instructions: `Migrá siguiendo \`references/20-migracion-angular.md\` de la skill \`desarrollo-buenas-practicas\`. Nada fuera de los pasos pedidos.
+    instructions: `Migrá siguiendo \`references/20-migracion-angular.md\` de la skill \`develop-front\`. Nada fuera de los pasos pedidos.
 
 1. Buscá por nombre con \`grep\` / \`Glob\`; \`graphify query "<pregunta>" --budget 800\` solo si no hay nombre conocido. Leé §20 y listá los pasos que faltan según \`package.json\` y \`angular.json\`.
 2. Un paso por vez, en el orden de §20: corré el \`ng update\` o el schematic oficial, revisá el diff y arreglá lo que rompa.
@@ -82,7 +82,7 @@ const ROLES = [
 1. Buscá por nombre con \`grep\` / \`Glob\`; \`graphify query "<pregunta>" --budget 800\` solo si no hay nombre conocido.
 2. Fuentes: el OpenAPI (documento generado o \`swagger.json\` del repo) o los controllers y DTOs; en el front, los modelos Request/Response, los servicios y los \`httpResource\`. Si solo tenés un lado, devolvé \`NECESITA_ADVISOR: ruta del otro repo\`.
 3. Revisá: rutas y verbos; nombres y casing de campos; tipos (número o texto, enums como texto o número); nullability; fechas (ISO UTC o local sin offset: tiene que coincidir con el interceptor de fechas del front si existe; \`DateOnly\` viaja como texto \`yyyy-MM-dd\`, nunca como \`Date\` del front); paginado; códigos de estado y forma del error (ProblemDetails); campos que el front lee y la API ya no manda.
-4. Reglas: skill \`desarrollo-backend-buenas-practicas\` §17 y skill \`desarrollo-buenas-practicas\` §02 (Request/Response y mapeo). Aplicá solo lo que el proyecto usa.
+4. Reglas: skill \`develop-back\` §17 y skill \`develop-front\` §02 (Request/Response y mapeo). Aplicá solo lo que el proyecto usa.
 5. Una línea por hallazgo: \`archivo:línea: [ALTO|MEDIO|BAJO] diferencia. arreglo.\` ALTO = rompe en runtime. Sin hallazgos: \`Sin hallazgos.\``,
   },
   {
@@ -94,8 +94,8 @@ const ROLES = [
     instructions: `Revisá la autenticación y la autorización del diff o de las rutas que te pasen. Nunca edites archivos.
 
 1. Buscá por nombre con \`grep\` / \`Glob\`; \`graphify query "<pregunta>" --budget 800\` solo si no hay nombre conocido.
-2. Backend (skill \`desarrollo-backend-buenas-practicas\` §11): validación del token (issuer, audience, lifetime, firma, ClockSkew), política fallback, autorización por endpoint, CORS con orígenes explícitos, secretos fuera del repo; si hay IdP propio, PKCE y redirect URIs exactas; si hay LDAP, filtros escapados.
-3. Front (skill \`desarrollo-buenas-practicas\` §15): code flow con PKCE, token solo hacia la API propia, dónde se guarda el token, URL de retorno validada (mismo origen), guards solo como UX, nada sensible en logs.
+2. Backend (skill \`develop-back\` §11): validación del token (issuer, audience, lifetime, firma, ClockSkew), política fallback, autorización por endpoint, CORS con orígenes explícitos, secretos fuera del repo; si hay IdP propio, PKCE y redirect URIs exactas; si hay LDAP, filtros escapados.
+3. Front (skill \`develop-front\` §15): code flow con PKCE, token solo hacia la API propia, dónde se guarda el token, URL de retorno validada (mismo origen), guards solo como UX, nada sensible en logs.
 4. Solo lo que el proyecto usa: no pidas una librería o un flujo que no está.
 5. Una línea por hallazgo: \`archivo:línea: [ALTO|MEDIO|BAJO] problema. arreglo.\` Sin hallazgos: \`Sin hallazgos.\`
 6. Última línea, el veredicto: \`LISTO\`, \`CORREGIR Y LISTO\` (solo MEDIO/BAJO) o \`REHACER\` (algún ALTO).`,
@@ -222,7 +222,7 @@ const BLOCK_END = '<!-- skills-frontend-mrydex:end -->';
 const DELEGATION_BLOCK = `${BLOCK_START}
 ## Frontend skill (always)
 
-In any repo with \`angular.json\` or frontend code (TypeScript, HTML, SCSS/CSS), load the \`desarrollo-buenas-practicas\` skill **before your first tool call**, for **every** request: questions, explanations, reviews, debugging and code changes. Even if the request is vague or does not mention Angular. If it is not available as a skill, read its \`SKILL.md\`.
+In any repo with \`angular.json\` or frontend code (TypeScript, HTML, SCSS/CSS), load the \`develop-front\` skill **before your first tool call**, for **every** request: questions, explanations, reviews, debugging and code changes. Even if the request is vague or does not mention Angular. If it is not available as a skill, read its \`SKILL.md\`.
 
 ## Graphify (no ceremony, any git repo)
 
@@ -232,11 +232,11 @@ No startup or closing command: the git \`post-commit\` hook keeps the graph curr
 
 Installed by skills-frontend-mrydex. Use them in every session; if one is missing, install it and tell me in one line (exact error if it fails):
 
-- **ponytail**: write only the code the task needs. Prefer the platform and standard library over new dependencies or abstractions. Before the final answer on a non-trivial code change (\`desarrollo-buenas-practicas\` §11.3), run \`ponytail-review\` on the diff.
+- **ponytail**: write only the code the task needs. Prefer the platform and standard library over new dependencies or abstractions. Before the final answer on a non-trivial code change (\`develop-front\` §11.3), run \`ponytail-review\` on the diff.
 - **agent-skills**: use the skill that matches the phase (spec, plan, build, review, ship). Never the ones that write tests: team rules forbid test files unless the user asks for them.
-- **External skills by area**: besides this skill's rules, load the external skill that matches the area of the task (table in \`desarrollo-buenas-practicas\` §14.9). On conflict, the repo rule wins.
+- **External skills by area**: besides this skill's rules, load the external skill that matches the area of the task (table in \`develop-front\` §14.9). On conflict, the repo rule wins.
 - **claude-code-setup** (Claude Code): in a repo without Claude Code setup, run \`claude-automation-recommender\` once and propose its result.
-- **Security**: for a vulnerability scan of the code, use the \`claude-security\` plugin (Claude Code); for focused web/API/npm checks, the matching Anthropic-Cybersecurity-Skills or claude-red \`offensive-*\` skill. Use \`offensive-*\` only to harden the project's own code against that attack surface (\`desarrollo-buenas-practicas\` §15.2), never against third-party systems.
+- **Security**: for a vulnerability scan of the code, use the \`claude-security\` plugin (Claude Code); for focused web/API/npm checks, the matching Anthropic-Cybersecurity-Skills or claude-red \`offensive-*\` skill. Use \`offensive-*\` only to harden the project's own code against that attack surface (\`develop-front\` §15.2), never against third-party systems.
 
 ## Delegation to subagents (explicit, standing user request)
 
@@ -295,9 +295,37 @@ function upsertBlock(filePath, block) {
     console.log(`  ⚠ ${filePath}: bloque de la skill incompleto, no se actualizó`);
     return;
   }
+  appendBlock(filePath, current, block);
+}
+
+function appendBlock(filePath, current, block) {
   let separator = '';
   if (current) separator = current.endsWith('\n') ? '\n' : '\n\n';
   writeFileSafe(filePath, `${current}${separator}${block}\n`);
+}
+
+// `graphify install` reescribe los archivos globales y se lleva los bloques marcados: el de esta skill y
+// el de la skill hermana. Se guardan antes y se devuelven los que falten después, tal como estaban.
+const MARKED_BLOCK = /<!-- (skills-(?:frontend|backend)-mrydex):start -->[\s\S]*?<!-- \1:end -->/g;
+
+function snapshotBlocks(homeDir) {
+  const saved = [];
+  for (const entry of DELEGATION_FILES) {
+    const filePath = path.join(homeDir, ...entry.file);
+    if (!fs.existsSync(filePath)) continue;
+    saved.push({ filePath, blocks: fs.readFileSync(filePath, 'utf8').match(MARKED_BLOCK) || [] });
+  }
+  return saved;
+}
+
+function restoreBlocks(saved) {
+  for (const { filePath, blocks } of saved) {
+    for (const block of blocks) {
+      const current = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+      const startMarker = block.slice(0, block.indexOf('\n'));
+      if (!current.includes(startMarker)) appendBlock(filePath, current, block);
+    }
+  }
 }
 
 // Lee ~/.claude/settings.json: {} si no existe, null si no es un objeto JSON válido.
@@ -369,4 +397,4 @@ function installSubagents({ homeDir, isDryRun, only, log }) {
   }
 }
 
-module.exports = { installSubagents, readClaudeSettings, writeFileSafe };
+module.exports = { installSubagents, readClaudeSettings, writeFileSafe, snapshotBlocks, restoreBlocks };

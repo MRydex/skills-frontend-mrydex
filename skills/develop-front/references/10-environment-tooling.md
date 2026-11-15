@@ -360,7 +360,7 @@ en un proyecto, el agente verifica el `.gitignore` y agrega las entradas que fal
 .clinerules/
 .opencode/
 .aider*
-skills/desarrollo-buenas-practicas/
+skills/develop-front/
 CLAUDE.md
 CLAUDE.local.md
 AGENTS.md

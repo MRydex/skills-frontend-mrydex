@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const pkg = require('../package.json');
-const skillPath = path.join(__dirname, '..', 'skills', 'desarrollo-buenas-practicas', 'SKILL.md');
+const skillPath = path.join(__dirname, '..', 'skills', 'develop-front', 'SKILL.md');
 
 if (fs.existsSync(skillPath)) {
   let content = fs.readFileSync(skillPath, 'utf8');

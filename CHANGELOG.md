@@ -1,6 +1,6 @@
 # Changelog
 
-Cambios de la skill `desarrollo-buenas-practicas` y del instalador `skills-frontend-mrydex`.
+Cambios de la skill `develop-front` (antes `desarrollo-buenas-practicas`) y del instalador `skills-frontend-mrydex`.
 Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ## [Unreleased]
@@ -67,6 +67,13 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Corregido
 
+- Hook `SessionStart`: el aviso de versión nueva salía solo por `systemMessage`, que en la extensión de VS Code puede no
+  verse. Ahora va también por `additionalContext` y el modelo lo dice en la primera respuesta (unos 60 tokens, solo
+  en la sesión con aviso).
+- Instalador: `graphify install` reescribe `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` y `~/.gemini/GEMINI.md` y se
+  llevaba los bloques globales marcados. Instalar una skill borraba el bloque de la otra, e instalar con `--target`
+  borraba también el propio. Ahora se guardan antes y se devuelven los que falten.
+- Instalador: en `--dry-run`, el aviso de la carpeta con el nombre anterior ya no dice que la quitó.
 - Instalador: después de instalar Python con `winget`, graphify seguía fallando con "Python was not found; run
   without arguments to install from the Microsoft Store" porque `python` resolvía al alias de la Tienda
   (`WindowsApps\python.exe`). Ahora ubica el `python.exe` oficial en `%LOCALAPPDATA%\Programs\Python` o
@@ -97,6 +104,11 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Cambiado
 
+- La skill pasa a llamarse `develop-front` (antes `desarrollo-buenas-practicas`): se invoca con `/develop-front`.
+  Al actualizar, el instalador borra la carpeta con el nombre anterior en cada destino y reescribe el bloque global.
+  Las citas a la otra skill pasan a `develop-back`. El `.gitignore` de un proyecto ya instalado conserva la línea vieja
+  (`skills/desarrollo-buenas-practicas/`); se puede borrar a mano.
+- README: secciones "Usar" y "Actualizar" propias; "Modelos: qué corre dónde" baja después de "Contenido". Cada comando de instalación en su bloque. Sale "Publicar cambios".
 - Graphify sin ceremonia (medido en nov 2026 contra `grep` en los dos repos de skills y en una app de 12.598 nodos:
   `grep -l` costó de 10 a 120 veces menos que `graphify query`, también en el repo grande; sin nombre conocido el
   grafo devolvió ruido). Paso 0 queda en `graphify update .` (gratis); `graphify query` pasa a último recurso con
