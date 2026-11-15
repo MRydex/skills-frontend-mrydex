@@ -18,6 +18,14 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- `07` §7.2: tabla de unidades (texto en `rem`, anchos en `%` / `fr`, pantalla completa con `100%` y `dvh`, bordes en
+  `px`, `vw` y `cqi` solo dentro de `clamp()`). `clamp()` deja de ser solo tipografía: función Sass `fluido()` para
+  generar tokens de texto y espaciado, y `min()` / `clamp()` para anchos. Checklist y `13` §13.11 lo citan; el
+  ejemplo de `06` pasa de `14px` a `0.875rem`.
+- `07` §7.2: `px` queda solo para bordes, `outline`, sombras, `blur()`, radios chicos, atributos `width` / `height`
+  de imágenes y APIs que solo aceptan píxeles, con las fuentes (MDN, WCAG 1.4.4, W3C). Breakpoints de `@media` en
+  `em` y cortes de `@container` en `rem`. Los ejemplos de `06`, `07`, `09`, `12` y `13` pasan de `px` a `rem` / `em`.
+- Hook `guard-rules`: avisa `font-size` y `line-height` en `px` en un `.scss`.
 - `04` §4.3: método HTTP `QUERY` (RFC 10008) y `HttpClient.query()`, anunciado para Angular 22.3 (hoy en
   `22.3.0-rc.0`). Nota con las tres condiciones para usarlo; hasta entonces sigue `GET` o `POST`.
 - Aviso de versión nueva (Claude Code): el hook `SessionStart` compara la versión instalada con la de GitHub una vez

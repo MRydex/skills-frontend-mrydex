@@ -3,7 +3,7 @@
 ### Índice
 
 - 7.1 Módulos Sass: `@use` y `@forward` (nunca `@import`)
-- 7.2 Tokens de diseño: variables SCSS vs custom properties
+- 7.2 Tokens de diseño: variables SCSS vs custom properties, unidades y `clamp()`
 - 7.3 Selectores anidados con BEM
 - 7.4 Encapsulación y `:host`
 - 7.5 Personalizar NG-ZORRO sin `::ng-deep`
@@ -113,38 +113,134 @@ Dos mecanismos de token, con roles distintos — no son intercambiables:
 
 ```scss
 // ❌ MAL — un breakpoint como custom property no funciona en la condición del @media
-:root { --bp-tablet: 768px; }
+:root { --bp-tablet: 48em; }
 @media (min-width: var(--bp-tablet)) { ... }
 
 // ✅ BIEN — el breakpoint es una $variable de Sass
 @media (min-width: var.$bp-tablet) { ... }
 ```
 
-#### Tipografía fluida con `clamp()`
+#### Unidades: cuál va en cada caso
 
-Los tamaños de fuente del sistema se definen como **tokens fluidos** con `clamp(MÍN, IDEAL, MÁX)`:
-`MÍN` es el piso, `MÁX` el techo, e `IDEAL` (típicamente `Xrem + Yvw`) escala suave entre
-breakpoints. Así un mismo token responde sin media queries.
+| Qué | Unidad | Por qué |
+| :--- | :--- | :--- |
+| Texto (`font-size`) | `rem`, casi siempre como token `clamp()` (abajo) | Respeta el tamaño de fuente del usuario y el zoom (WCAG 1.4.4). Nunca `px` ni `vw` solo |
+| `line-height` | Sin unidad (`1.5`) | Se recalcula con el `font-size` de cada elemento |
+| Espaciado (`padding`, `margin`, `gap`) | `rem`, o token `clamp()` | Acompaña al texto cuando crece |
+| Ancho de columnas y paneles | `%`, `fr`, `minmax()` con mínimo en `rem` | Relativo al contenedor, no a la pantalla |
+| Techo de ancho | `rem`; `ch` para texto corrido (`max-inline-size: 65ch`) | Línea legible con cualquier tamaño de fuente |
+| Sección a pantalla completa | Alto: `dvh` / `svh` ([13](./13-css3-layouts-animations.md) §13.27). Ancho: `100%` | `100vw` incluye la barra de scroll: genera scroll horizontal |
+| Tamaño que sigue a la pantalla | `vw` dentro de `clamp()`, nunca solo | Sin piso ni techo se rompe en pantallas chicas y muy anchas |
+| Tamaño que sigue al componente | `cqi` dentro de `clamp()` (§7.6) | El mismo componente entra en un sidebar y en un panel ancho |
+| Breakpoints de `@media` | `$variable` de Sass en `em` (`$bp-tablet: 48em`) | Con `em` el corte acompaña al tamaño de texto del usuario; con `px` no |
+| Cortes de `@container` | `rem` | Igual que arriba, medido contra el contenedor |
+| Bordes, `outline` | `px` | Una línea de 1px o múltiplo se ve nítida y no engrosa con el texto |
 
 ```scss
-// assets/styles/settings/_typography.scss
-$font-size-medium: clamp(0.8rem, -0.875rem + 8.333vw, 1.125rem);
-$font-size-large:  clamp(1.5rem, -0.875rem + 8.333vw, 2.5rem);
+// ❌ MAL
+.detalle {
+  width: 100vw;        // scroll horizontal por la barra de scroll
+  height: 100vh;       // en mobile queda tapado por la barra del navegador
+  font-size: 14px;     // ignora el tamaño de fuente del usuario
+  border: 0.0625rem solid var(--color-borde); // el borde engrosa con el zoom de texto
+}
+
+// ✅ BIEN
+.detalle {
+  width: 100%;
+  min-block-size: 100dvh;
+  font-size: var.$font-size-medium;
+  border: 1px solid var(--color-borde);
+}
+```
+
+**`px` solo en estos casos.** Todo lo demás va en una unidad relativa.
+
+- Bordes y `outline` (`border: 1px solid`).
+- Detalle decorativo que no debe crecer con el texto: `box-shadow`, `filter: blur()`, `border-radius` chico,
+  desplazamientos cortos de una animación (`translateY(8px)`), ancho de la barra de scroll.
+- Imágenes y video: los atributos `width` y `height` del HTML van en píxeles, sin unidad.
+- APIs que piden píxeles: `rootMargin` de `IntersectionObserver` (solo `px` o `%`).
+
+De dónde sale: MDN ([`<length>`](https://developer.mozilla.org/en-US/docs/Web/CSS/length),
+[`font-size`](https://developer.mozilla.org/en-US/docs/Web/CSS/font-size),
+[`@media`](https://developer.mozilla.org/en-US/docs/Web/CSS/@media)) pide unidades relativas para `font-size` y `em`
+en los media queries; WCAG 1.4.4 exige que el texto se agrande al 200%; el W3C
+([CSS units](https://www.w3.org/Style/Examples/007/units.en.html)) recomienda `px` para líneas de 1px y para
+alinear con imágenes. Sombras, radios y `blur()` no tienen recomendación oficial: quedan en `px` por convención
+del equipo.
+
+> Para pasar de `px` a `rem` se divide por 16 (`24px` = `1.5rem`). Código existente en `px` no se migra salvo
+> pedido: la regla aplica a lo que se escribe o se toca.
+
+#### Tokens fluidos con `clamp()`: texto, espaciado y tamaños
+
+`clamp(MÍN, IDEAL, MÁX)` da un valor que escala entre un piso y un techo sin media queries. Sirve para
+todo tamaño que deba acompañar al ancho disponible, no solo para tipografía.
+
+Los tokens se generan con una función, no a mano: el término `IDEAL` sale de interpolar entre dos anchos
+de pantalla.
+
+```scss
+// assets/styles/tools/_fluido.scss
+@use 'sass:math';
+
+// De $min (pantalla de $ancho-min) a $max (pantalla de $ancho-max). Todo en rem.
+@function fluido($min, $max, $ancho-min: 20rem, $ancho-max: 75rem) {
+  $pendiente: math.div($max - $min, $ancho-max - $ancho-min);
+  $base: $min - $pendiente * $ancho-min;
+  @return clamp(#{$min}, #{$base} + #{$pendiente * 100}vw, #{$max});
+}
 ```
 
 ```scss
+// assets/styles/settings/_typography.scss
+@use 'tools/fluido' as fn;
+
+$font-size-medium: fn.fluido(1rem, 1.125rem);   // clamp(1rem, 0.9545rem + 0.2273vw, 1.125rem)
+$font-size-large:  fn.fluido(1.5rem, 2.5rem);   // clamp(1.5rem, 1.1364rem + 1.8182vw, 2.5rem)
+```
+
+```scss
+// assets/styles/settings/_spacing.scss
+@use 'tools/fluido' as fn;
+
+$space-section: fn.fluido(1.5rem, 4rem);        // separación entre secciones
+```
+
+La función la usan solo los archivos de `settings/`; los componentes consumen el token, así que no hace
+falta reenviarla desde `_index.scss`.
+
+```scss
 .lista {
+  padding-block: var.$space-section;
+
   &__header-title    { font-size: var.$font-size-large; }
   &__header-subtitle { font-size: var.$font-size-medium; }
 }
 ```
 
-> El término `IDEAL` con `rem` negativo es normal: sale de interpolar el tamaño entre dos anchos de
-> viewport. No tocarlo a mano; generarlo con una calculadora de *fluid type scale* y guardarlo como
-> token.
->
-> El máximo no supera 2,5 veces el mínimo y los dos van en `rem`: si no, el zoom del navegador no llega a
-> agrandar el texto al 200% (WCAG 1.4.4). Nunca `vw` solo como tamaño de fuente.
+Dónde más aplica, sin token:
+
+```scss
+// Contenedor centrado con margen lateral: reemplaza width + max-width + padding
+.contenedor { inline-size: min(100% - 2rem, 75rem); margin-inline: auto; }
+
+// Panel que ocupa la mitad, con piso y techo
+.panel { inline-size: clamp(20rem, 50%, 40rem); }
+
+// Dentro de un componente con container-type (§7.6): sigue al contenedor, no a la pantalla
+.tarjeta__titulo { font-size: clamp(1rem, 0.75rem + 2cqi, 1.5rem); }
+```
+
+- Con un solo límite alcanza `min()` o `max()`: `min(100%, 40rem)` es un `max-width` en una línea.
+- Dentro de `clamp()`, `min()` y `max()` no hace falta `calc()`.
+- No usar `clamp()` en bordes, radios ni separaciones chicas entre controles: ahí el valor fijo es correcto.
+- Si un proyecto ya tiene sus tokens `clamp()` escritos a mano, se usan esos; la función es para los nuevos.
+
+> En texto, el piso y el techo van en `rem` y el `IDEAL` siempre lleva una parte en `rem`: con `vw` solo, el
+> zoom del navegador no agranda el texto. El máximo no supera 2,5 veces el mínimo: si no, el zoom no llega al
+> 200% (WCAG 1.4.4).
 
 #### Tema claro/oscuro con `light-dark()` y `color-scheme`
 
@@ -334,7 +430,7 @@ soportadas de personalizar sin llegar a `::ng-deep`:
 ```scss
 // assets/styles/components/_nz-overrides.scss (global, cargada desde styles.scss, §7.10)
 .ui-select--compact .ant-select-selector {
-  min-height: 28px;
+  min-height: 1.75rem;
 }
 ```
 
@@ -366,10 +462,10 @@ componente, en vez de `@media`:
 }
 
 .tarjeta {
-  padding: 8px;
+  padding: 0.5rem;
 
-  @container (width >= 400px) {
-    padding: 16px;
+  @container (width >= 25rem) {
+    padding: 1rem;
   }
 }
 ```
@@ -417,7 +513,7 @@ visual).
   @media (min-width: var.$bp-tablet) { ... }
   ```
 - Antes de un media query, evaluar si el layout se resuelve solo con **contenedor de tamaño fijo +
-  padding lateral fijo + contenido en `%`/`vw`/`vh`**
+  padding lateral fijo + contenido en `%`/`vw`/`vh`** (unidades: §7.2)
   ([13-css3-layouts-animations.md](./13-css3-layouts-animations.md) §13.11), con tokens `clamp()`
   (§7.2) o con Grid `auto-fit`/`minmax`
   ([13-css3-layouts-animations.md](./13-css3-layouts-animations.md) §13.13). Las media queries son
@@ -491,7 +587,7 @@ assets/styles/
 ```scss
 // ❌ MAL — mismo bloque copiado en tarjeta.scss y en resumen.scss
 .tarjeta {
-  padding: 16px;
+  padding: 1rem;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
 }
@@ -546,8 +642,8 @@ assets/styles/
   ```scss
   .form-contacto {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 224px), 1fr));
-    gap: 16px 24px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    gap: 1rem 1.5rem;
 
     &__campo {
       &--completo {

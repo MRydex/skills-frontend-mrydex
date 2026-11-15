@@ -207,7 +207,7 @@ import { NgOptimizedImage } from '@angular/common';
 
 ```html
 <!-- sizes es obligatorio para que genere el srcset responsive -->
-<img ngSrc="banner.jpg" width="1600" height="600" sizes="(max-width: 768px) 100vw, 50vw" placeholder />
+<img ngSrc="banner.jpg" width="1600" height="600" sizes="(max-width: 48em) 100vw, 50vw" placeholder />
 ```
 
 ```ts
@@ -716,7 +716,7 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
   [nzVirtualForTrackBy]="trackById"
   [nzFrontPagination]="false"
   [nzShowPagination]="false"
-  [nzScroll]="{ y: '480px' }"
+  [nzScroll]="{ y: '30rem' }"
 >
   <thead>
     <tr><th>Nombre</th></tr>
@@ -780,7 +780,7 @@ agregar(recibido: MensajeRecibido): void {
 .lista-mensajes {
   &__item {
     content-visibility: auto;
-    contain-intrinsic-size: auto 64px; // alto estimado de un ítem
+    contain-intrinsic-size: auto 4rem; // alto estimado de un ítem
   }
 }
 ```

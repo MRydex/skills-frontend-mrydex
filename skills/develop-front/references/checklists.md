@@ -116,6 +116,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 ### SCSS ([07](./07-styles-scss.md))
 - [ ] ¿`@use` / `@forward`, nunca `@import`? ¿`@use` sin ruta relativa (`@use 'modulo/modulo-parte' as x`, vía `includePaths`; si el repo no lo tiene configurado, su convención)? ¿Partials en `assets/styles/<modulo>/`? (§7.1)
 - [ ] ¿Colores, breakpoints y tamaños desde tokens globales? ¿Tipografía fluida con `clamp()`? (§7.2)
+- [ ] ¿Texto y espaciado en `rem` (nunca `px` ni `vw` solo), breakpoints en `em`, `px` solo en bordes, `outline`, sombras y radios, ancho completo con `100%` y alto con `dvh` / `svh` (no `100vw` / `100vh`)? ¿`vw` y `cqi` solo dentro de `clamp()`? (§7.2)
 - [ ] ¿Estilos anidados bajo el bloque BEM, máximo 3 niveles? (§7.3)
 - [ ] ¿Elementos y modificadores con `&__` / `&--`, sin reescribir la clase completa ni juntar `&__elemento--modificador`? (§7.3)
 - [ ] ¿Sin `::ng-deep` ni `:host-context()`? ¿NG-ZORRO personalizado por theming o clases globales con prefijo? (§7.4, §7.5)

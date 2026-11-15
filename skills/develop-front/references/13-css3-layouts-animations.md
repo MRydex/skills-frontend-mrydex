@@ -218,11 +218,11 @@ archivo**: se declara el orden de las capas una sola vez, y después cada regla 
 }
 
 @layer components {
-  .boton { padding: 8px 16px; }
+  .boton { padding: 0.5rem 1rem; }
 }
 
 @layer overrides {
-  .boton { padding: 12px 20px; } /* gana por estar en una capa posterior, no por especificidad */
+  .boton { padding: 0.75rem 1.25rem; } /* gana por estar en una capa posterior, no por especificidad */
 }
 ```
 
@@ -250,7 +250,7 @@ se podía resolver con JavaScript.
 label:has(+ input:invalid) { color: var(--color-error); }
 
 /* "cuantificador": contenedor con más de un hijo */
-.lista:has(> li:nth-child(2)) { gap: 24px; }
+.lista:has(> li:nth-child(2)) { gap: 1.5rem; }
 ```
 
 - Acepta selector relativo (`:has(> img)`, `:has(+ input)`, `:has(~ .badge)`) además del
@@ -300,10 +300,10 @@ Antes de pensar en media queries, encuadrar el contenido con esta receta simple 
 ```css
 .contenedor {
   width: 100%;
-  max-width: 1200px;        /* techo */
+  max-width: 75rem;         /* techo */
   min-height: 60vh;
   margin-inline: auto;      /* centrado */
-  padding-inline: 24px;     /* padding lateral fijo, idéntico en todo breakpoint */
+  padding-inline: 1.5rem;   /* padding lateral fijo, idéntico en todo breakpoint */
   box-sizing: border-box;
 }
 
@@ -311,6 +311,9 @@ Antes de pensar en media queries, encuadrar el contenido con esta receta simple 
 .contenedor__hero  { height: 50vh; }
 ```
 
+> Qué unidad va en cada caso (texto, ancho, pantalla completa, bordes): [07-styles-scss.md](./07-styles-scss.md)
+> §7.2. Para el ancho completo, `100%` y no `100vw`: `100vw` incluye la barra de scroll.
+>
 > Combinar con tokens fluidos `clamp()` ([07-styles-scss.md](./07-styles-scss.md) §7.2) y Grid
 > `auto-fit`/`minmax` (§13.13) cubre la mayoría de los layouts **sin** media queries.
 
@@ -323,7 +326,7 @@ Distribuye y alinea elementos en **un solo eje** por contenedor (fila o columna)
   display: flex;            /* hijos directos → flexibles */
   flex-direction: row;      /* row | column | row-reverse | column-reverse */
   flex-wrap: wrap;          /* nowrap (encoge) | wrap (salta de línea) */
-  gap: 16px;                /* separación interna, sin márgenes complejos */
+  gap: 1rem;                /* separación interna, sin márgenes complejos */
 
   justify-content: space-between; /* eje PRINCIPAL: center | space-around | space-evenly… */
   align-items: center;            /* eje CRUZADO */
@@ -352,19 +355,19 @@ Control simultáneo de **filas y columnas**.
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);  /* 3 columnas iguales */
-  grid-template-rows: 100px auto;
-  gap: 16px;
+  grid-template-rows: 6.25rem auto;
+  gap: 1rem;
 }
 ```
 
 - **`fr`** → fracción del espacio libre tras restar tamaños fijos.
-- **`repeat(n, valor)`** → abrevia patrones (`repeat(3, 25px 50px)`).
+- **`repeat(n, valor)`** → abrevia patrones (`repeat(3, 2rem 4rem)`).
 - **`minmax(min, max)`** → acota una celda entre un mínimo y un máximo elástico.
 - **Responsive sin media queries**:
 
 ```css
-/* tantas columnas como quepan, mínimo 200px, repartiendo el resto */
-grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+/* tantas columnas como quepan, mínimo 12.5rem, repartiendo el resto */
+grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
 ```
 
   - **`auto-fill`** → conserva celdas vacías aunque no haya contenido.
@@ -406,7 +409,7 @@ insertan, no del tamaño de la pantalla.
   container-name: summary;     /* opcional: para apuntar a este contenedor por nombre */
 }
 
-@container summary (width >= 400px) {
+@container summary (width >= 25rem) {
   .card { font-size: 1.5em; }
 }
 
@@ -818,7 +821,7 @@ select {
   color: #fff;
   border-radius: 0;
   outline: none;
-  padding: 5px 10px;
+  padding: 0.25rem 0.5rem;
 
   &:hover { background: none; }
 
@@ -834,7 +837,7 @@ select {
     border: none;
     outline: none;
     border-radius: 4px;
-    padding: 5px;
+    padding: 0.25rem;
   }
 
   &:open::picker(select) {
@@ -849,7 +852,7 @@ select {
 }
 
 option {
-  padding: 5px 10px;
+  padding: 0.25rem 0.5rem;
   cursor: pointer;
   transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out;
   border-radius: 4px;
@@ -905,8 +908,8 @@ los pseudo-elementos de **CSS Overflow Level 5** para los controles — sin ning
 
   &::scroll-marker {
     content: "";                     /* obligatorio: sin content no se genera el pseudo-elemento */
-    width: 8px;
-    height: 8px;
+    width: 0.5rem;
+    height: 0.5rem;
     border-radius: 50%;
     background: gray;
   }

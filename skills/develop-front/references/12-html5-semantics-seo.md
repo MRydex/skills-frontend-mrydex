@@ -95,8 +95,8 @@
   pantalla; **siempre** cerrar con un `<img>` de respaldo.
   ```html
   <picture>
-    <source media="(min-width: 800px)" srcset="banner-grande.jpg">
-    <source media="(min-width: 400px)" srcset="banner-movil.jpg">
+    <source media="(min-width: 50em)" srcset="banner-grande.jpg">
+    <source media="(min-width: 25em)" srcset="banner-movil.jpg">
     <img src="banner-defecto.jpg" alt="Banner de bienvenida">
   </picture>
   ```

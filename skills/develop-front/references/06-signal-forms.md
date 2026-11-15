@@ -562,7 +562,7 @@ export class Campo {
 :host {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 4px;
+  gap: 0.25rem;
 }
 
 .campo {
@@ -571,13 +571,13 @@ export class Campo {
   &__label {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 4px;
+    gap: 0.25rem;
   }
 
   &__texto {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 0.25rem;
   }
 
   &__obligatorio,
@@ -587,7 +587,7 @@ export class Campo {
 
   &__error {
     margin: 0;
-    font-size: 14px;
+    font-size: 0.875rem;
   }
 }
 ```
@@ -708,8 +708,8 @@ export class FormContacto {
 // form-contacto.scss
 .form-contacto {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 224px), 1fr));
-  gap: 16px 24px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 1rem 1.5rem;
 
   &__campo {
     &--completo {
