@@ -80,7 +80,8 @@ Fuera de un repo git instala solo global. Dentro de un repo instala además en l
 
 ## Qué configura
 
-Siempre instala todo; no hay flags para saltear partes.
+Instala todo por defecto. `--no-external` saltea lo que baja código de terceros (caveman, skills externas,
+plugins y la instalación o actualización del CLI de Claude Code); quedan la skill, subagentes, hooks y graphify.
 
 - **graphify**: CLI y skill, hooks git `post-commit` / `post-checkout` y grafo inicial (`graphify update .`,
   sin costo de tokens). Sin integración por agente ni modo estricto: medido, `grep` cuesta de 10 a 120 veces
@@ -114,6 +115,15 @@ Siempre instala todo; no hay flags para saltear partes.
   - `CLAUDE_CODE_SUBAGENT_MODEL=sonnet`: todo subagente sin `model` propio (`general-purpose`, skills, plugins)
     corre en Sonnet en vez de heredar el modelo de la sesión (medido con sesión Fable: $0.90 contra $0.15 por
     búsqueda, mismo resultado).
+  - `skillListingBudgetFraction: 0.025`: el listado de skills pasa de 1% a 2,5% del contexto. Con el 1% de
+    fábrica, más de la mitad de las skills instaladas quedaba listada sin descripción y el agente no las
+    activaba solo (medido: 77 de 135). Cuesta unos 11.500 tokens más por sesión.
+  - `skillOverrides`: las skills que instala este paquete se listan solo con el nombre; se cargan igual
+    cuando hacen falta. Medido con 41 pedidos que no nombran la skill: mismo acierto que con la descripción
+    completa (41 de 41) y 14.000 tokens menos por sesión. Para volver a la descripción completa de una, poner
+    `"on"` en su entrada de `skillOverrides`.
+  - Las skills externas que su autor marcó solo para uso manual (`disable-model-invocation: true`) quedan
+    habilitadas para que el agente las cargue solo.
   - Subagente `Explore` propio en Haiku con `effort: low`: reemplaza al `Explore` de fábrica, que corre con el
     modelo de la sesión (medido: $0.14 en Opus contra $0.002 en Haiku, mismo resultado).
   - Advisor: no se configura por defecto (medido: no mejora al ejecutor solo). `--advisor fable|opus` lo
@@ -131,6 +141,7 @@ Siempre instala todo; no hay flags para saltear partes.
 -b, --bridge           Copia AGENTS.md, CLAUDE.md y .cursorrules
 --dry-run              Muestra qué haría, sin escribir
 --doctor               Chequea qué está instalado, sin escribir nada
+--no-external          No baja código de terceros (caveman, skills externas, plugins, CLI de Claude Code)
 --advisor <modelo>     Claude Code: advisor (fable | opus | sonnet | off); sin el flag no se configura
 -v, --version          Versión
 -h, --help             Ayuda

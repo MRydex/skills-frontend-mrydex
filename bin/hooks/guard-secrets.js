@@ -17,16 +17,17 @@ const PLACEHOLDER = /^(\$\{|\$\(|<|#\{|__|\{\{|\{[\w.:]+\}|%[A-Za-z_]\w*%|\*{3})
 // md: formato inconfundible de un secreto real; se revisa también en Markdown (README, docs).
 // files: la regla aplica solo a esos archivos. notFiles: no aplica a esos (tests con datos de ejemplo).
 // envName: el grupo 1 es el nombre de la variable; uno de configuración (URL, nombre, ruta) no es un secreto.
+const TEST_FILES = /(?:\.(?:test|spec)\.[jt]sx?|Tests?\.cs)$|[\\/](?:tests?|__tests__|fixtures?)[\\/]/i;
 const RULES = [
   ['clave privada', /-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----/, 0, { md: true }],
-  ['token de npm en .npmrc', /(?:^|:)_(?:authToken|auth|password)\s*=\s*(\S+)/m, 1],
+  ['token de npm en .npmrc', /(?:^|:)_(?:authToken|auth|password)\s*=\s*(\S+)/m, 1, { code: true }],
   // Connection strings en cualquier orden: `...;Password=x` o `"Password=x;...` (sin espacios, pegado
   // a `;`). No matchea código: `Password = request.Password,`, `password = signal('')`.
   ['contraseña en connection string', /;[ \t]*(?:Password|Pwd)[ \t]*=[ \t]*([^;"'\s]+)/i, 1],
   ['contraseña en connection string', /(?:^|["'])(?:Password|Pwd)=([^;"'\s]+);/im, 1],
   ['contraseña en JSON', /"(?:Password|Pwd)"\s*:\s*"([^"]+)"/i, 1, { text: true }],
   // Literal en código: `Password = "x..."` (C#), `password: 'x...'` (TS), `ApiKey = "..."`
-  ['contraseña o API key literal', /\b(?:Password|Pwd|ApiKey|Api_Key)\s*[:=]\s*["']([^"'\s]{8,})["']/i, 1, { code: true }],
+  ['contraseña o API key literal', /\b(?:Password|Pwd|ApiKey|Api_Key)\s*[:=]\s*["']([^"'\s]{8,})["']/i, 1, { code: true, notFiles: TEST_FILES }],
   ['clave de Azure Storage', /AccountKey\s*=\s*([A-Za-z0-9+/=]{20,})/, 1],
   ['clave de Service Bus / Event Hubs', /SharedAccessKey\s*=\s*([A-Za-z0-9+/=]{20,})/, 1],
   ['client secret', /(?:client_?secret|clientsecret)["']?\s*[:=]\s*["']([^"']{8,})["']/i, 1, { code: true }],
@@ -38,7 +39,7 @@ const RULES = [
   ['API key de Google', /\bAIza[0-9A-Za-z_-]{35}\b/, 0, { md: true }],
   ['firma SAS de Azure', /[?&]sig=([A-Za-z0-9%+/=]{30,})/, 1],
   ['JWT literal', /\beyJ[\w-]{10,}\.eyJ[\w-]{10,}\.[\w-]{10,}/, 0,
-    { notFiles: /(?:\.(?:test|spec)\.[jt]sx?|Tests?\.cs)$|[\\/](?:tests?|__tests__|fixtures?)[\\/]/i }],
+    { notFiles: TEST_FILES }],
   // .env y similares: `API_KEY=valor` sin comillas
   ['secreto en archivo de entorno', /^[ \t]*(?:export[ \t]+)?([A-Z0-9_]*(?:SECRET|TOKEN|API_?KEY|PASSWORD)[A-Z0-9_]*)[ \t]*=[ \t]*["']?([^\s#"']{8,})/m, 2,
     { envName: true, files: /(?:^|[\\/])\.env(?:\.(?!example|sample|template)[\w.-]+)?$|\.(?:ini|cfg|conf|properties|toml)$/i }],

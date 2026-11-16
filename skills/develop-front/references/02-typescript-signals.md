@@ -24,7 +24,7 @@ APIs del navegador en servicios (y `BroadcastChannel`, §2.13.1) · [2.14](#214-
   proyecto tiene `strict: false`, no se cambia sin pedido; activarlo es parte de la migración
   ([20](./20-migracion-angular.md) §20.3, Paso 1).
 - Preferir **inferencia** cuando el tipo es obvio (no anotar `: string` si la asignación lo dice).
-- **Nunca usar `any`**. Si el tipo es incierto, usar `unknown` y angostar con type guards.
+- **Nunca usar `any`**. Si el tipo es incierto, usar `unknown` y angostar con type guards. Tampoco `$any()` en el template: el valor de un `<input>` se lee con una variable de template (`#buscador` → `buscador.value`).
 - Toda variable que **no** se puede inferir lleva tipo explícito.
 - Los genéricos de signals/resources se declaran siempre: `signal<number>(0)`, `httpResource<User[]>`.
 

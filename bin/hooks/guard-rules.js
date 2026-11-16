@@ -29,7 +29,7 @@ const LINE_RULES = [
   [['.html'], /\*ng(If|For|Switch)\b|\[ng(Class|Style)\]/, 'Directiva legacy: @if / @for / @switch y [class.x] / [style.x] (03)', 17],
   [['.ts'], /@(Input|Output)\s*\(/, '@Input / @Output: usar input() / output() (02)', 17],
   [['.html'], /\sstyle="/, 'style inline: va en el SCSS del componente con BEM (07)'],
-  [['.html'], /class="[^"]*\b(row|col(-(xs|sm|md|lg|xl))?-\d{1,2})\b/, 'Grilla utilitaria (row / col-*): BEM + CSS Grid en el SCSS (07)'],
+  [['.html'], /class="(?:[^"]*\s)?(row|col(-(xs|sm|md|lg|xl))?-\d{1,2})(?=[\s"])/, 'Grilla utilitaria (row / col-*): BEM + CSS Grid en el SCSS (07)'],
   [['.scss'], /::ng-deep/, '::ng-deep: theming o clases globales con prefijo (07)'],
   [['.scss'], /\bfont-size:\s*[\d.]+px\b/, 'font-size en px: rem o token clamp() (07 §7.2)'],
   [['.scss'], /\bline-height:\s*[\d.]+px\b/, 'line-height en px: valor sin unidad (07 §7.2)'],

@@ -53,8 +53,8 @@ ${colors.bold}OPCIONES:${colors.reset}
                           ${colors.bold}antigravity${colors.reset} (Antigravity / Gemini CLI, global)
                           ${colors.bold}claude${colors.reset}      (Claude Code, global)
                           ${colors.bold}codex${colors.reset}       (Codex, global en ~/.agents/skills)
-                          ${colors.bold}cursor${colors.reset}      (Cursor / Windsurf)
-                          ${colors.bold}universal${colors.reset}   (Codex / Copilot con AGENTS.md)
+                          ${colors.bold}cursor${colors.reset}      (Cursor / Windsurf; alias: windsurf)
+                          ${colors.bold}universal${colors.reset}   (Codex / Copilot con AGENTS.md; alias: copilot)
   ${colors.green}-g, --global${colors.reset}            Solo global (home), aunque estés en un repo
   ${colors.green}-w, --workspace${colors.reset}         También en el repo actual (raíz del repo git)
   ${colors.green}-t, --target <ruta>${colors.reset}     Ruta personalizada (tiene prioridad sobre --agent)
@@ -62,6 +62,8 @@ ${colors.bold}OPCIONES:${colors.reset}
                           cursor, universal y all los generan siempre.
   ${colors.green}--dry-run${colors.reset}               Muestra los archivos y destinos sin escribir cambios
   ${colors.green}--doctor${colors.reset}                Chequea qué está instalado, sin escribir nada
+  ${colors.green}--no-external${colors.reset}           No baja código de terceros: caveman, skills externas, plugins ni
+                          el CLI de Claude Code. Quedan la skill, subagentes, hooks y graphify
   ${colors.green}--advisor <modelo>${colors.reset}      Claude Code: advisor (fable | opus | sonnet | off). Sin el flag no se configura
                           ninguno (medido: no mejora al ejecutor solo); off quita el que haya. Se cobra al
                           precio del advisor; solo API de Anthropic.
@@ -94,6 +96,8 @@ if (args.includes('-v') || args.includes('--version')) {
 }
 
 const isDryRun = args.includes('--dry-run');
+// Saltea lo que baja y corre código de terceros: caveman, skills externas, plugins y el CLI de Claude Code
+const noExternal = args.includes('--no-external');
 const isGlobal = args.includes('-g') || args.includes('--global');
 const isWorkspace = args.includes('-w') || args.includes('--workspace');
 const includeBridge = args.includes('-b') || args.includes('--bridge');
@@ -102,6 +106,11 @@ function getArgValue(flags) {
   for (const flag of flags) {
     const idx = args.indexOf(flag);
     if (idx !== -1 && idx + 1 < args.length) {
+      // `-a --global`: el valor falta; tomar el flag siguiente como valor instalaba otra cosa sin avisar
+      if (args[idx + 1].startsWith('-')) {
+        console.error(`✖ ${flag} necesita un valor.`);
+        process.exit(1);
+      }
       return args[idx + 1];
     }
   }
@@ -459,10 +468,13 @@ function installSignedPython(pkg) {
 const errorTail = (output) => output.trim().split(/\r?\n/).slice(-3).join(' | ');
 let graphifyReady = null;
 
+// Una red colgada (npx, pip, winget, claude) no deja el instalador esperando para siempre
+const COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
+
 function runCommand(cmd, cmdArgs, cwd, env) {
   // Sin shell: pip, python, py, uv y graphify son ejecutables (.exe en Windows), no hace falta
   // y evita DEP0190 (args concatenados sin escapar).
-  const result = spawnSync(cmd, cmdArgs, { cwd, encoding: 'utf8', env: env ?? process.env });
+  const result = spawnSync(cmd, cmdArgs, { cwd, encoding: 'utf8', env: env ?? process.env, timeout: COMMAND_TIMEOUT_MS });
   return { ok: result.status === 0, output: `${result.stdout || ''}${result.stderr || ''}` };
 }
 
@@ -550,6 +562,11 @@ function isOwnInstall(dir) {
 }
 
 function installTarget(destDir, label) {
+  // Destino = carpeta fuente (`-w` o `-t` dentro de este repo): borrarla antes de copiar dejaría el paquete sin skill
+  if (path.resolve(destDir) === path.resolve(sourceSkillDir)) {
+    console.log(`  ${colors.dim}${destDir} es la carpeta fuente de la skill: no se toca.${colors.reset}`);
+    return;
+  }
   const isUpdate = fs.existsSync(destDir);
   // Solo se borra una instalación previa de la skill, nunca otra carpeta (ej. `-t .`)
   if (isUpdate && fs.readdirSync(destDir).length > 0 && !isOwnInstall(destDir)) {
@@ -591,11 +608,14 @@ function doctor(homeDir, repoRoot) {
     ['skill en ~/.agents/skills (Codex)', fs.existsSync(path.join(homeDir, '.agents', 'skills', SKILL_NAME, 'SKILL.md'))],
     ['subagentes Claude Code', fs.existsSync(path.join(homeDir, '.claude', 'agents', 'ejecutor.md'))],
     ['graphify', runCommand('graphify', ['--help']).ok],
-    ['hook SessionStart', JSON.stringify(settings.hooks?.SessionStart ?? []).includes(HOOK_MARKER)],
+    // Compartido con la skill hermana: queda una sola entrada, la del último instalador que corrió
+    ['hook SessionStart', SIBLING_HOOK_MARKERS.some((marker) => JSON.stringify(settings.hooks?.SessionStart ?? []).includes(marker))],
     ['hooks de edición', EDIT_HOOKS.every(({ event, file }) => JSON.stringify(settings.hooks?.[event] ?? []).includes(file))],
     ['permissions.deny', Array.isArray(settings.permissions?.deny)],
     ['MCP context7', runShell('claude mcp get context7', homeDir).ok],
   ];
+  const oldDirs = ['.claude', '.agents'].map((dir) => path.join(homeDir, dir, 'skills', OLD_SKILL_NAME)).filter(fs.existsSync);
+  checks.push([`sin carpeta con el nombre anterior (${OLD_SKILL_NAME})`, oldDirs.length === 0]);
   if (repoRoot) checks.push(['grafo del repo', fs.existsSync(path.join(repoRoot, 'graphify-out', 'graph.json'))]);
   for (const [label, ok] of checks) {
     const mark = ok ? colors.green + '✔' : colors.yellow + '✗';
@@ -669,6 +689,10 @@ ${colors.bold}${colors.magenta}=== Instalador de Skills Frontend (Angular 22+) =
 
   if (agentArg || isGlobal || isWorkspace) {
     const agent = (agentArg || 'all').toLowerCase();
+    if (!['all', 'antigravity', 'claude', 'codex', 'cursor', 'windsurf', 'universal', 'copilot'].includes(agent)) {
+      console.error(`${colors.red}✖ Agente desconocido: ${agent}. Ver --help.${colors.reset}`);
+      process.exit(1);
+    }
     const wantsWorkspace = isWorkspace || !isGlobal && ['all', 'cursor', 'windsurf', 'universal', 'codex', 'copilot'].includes(agent);
 
     if (agent === 'claude') {
@@ -895,6 +919,58 @@ const UNUSED_SKILLS = [
   'caveman-manage', 'caveman-optimize', 'caveman-learn',
 ];
 
+// Skills que su autor marcó solo para `/nombre` (`disable-model-invocation: true`): el agente no las ve en su
+// listado ni las puede cargar solo. Se quita la marca en la copia instalada, así todas las skills que trae
+// el paquete quedan usables por el agente. Devuelve las que cambió.
+function enableModelInvocation(homeDir, names) {
+  const enabled = new Set();
+  for (const name of names) {
+    for (const dir of ['.agents', '.claude']) {
+      const file = path.join(homeDir, dir, 'skills', name, 'SKILL.md');
+      if (!fs.existsSync(file)) continue;
+      const text = fs.readFileSync(file, 'utf8');
+      const frontmatter = text.match(/^---\r?\n[\s\S]*?\r?\n---/)?.[0];
+      if (!frontmatter) continue;
+      const fixed = frontmatter.replace(/^disable-model-invocation:\s*true[ \t]*\r?\n/m, '');
+      if (fixed === frontmatter) continue;
+      fs.writeFileSync(file, fixed + text.slice(frontmatter.length));
+      enabled.add(name);
+    }
+  }
+  return [...enabled];
+}
+
+// `skills add` sale con 0 aunque saltee una skill: pasa cuando el repo de origen publica el SKILL.md sin
+// frontmatter. Esas se copian desde un clon con un frontmatter mínimo (nombre de la carpeta y el párrafo
+// de "## Description"), así el agente las lista y las puede cargar. Devuelve las que quedaron instaladas.
+function installWithoutFrontmatter(homeDir, repo, names) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'skills-src-'));
+  try {
+    if (!runCommand('git', ['clone', '--depth', '1', '--quiet', `https://github.com/${repo}.git`, tmp]).ok) return [];
+    const sources = new Map(fs.readdirSync(tmp, { recursive: true })
+      .filter((file) => path.basename(file) === 'SKILL.md')
+      .map((file) => [path.basename(path.dirname(file)), path.join(tmp, path.dirname(file))]));
+    const installed = [];
+    for (const name of names) {
+      const source = sources.get(name);
+      if (!source) continue;
+      const text = fs.readFileSync(path.join(source, 'SKILL.md'), 'utf8');
+      const description = text.match(/^## Description\s*\r?\n+([^\r\n]+)/m)?.[1].trim();
+      if (text.startsWith('---') || !description) continue;
+      for (const dir of ['.agents', '.claude']) {
+        if (!fs.existsSync(path.join(homeDir, dir))) continue;
+        const dest = path.join(homeDir, dir, 'skills', name);
+        fs.cpSync(source, dest, { recursive: true });
+        fs.writeFileSync(path.join(dest, 'SKILL.md'), `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n\n${text}`);
+      }
+      installed.push(name);
+    }
+    return installed;
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
 function installExternalSkills(homeDir) {
   console.log(`
 ${colors.bold}${colors.cyan}Skills externas:${colors.reset} instalando la última versión (global)...`);
@@ -904,8 +980,18 @@ ${colors.bold}${colors.cyan}Skills externas:${colors.reset} instalando la últim
       console.log(`${colors.dim}[dry-run] npx ${npxArgs.join(' ')}${colors.reset}`);
       continue;
     }
-    if (runNpx(npxArgs, homeDir).ok) logOk(`${repo}: ${skills.join(', ')}`);
-    else console.log(`  ${colors.yellow}⚠${colors.reset} ${repo} falló. Correr a mano: npx ${npxArgs.join(' ')}`);
+    if (runNpx(npxArgs, homeDir).ok) {
+      const isInstalled = (name) => name === '*'
+        || ['.agents', '.claude'].some((dir) => fs.existsSync(path.join(homeDir, dir, 'skills', name, 'SKILL.md')));
+      const skipped = skills.filter((name) => !isInstalled(name));
+      const copied = skipped.length ? installWithoutFrontmatter(homeDir, repo, skipped) : [];
+      const missing = skipped.filter((name) => !copied.includes(name));
+      logOk(`${repo}: ${skills.filter((name) => !missing.includes(name)).join(', ')}`);
+      if (copied.length) console.log(`  ${colors.dim}${repo}: ${copied.length} sin frontmatter en el origen, copiadas con uno mínimo (${copied.join(', ')})${colors.reset}`);
+      if (missing.length) console.log(`  ${colors.yellow}⚠${colors.reset} ${repo}: no se instalaron ${missing.join(', ')}`);
+      const enabled = enableModelInvocation(homeDir, skills);
+      if (enabled.length) console.log(`  ${colors.dim}${repo}: el agente ya puede cargar solo ${enabled.join(', ')} (venían solo para /nombre)${colors.reset}`);
+    } else console.log(`  ${colors.yellow}⚠${colors.reset} ${repo} falló. Correr a mano: npx ${npxArgs.join(' ')}`);
   }
   const removeArgs = ['-y', 'skills', 'remove', ...UNUSED_SKILLS, '--global', '--yes'];
   if (isDryRun) console.log(`${colors.dim}[dry-run] npx ${removeArgs.join(' ')}${colors.reset}`);
@@ -925,21 +1011,21 @@ function installAgentTools(homeDir) {
   console.log(`
 ${colors.bold}${colors.cyan}Herramientas del agente:${colors.reset} claude-code-setup y hooks...`);
   if (isDryRun) {
-    console.log(`${colors.dim}[dry-run] Claude Code: activar ${CLAUDE_PLUGINS.map(({ id }) => id).join(', ')}${colors.reset}`);
-    console.log(`${colors.dim}[dry-run] Claude Code: hooks SessionStart, guard-spec, guard-secrets, format-prettier, guard-rules + CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=${AUTOCOMPACT_PCT} + CLAUDE_CODE_SUBAGENT_MODEL=${SUBAGENT_MODEL}${colors.reset}`);
+    if (!noExternal) console.log(`${colors.dim}[dry-run] Claude Code: activar ${CLAUDE_PLUGINS.map(({ id }) => id).join(', ')}${colors.reset}`);
+    console.log(`${colors.dim}[dry-run] Claude Code: hooks SessionStart, guard-spec, guard-secrets, format-prettier, guard-rules + CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=${AUTOCOMPACT_PCT} + CLAUDE_CODE_SUBAGENT_MODEL=${SUBAGENT_MODEL} + skillListingBudgetFraction=${SKILL_LISTING_FRACTION}${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: permissions.deny de secretos, MCP context7${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: advisorModel=${advisorArg ?? 'sin cambios (no se configura por defecto)'}${colors.reset}`);
     return;
   }
 
   addUvBinToPath();
-  installClaudePlugins(homeDir);
+  if (!noExternal) installClaudePlugins(homeDir);
   installSessionStartHook(homeDir);
 }
 
 // Comandos instalados por npm (.cmd en Windows): necesitan shell. Solo se pasan líneas fijas.
 function runShell(commandLine, cwd) {
-  const result = spawnSync(commandLine, { cwd, shell: true, encoding: 'utf8' });
+  const result = spawnSync(commandLine, { cwd, shell: true, encoding: 'utf8', timeout: COMMAND_TIMEOUT_MS });
   return { ok: result.status === 0, output: `${result.stdout || ''}${result.stderr || ''}` };
 }
 
@@ -994,6 +1080,14 @@ const AUTOCOMPACT_PCT = 40;
 // §14.3.4: un subagente sin `model` (general-purpose, skills, plugins) hereda el modelo de la sesión;
 // medido con sesión Fable: $0.90 la corrida contra $0.15 en Sonnet, mismo resultado.
 const SUBAGENT_MODEL = 'sonnet';
+// Listado de skills que Claude Code manda al modelo: por defecto 1% del contexto. Medido con las dos skills
+// instaladas (135 skills en el listado): con 1%, 77 quedaban solo con el nombre y no se activaban solas;
+// con 2%, 5; con 2,5%, ninguna. Costo: 11.500 tokens más por sesión (38.600 a 50.100 de prompt inicial).
+const SKILL_LISTING_FRACTION = 0.025;
+// Las skills que instala este paquete van al listado solo con el nombre: el nombre ya dice de qué son, y el
+// bloque global y las tablas de la skill del equipo indican cuándo cargarlas. Medido con 41 pedidos que no
+// nombran la skill: 41 aciertos con descripción completa y 41 con solo nombre, con 14.000 tokens menos por
+// sesión (56.300 a 42.200 de prompt inicial).
 // Hooks de edición (§08, §10, §15). `shared`: lo instalan las dos skills y queda una sola entrada.
 const EDIT_HOOKS = [
   { event: 'PreToolUse', matcher: 'Write', file: 'guard-spec.js', timeout: 10 },
@@ -1025,9 +1119,9 @@ function installSessionStartHook(homeDir) {
 
   // Reinstalar reemplaza solo la entrada propia; el resto de los hooks no se toca
   settings.hooks ??= {};
-  const others = (settings.hooks.SessionStart ?? []).filter(
+  const others = (Array.isArray(settings.hooks.SessionStart) ? settings.hooks.SessionStart : []).filter(
     // También el de la skill hermana: hacen lo mismo y dos hooks lanzarían dos proxies
-    (entry) => !entry.hooks?.some((hook) => SIBLING_HOOK_MARKERS.some((marker) => hook.command?.includes(marker))),
+    (entry) => !entry?.hooks?.some((hook) => SIBLING_HOOK_MARKERS.some((marker) => hook.command?.includes(marker))),
   );
   const command = `node "${hookPath.replaceAll('\\', '/')}"`;
   settings.hooks.SessionStart = [...others, { hooks: [{ type: 'command', command, timeout: 30 }] }];
@@ -1063,6 +1157,15 @@ function installSessionStartHook(homeDir) {
     .some((key) => [settings.env[key], process.env[key]].some((value) => value && value !== LEGACY_HEADROOM_URL));
   settings.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE ??= String(AUTOCOMPACT_PCT);
   settings.env.CLAUDE_CODE_SUBAGENT_MODEL ??= SUBAGENT_MODEL;
+  settings.skillListingBudgetFraction ??= SKILL_LISTING_FRACTION;
+  settings.skillOverrides ??= {};
+  const skillsDir = path.join(claudeDir, 'skills');
+  const installedSkills = fs.existsSync(skillsDir) ? fs.readdirSync(skillsDir) : [];
+  const ownSkills = [SKILL_NAME, ...EXTERNAL_SKILLS.flatMap(({ skills }) => skills)
+    // `*` (ponytail): las carpetas que dejó, que empiezan todas con el nombre del repo
+    .flatMap((name) => (name === '*' ? installedSkills.filter((dir) => dir.startsWith('ponytail')) : [name]))];
+  // Una skill que el usuario ya configuró no se pisa
+  for (const name of ownSkills) settings.skillOverrides[name] ??= 'name-only';
   const advisorNote = configureAdvisor(settings, ownRoute);
   // Lista base de secretos que el agente no lee (§15). Suma las reglas nuevas sin quitar las del usuario.
   settings.permissions ??= {};
@@ -1075,6 +1178,8 @@ function installSessionStartHook(homeDir) {
   if (ownRoute) console.log(`  ${colors.dim}Ya hay otra ruta al modelo (ANTHROPIC_BASE_URL, Bedrock o Vertex): no se cambió${colors.reset}`);
   logOk(`Claude Code: autocompactación al ${settings.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE}% del contexto`);
   logOk(`Claude Code: subagentes sin modelo propio en ${settings.env.CLAUDE_CODE_SUBAGENT_MODEL} (CLAUDE_CODE_SUBAGENT_MODEL)`);
+  logOk(`Claude Code: listado de skills con ${settings.skillListingBudgetFraction * 100}% del contexto (skillListingBudgetFraction)`);
+  logOk(`Claude Code: ${ownSkills.length} skills listadas solo con el nombre (skillOverrides)`);
   console.log(advisorNote);
   logOk(`Claude Code: ${settings.permissions.deny.length} reglas deny de lectura de secretos`);
 }
@@ -1102,8 +1207,10 @@ function finish() {
   for (const root of projectRoots) ensureAiGitignore(root);
   if (projectRoots.size === 0) ensureGraphifyCli();
   for (const root of projectRoots) setupGraphifyProject(root);
-  installCaveman(os.homedir(), [...projectRoots]);
-  installExternalSkills(os.homedir());
+  if (noExternal) console.log(`
+${colors.dim}--no-external: sin caveman, skills externas ni plugins${colors.reset}`);
+  else installCaveman(os.homedir(), [...projectRoots]);
+  if (!noExternal) installExternalSkills(os.homedir());
   installAgentTools(os.homedir());
   restoreBlocks(savedBlocks);
   if (pendingSubagents) installSubagents({ ...pendingSubagents, isDryRun, log: logOk });

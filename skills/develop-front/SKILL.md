@@ -44,7 +44,7 @@ metadata:
 
 # Desarrollo Frontend — Buenas Prácticas del Equipo (Angular 22+)
 
-Convenciones **obligatorias** del equipo para Angular 22+ y frontend moderno, más las reglas de cómo trabaja el agente. Leer las reglas y el modo de operación; el detalle vive en `references/`. Graphify no tiene paso de arranque (ver abajo).
+Convenciones **obligatorias** del equipo para Angular 22+ y frontend moderno, más las reglas de cómo trabaja el agente. Leer las reglas y el modo de operación; el detalle vive en `references/`.
 
 > **Regla maestra**: si una API legacy tiene equivalente moderno (signals, control flow nativo, `inject()`, `input()`, `httpResource`, Signal Forms, `host: {}`, interceptores funcionales), **siempre el moderno**. Todo uso legacy se justifica por interoperabilidad con código existente y se documenta en el PR.
 
@@ -57,23 +57,6 @@ Convenciones **obligatorias** del equipo para Angular 22+ y frontend moderno, m�
 > - **Repo con front y back** (también se activa `develop-back`): cada skill rige sus archivos (esta, `.ts` / `.html` / `.scss` / `.css`); el Paso 0 y lo de "una vez por sesión" corren una sola vez. Sin `angular.json` (scripts sueltos, `wwwroot`): solo seguridad, accesibilidad y HTML/CSS; las reglas de Angular no aplican.
 
 > **Regla de simplicidad**: la solución más simple que resuelve lo pedido. Sin abstracciones, capas, genéricos, tokens ni librerías "por si acaso": se abstrae recién cuando el código aparece por segunda vez (§11.7.1).
-
----
-
-### Graphify (sin paso de arranque)
-
-No hay comando al empezar ni al cerrar la tarea. El grafo (`graphify-out/graph.json`) lo mantiene el hook git
-`post-commit` que deja el instalador; `graphify update .` se corre **solo justo antes de un `graphify query`**,
-y ese query es raro (ver abajo). Medido: `graphify update .` sin cambios tarda 0,7 s en 584 nodos, 1 s en 1.247
-y 17,4 s en 12.598; correrlo al arrancar y tras cada edición gastaba casi un minuto por tarea en un repo grande
-para un grafo que casi nunca se consulta.
-
-**Durante la tarea**: buscar por nombre (símbolo, archivo, texto literal) con `grep` / `Glob`, directo. `graphify
-query` solo para una pregunta de flujo sin ningún nombre conocido: antes `graphify update .`, después el query
-con `--budget 800`; si devuelve nodos sin relación, `grep`. Medido en §14.5: `grep -l` costó de 10 a 120 veces
-menos que una consulta al grafo, también en un repo de 12.600 nodos. Si `graphify update .` falla (`command not
-found`, `Rebuild failed`, `worker failed`, `Nothing to update or rebuild failed` aunque el exit code sea 0):
-**avisar** con el comando, el error exacto y la causa probable (§14.5 "Si algo falla"); nunca seguir en silencio.
 
 ---
 
@@ -103,8 +86,8 @@ Rige toda la sesión desde que la skill se carga. Para sesiones que no tocan Ang
 3. **El modelo seleccionado orquesta; delega solo si ahorra tokens.** Delegar búsquedas/lecturas grandes (3+ archivos, logs, docs) y ediciones mecánicas en 8+ archivos (en 3 archivos delegar costó 38% más). Tareas chicas, decisiones y revisión final: el orquestador. Si lo que habría que leer es 3x o más lo que hace falta saber, delegar. Solo por uno de 4 motivos nombrados (exploración grande, escritores en paralelo, respaldo de contexto, verificador de riesgo alto o de un diff grande (3+ archivos) contra el checklist); ante la duda, no delegar. 5+ unidades independientes en todo el codebase: proponer `/batch <instrucción>`. Brief en `tasks/brief-<tarea>.md` con solo las reglas compactas que aplican; el ejecutor no adivina (`NECESITA_ADVISOR: <duda>`); el orquestador interviene tras la orientación, cuando se traba y antes de terminar. Advisor nativo: el instalador configura `fable` (nivel superior a Sonnet y Opus; no si la sesión ya es Fable); consultarlo solo en esos 3 momentos, nunca en pasos mecánicos; `/advisor off` lo quita. §14.3.4, §14.3.5.
 4. **Preguntar todo antes de empezar.** En tareas no triviales, todas las dudas que cambian el resultado de una vez, con opciones y una recomendada (Claude Code: `AskUserQuestion`); no preguntar lo que se resuelve leyendo el repo (§11.6). Sin usuario que responda (ejecución desatendida): tomar la opción recomendada y listarla como supuesto en el reporte. **Chica** si se retoma con el pedido + `git diff` (directo); **grande** si no (`tasks/todo.md` con L1 literal, Specs, Tasks con riesgo y Log; tarea por tarea; commits de ~400 líneas). Revisión según riesgo trivial / medio / alto (§11.2, §11.3).
 5. **Autocompactar.** Al cerrar fase o antes de tarea nueva: estado en `tasks/todo.md` y proponer compactar con foco (Claude Code: `/compact Conservar: decisiones, archivos tocados, pendientes`; el agente no puede correrlo solo). Tarea nueva sin relación: proponer `/clear`. Nunca con un cambio a medio aplicar ni una pregunta pendiente. §14.4.
-6. **Graphify sin ceremonia.** Sin paso de arranque ni de cierre: el hook git actualiza el grafo en cada commit. Buscar por nombre con `grep` / `Glob`; `graphify query` solo para preguntas de flujo sin nombre conocido, con `graphify update .` justo antes. §14.5.
-7. **Herramientas del agente, siempre.** ponytail (código mínimo, `ponytail-review` sobre el diff en todo cambio no trivial, §11.3); agent-skills por fase, nunca las de tests; en cada área, además de estas reglas, la skill externa que le toca según la tabla de [§14.9](./references/14-agent-efficiency.md#149-skills-externas-por-área) (gana la regla del repo); claude-code-setup en repos sin setup. Si falta una, instalarla y avisar en una línea. §14.8.
+6. **Graphify sin ceremonia.** Sin paso de arranque ni de cierre: el hook git actualiza el grafo en cada commit. Buscar por nombre con `grep` / `Glob`; `graphify query` solo para preguntas de flujo sin nombre conocido, con `graphify update .` justo antes y `--budget 800`; si devuelve nodos sin relación, `grep`. Si `graphify update .` falla (también con exit code 0: `Rebuild failed`, `worker failed`), avisar con el comando, el error exacto y la causa probable; nunca seguir en silencio. §14.5.
+7. **Herramientas del agente, siempre.** ponytail (código mínimo, `ponytail-review` sobre el diff en todo cambio no trivial, cargada en la misma tanda de llamadas que el build o lint final, no en un turno aparte, §11.3); agent-skills por fase, nunca las de tests; en cada área, además de estas reglas, la skill externa que le toca según la tabla de [§14.9](./references/14-agent-efficiency.md#149-skills-externas-por-área) (gana la regla del repo); claude-code-setup en repos sin setup. Si falta una, instalarla y avisar en una línea. §14.8.
 8. **Seguridad siempre (Red + Blue Team).** Todo cambio pasa la tabla rápida de §15.2; riesgo alto suma la revisión ofensiva profunda (§11.3). Nunca desactivar protecciones (sanitizador, CSP, XSRF, validación del backend). Nunca secretos en el front. Toda vulnerabilidad se reporta, aunque esté fuera del alcance. "Auditá" a secas o pedido de seguridad ("auditá la seguridad", "¿es segura la app?", "pentest"): auditoría completa red + blue + network de §15.14, corrigiendo lo que esté en alcance. Pregunta sobre algo concreto ("¿es seguro X?") o pedido de solo lectura: solo reporte con fix propuesto y cobertura de la parte preguntada (sus áreas de la tabla), `security-audit` en modo guía, `claude-security` (escaneo multiagente, caro) solo con pedido explícito o si el usuario acepta su costo, también en la auditoría completa (§15.14 paso 5). **`npm audit` siempre**: una vez por sesión, en la primera tarea no trivial y tras cada cambio en `package.json`/lockfile; reportar todo hallazgo y avisar `high`/`critical` de runtime; si es del framework, proponer el patch de la misma major sin aplicarlo sin pedido (§15.10). Ver [15-security.md](./references/15-security.md).
 9. **Archivos de IA en `.gitignore`.** Al empezar, verificar que excluya todo lo de IA y agentes (`.claude/`, `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `graphify-out/`, `tasks/todo.md`, etc.); si no existe, se crea con eso más `node_modules/`, `dist/` y `.angular/`; agregar lo que falte en la primera tarea no trivial (tarea trivial: avisar en una línea); preguntar antes de `git rm --cached`. §10.9.
 10. **Auditar = control de calidad completo.** Todo pedido de auditoría (app completa, feature, carpeta o diff; sin alcance, la app completa) revisa calidad, legibilidad y mantenimiento, escalabilidad, eficiencia, código duplicado y sin uso, e instrucciones de agentes con `/claude-api prompt-audit` (§11.9). Cada candidato verificado contra uso dinámico; reporte con cobertura por área y `archivo:línea`. Corrige en tandas chicas sin cambiar comportamiento: borra lo sin uso, unifica duplicados, optimiza; pregunta antes solo cambios visibles, API pública o refactors grandes. "Auditá" a secas suma la auditoría de seguridad completa de §15.14 (regla 8); solo seguridad corre solo §15.14; solo calidad ("optimizá", "limpiá") suma la seguridad base (§15.2, `npm audit`).
@@ -117,7 +100,7 @@ Rige toda la sesión desde que la skill se carga. Para sesiones que no tocan Ang
 - **Angular 22+**; lo marcado "v21" sigue valiendo salvo indicación. Proyecto en v21 o menor: tabla de §20.8. **Standalone first**: sin `NgModule` salvo legacy de terceros.
 - **Zoneless** (`provideZonelessChangeDetection()`, default v21+). **Nunca** `zone.js` ni `provideZoneChangeDetection()`.
 - **`OnPush` default desde v22**; `Default` se renombró a **`Eager`** (deprecada). Regla 4.
-- **TypeScript 6** estricto (`strict`, `noImplicitAny`, `strictTemplates`; v22.2+: `strictUnclaimedEventNames` en `angularCompilerOptions`, detecta outputs mal escritos); TS 5.9 no soportado. Node 26 sí, Node 20 no.
+- **TypeScript 6** estricto, sin `any` ni `$any()` en el template (el valor de un `<input>` se lee con una variable de template, `#buscador` → `buscador.value`) (`strict`, `noImplicitAny`, `strictTemplates`; v22.2+: `strictUnclaimedEventNames` en `angularCompilerOptions`, detecta outputs mal escritos); TS 5.9 no soportado. Node 26 sí, Node 20 no.
 - **`HttpClient` usa `FetchBackend`** por defecto: `withFetch()` innecesario y deprecado. Progreso de subida: `withXhr()` (§5.9).
 - **Sin archivos de test, pero todo probado**: nunca `*.spec.ts` ni ningún archivo de test por cuenta propia (si el usuario los pide explícitamente, se hacen); `skipTests: true` en schematics; verificar con build, lint y prueba manual. Ver [08](./references/08-sin-tests.md).
 - Incremental Hydration activa por defecto con `provideClientHydration()`. Imágenes estáticas con `NgOptimizedImage`.

@@ -265,16 +265,13 @@ const DELEGATION_FILES = [
 // Escribe config global del usuario sin riesgo de dejarla a medias: copia la versión previa a
 // `<archivo>.bak` y reemplaza con rename (atómico), así un corte deja el archivo viejo o el nuevo.
 // Un symlink (dotfiles) se sigue hasta el archivo real: el rename no lo reemplaza por una copia.
-// El .bak se hace una vez por corrida: una segunda escritura del mismo archivo no pisa el original del usuario.
-const backedUp = new Set();
+// El .bak se hace una sola vez: guarda el archivo como estaba antes de la primera instalación. Una
+// corrida posterior no lo pisa con una versión que ya trae los cambios del instalador.
 function writeFileSafe(linkPath, content) {
   const filePath = fs.existsSync(linkPath) ? fs.realpathSync(linkPath) : linkPath;
   if (fs.existsSync(filePath)) {
     if (fs.readFileSync(filePath, 'utf8') === content) return;
-    if (!backedUp.has(filePath)) {
-      fs.copyFileSync(filePath, `${filePath}.bak`);
-      backedUp.add(filePath);
-    }
+    if (!fs.existsSync(`${filePath}.bak`)) fs.copyFileSync(filePath, `${filePath}.bak`);
   }
   const tmpPath = `${filePath}.${process.pid}.tmp`;
   fs.writeFileSync(tmpPath, content);
@@ -282,6 +279,15 @@ function writeFileSafe(linkPath, content) {
 }
 
 // Inserta o reemplaza el bloque marcado. El resto del archivo no se toca.
+// La sección Graphify es idéntica en el bloque de la skill hermana: si ese bloque ya la trae en el mismo
+// archivo, este no la repite (760 caracteres menos en cada sesión). Sin el bloque hermano, va completa.
+const SIBLING_BLOCK = /<!-- skills-backend-mrydex:start -->[\s\S]*?<!-- skills-backend-mrydex:end -->/;
+function blockFor(filePath) {
+  const current = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+  const sibling = current.match(SIBLING_BLOCK)?.[0] ?? '';
+  return sibling.includes('## Graphify') ? DELEGATION_BLOCK.replace(/## Graphify[\s\S]*?(?=## )/, '') : DELEGATION_BLOCK;
+}
+
 function upsertBlock(filePath, block) {
   const current = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
   const start = current.indexOf(BLOCK_START);
@@ -378,7 +384,8 @@ function installSubagents({ homeDir, isDryRun, only, log }) {
     if (!isDryRun) {
       fs.mkdirSync(dir, { recursive: true });
       for (const role of ROLES) fs.writeFileSync(path.join(dir, target.file(role)), target.render(role));
-      if (target.label === 'Claude Code') fs.writeFileSync(path.join(dir, target.file(EXPLORE_ROLE)), target.render(EXPLORE_ROLE));
+      // `Explore` es un nombre de fábrica: si el usuario ya tenía el suyo, queda en `Explore.md.bak`
+      if (target.label === 'Claude Code') writeFileSafe(path.join(dir, target.file(EXPLORE_ROLE)), target.render(EXPLORE_ROLE));
     }
     installed.push(target.label);
   }
@@ -386,7 +393,7 @@ function installSubagents({ homeDir, isDryRun, only, log }) {
   for (const entry of DELEGATION_FILES) {
     if (only && entry.label !== only) continue;
     if (!fs.existsSync(path.join(homeDir, entry.requires))) continue;
-    if (!isDryRun) upsertBlock(path.join(homeDir, ...entry.file), DELEGATION_BLOCK);
+    if (!isDryRun) upsertBlock(path.join(homeDir, ...entry.file), blockFor(path.join(homeDir, ...entry.file)));
   }
 
   const claudeSelected = !only || only === 'Claude Code';

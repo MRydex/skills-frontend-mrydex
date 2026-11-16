@@ -130,4 +130,5 @@ async function main() {
   if (Object.keys(output).length) process.stdout.write(JSON.stringify(output));
 }
 
-main();
+// Un error acá no debe mostrar un hook roto al abrir la sesión
+main().catch(() => {});

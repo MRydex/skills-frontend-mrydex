@@ -18,6 +18,19 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- Instalador: `--no-external` instala solo la skill, sus subagentes y hooks; saltea caveman, las skills externas y
+  los plugins de Claude Code.
+- Instalador (Claude Code): `~/.claude/settings.json` recibe `skillListingBudgetFraction: 0.025` y las skills que
+  instala el paquete quedan en `skillOverrides` como `name-only`. Con el presupuesto por defecto, el listado de
+  skills se cortaba y 77 quedaban sin descripción. Medido con una consulta por skill: 99/99 bien elegidas con 45.900
+  tokens de prompt, contra 60.600 con las descripciones completas. No pisa valores que ya estén puestos; una skill
+  vuelve a mostrar su descripción con `"on"` en su entrada de `skillOverrides`.
+- Instalador: las skills externas que `skills add` saltea por no tener frontmatter (10 de `SnailSploit/claude-red`)
+  se copian igual, con un frontmatter mínimo. Antes salía con 0 y no quedaban instaladas.
+- Instalador: las skills externas que su autor marcó solo para uso manual (`disable-model-invocation: true`) quedan
+  habilitadas para que el agente las cargue solo.
+- `SKILL.md` §0 y `02` §2.1: nunca `$any()` en el template; el valor de un `<input>` se lee con una variable de
+  template (`#buscador` → `buscador.value`). Medido en 3 tareas reales: aparecía en 1 de 3, ahora en ninguna.
 - `07` §7.2: tabla de unidades (texto en `rem`, anchos en `%` / `fr`, pantalla completa con `100%` y `dvh`, bordes en
   `px`, `vw` y `cqi` solo dentro de `clamp()`). `clamp()` deja de ser solo tipografía: función Sass `fluido()` para
   generar tokens de texto y espaciado, y `min()` / `clamp()` para anchos. Checklist y `13` §13.11 lo citan; el
@@ -75,6 +88,24 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Corregido
 
+- Instalador: `--target` o `--agent` sin valor (seguido de otra opción) ahora da error en vez de tomar la opción
+  como valor; un agente desconocido se rechaza con la lista de los válidos.
+- Instalador: instalar sobre la carpeta de la propia skill (origen igual a destino) se saltea con un aviso en vez de
+  borrarla.
+- Instalador: cada comando externo tiene un tope de 10 minutos; uno colgado ya no deja la instalación esperando
+  para siempre.
+- Instalador: con los dos paquetes instalados, la sección de Graphify quedaba duplicada en el bloque global
+  (`~/.claude/CLAUDE.md` y equivalentes). Ahora la escribe uno solo.
+- Instalador: la copia `.bak` de un archivo de agente se crea solo si no existe, así una segunda instalación no
+  pisa el respaldo del original.
+- `--doctor`: daba falsa alarma por el hook `SessionStart` cuando lo había registrado el paquete hermano, y no
+  avisaba si quedaba la carpeta de la skill con el nombre viejo.
+- Hook `guard-secrets`: una contraseña o API key literal en archivos de test (`*.spec.ts`, `*Tests.cs`, `tests/`,
+  `fixtures/`) ya no bloquea; son datos de ejemplo. En la regla del token de `.npmrc`, un valor con `(` o `[` se
+  toma como código y no como secreto.
+- Hook `SessionStart`: un error interno ya no muestra el hook como roto al abrir la sesión.
+- Hook `guard-rules`: la regla de grilla utilitaria (`row`, `col-*`) marcaba clases propias que solo terminan en
+  esas palabras (`tabla-row`). Ahora exige la clase entera.
 - Hook `SessionStart`: el aviso de versión nueva salía solo por `systemMessage`, que en la extensión de VS Code puede no
   verse. Ahora va también por `additionalContext` y el modelo lo dice en la primera respuesta (unos 60 tokens, solo
   en la sesión con aviso).
@@ -112,6 +143,10 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Cambiado
 
+- `SKILL.md`: sale la sección "Graphify (sin paso de arranque)", que repetía la regla 6 del modo de operación y
+  `14` §14.5. La regla 6 suma qué hacer si `graphify update .` falla.
+- `SKILL.md` regla 7: `ponytail-review` se carga en la misma tanda de llamadas que el build final. Medido en 3
+  tareas reales: la revisión pasó de hacerse 1 de 3 a 3 de 3.
 - La skill pasa a llamarse `develop-front` (antes `desarrollo-buenas-practicas`): se invoca con `/develop-front`.
   Al actualizar, el instalador borra la carpeta con el nombre anterior en cada destino y reescribe el bloque global.
   Las citas a la otra skill pasan a `develop-back`. El `.gitignore` de un proyecto ya instalado conserva la línea vieja
