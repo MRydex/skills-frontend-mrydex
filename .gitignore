@@ -8,7 +8,6 @@ Thumbs.db
 .atl
 
 # IA / agentes
-/CLAUDE.md
 .claude/
 graphify-out/
 .gitattributes
