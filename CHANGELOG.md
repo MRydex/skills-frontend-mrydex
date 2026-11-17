@@ -10,6 +10,39 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 - `04` §4.12: mutación repetida sobre el mismo ítem (me gusta, activar / desactivar por fila). El ítem queda
   bloqueado mientras su request está en vuelo, con los ids en un signal; una escritura no se cancela, así que no va
   `switchMap` ni `Subject` + `groupBy`. El checklist lo pregunta.
+- `04` §4.9: refresco al volver a la pestaña con `visibilitychange` + `throttleTime` + `reload()`, sin `effect()`
+  (duplica la carga inicial). El checklist lo pregunta.
+- `04` §4.14 (nueva): sondeo de un trabajo largo. POST por `HttpClient`, estado por `rxResource` sobre el id,
+  `timer` + `exhaustMap` + `takeWhile(..., true)` con tope de intentos en el servicio. El checklist lo pregunta.
+- `02` §2.16: `withProps()` de SignalStore para servicios inyectados y constantes del store.
+- `09` §9.6: error boundary por ruta (`errorComponent` + `withErrorBoundaries()`, developer preview 22.3, hoy solo
+  en `22.3.0-rc.0`). Sin `withErrorBoundaries()` el `errorComponent` se ignora. `03` §3.12 lo enlaza.
+- `09` §9.6.2: router resources: recarga sin renavegar (`ActivatedRoute.resources`), herencia desde rutas
+  ancestro y `chain()` para un resource hijo que depende de uno del padre (v22.3).
+- `09` §9.6.4: `unmatchedInputBehavior: 'undefinedIfStale'` en `withComponentInputBinding` y `browserUrl` en
+  `RedirectCommand` para mostrar "no encontrado" conservando la URL pedida.
+- `20` paso 5: schematics `ngclass-to-class-migration` y `ngstyle-to-style-migration`.
+- `09` §9.5: `await img.decode()` antes de mostrar una imagen creada por código.
+- `12`: copiar una tabla al portapapeles con `ClipboardItem` (`text/plain` + `text/html`).
+- `09` §9.3: `scrollMargin` en `@defer (on viewport(...))` para contenedores con scroll propio (v22.3).
+
+### Cambiado
+
+- `18` reescrito para construir una librería por entry points de punta a punta: crear la librería, los dos
+  builders (`@angular/build:ng-packagr` hasta v22.2 y `@angular/build:library` desde v22.3), crear un entry point
+  nuevo paso a paso en cada uno (§18.2.1) y distribuir SCSS, imágenes y archivos como assets, con su consumo desde
+  la app (§18.4): `@use` para tokens y mixins, `styles` del `angular.json` para una hoja con reglas. El checklist
+  lo pregunta.
+- `18` §18.4 y `10` §10.13: URLs de assets bajo `baseHref`. `url('/assets/...')` en CSS ignora el `baseHref`; en
+  SCSS se referencia por nombre de paquete (`"./assets/*"` en `exports`). En Git Bash, `--base-href /mi-app/` se
+  convierte en ruta de disco. El checklist lo pregunta.
+- `18` §18.10: `npm link`: cómo se ve el fallo (build que pasa, bundle más grande, componentes que no
+  renderizan), `preserveSymlinks` alcanza con el builder `application`, y `prebundle.exclude` para `ng serve`.
+- `18` §18.1: comando de la migración `use-library-builder` confirmado.
+- `18` §18.4: corregido. El `exports` propio se fusiona con los entry points de código; no hay que listarlos a mano.
+- `18` §18.2.2: el builder nuevo no corta el build ante un import relativo entre entry points ni ante un ciclo.
+- `09` §9.6: `scroll="manual"` en `routerLink` pasa de "anunciado" a confirmado en el changelog oficial (v22.3).
+- `13` §13.30: `withViewTransitions` es estable desde v22.3.
 
 ## [1.50.2] - 2026-11-17
 

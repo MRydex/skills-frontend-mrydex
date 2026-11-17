@@ -1173,7 +1173,10 @@ La forma por defecto de estado compartido es un servicio con signals (§2.12): n
 pedido. Si el repo ya tiene NgRx:
 
 - **`@ngrx/signals` (SignalStore)**: estado nuevo con `signalStore` + `withState` / `withComputed` /
-  `withMethods`; lógica repetida entre stores en `signalStoreFeature()`. Si el equipo quiere el patrón
+  `withMethods`; lógica repetida entre stores en `signalStoreFeature()`. Servicios inyectados y
+  constantes del store van una sola vez en `withProps(() => ({ api: inject(TodosApi), pageSize: 20 }))`
+  (v19+), antes de `withMethods`, que los lee como `store.api`; no un `inject()` repetido en cada
+  `withMethods` / `withComputed`. Si el equipo quiere el patrón
   eventos → reducer → efectos, el events plugin (`@ngrx/signals/events`) lo cubre sin `@ngrx/store`.
 - **`@ngrx/store` clásico**: el código nuevo sigue su patrón. Migrar a SignalStore solo con pedido,
   feature por feature, con esta equivalencia:

@@ -117,6 +117,9 @@ ng generate @angular/core:standalone     # 3) "Bootstrap the project using stand
 `*ngSwitch` por `@if`, `@for`, `@switch`. Revisar que cada `@for` tenga un `track` correcto (el
 schematic pone `$index` si no encuentra `trackBy`: pasar a una clave estable, [09](./09-performance-zoneless.md)).
 Después: `ng generate @angular/core:cleanup-unused-imports` para sacar `NgIf`/`NgFor` de `imports`.
+`[ngClass]` / `[ngStyle]` (§3.3): `ng generate @angular/core:ngclass-to-class-migration` y
+`ng generate @angular/core:ngstyle-to-style-migration`. Desde v22.2.4 el primero migra también los
+`ngClass` con string o array estático; lo dinámico que no migre se pasa a mano.
 
 **Paso 6 — `inject()`.** `ng generate @angular/core:inject` convierte la inyección por constructor.
 Revisar clases con herencia (el schematic tiene la opción `--backwards-compatible-constructors`,

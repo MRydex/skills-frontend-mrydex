@@ -105,7 +105,7 @@ modales, gráficos, contenido below-the-fold.
 |------------------------------|--------------------------------------------------------------|
 | `on idle` / `on idle(500)`   | El navegador queda inactivo (con timeout opcional en ms)     |
 | `on viewport` / `on viewport(ref)` | El bloque (o el elemento `ref`) entra en el viewport    |
-| `on viewport({ trigger: ref, rootMargin: '100px', threshold: 0.5 })` | Igual, con las opciones de `IntersectionObserver` (salvo `root`) |
+| `on viewport({ trigger: ref, rootMargin: '100px', threshold: 0.5 })` | Igual, con las opciones de `IntersectionObserver` (salvo `root`). Dentro de un contenedor con scroll propio (tabla, panel, modal) `rootMargin` no adelanta la carga: usar `scrollMargin: '100px'` (v22.3+, hoy `22.3.0-rc.0`) |
 | `on interaction` / `(ref)`   | Click/keydown sobre el bloque o sobre `ref`                   |
 | `on hover`                   | Hover sobre el bloque                                         |
 | `on timer(500ms)`            | Pasa el tiempo indicado                                       |
@@ -202,6 +202,9 @@ import { NgOptimizedImage } from '@angular/common';
   el tamaño renderizado, con la misma proporción. Con `fill` no van (el padre define el tamaño).
 - Puede haber más de una imagen `priority` por página si el LCP cambia según el tamaño de pantalla.
 - No aplica a imágenes en base64 inline.
+- Imagen creada por código (precarga antes de un cambio de `src` en un visor o carrusel): esperar
+  `await img.decode()` antes de mostrarla. La descarga terminada no alcanza: falta decodificar, y sin
+  eso se ve un parpadeo. `decode()` rechaza si la imagen falla: va en `try` / `catch`.
 
 **Imágenes responsive y CDN:**
 
@@ -362,6 +365,22 @@ export class ProductoDetalle {
   Un error **no bloqueante** es solo UI: la navegación ya terminó, `RedirectCommand` no hace nada;
   manejar el `error()` en el template o redirigir con `router.navigateByUrl` desde el loader.
 - Solo lecturas. Mutaciones con `HttpClient` en el servicio (§4.12).
+- **Recargar sin renavegar**: al componente le llega solo el valor del resource bloqueante. Para
+  `reload()` o leer el estado: `inject(ActivatedRoute).resources?.['producto']`.
+- **Herencia** (v22.3, hoy `22.3.0-rc.0`): una ruta hija recibe los resources de sus ancestros, también
+  como inputs. Un resource propio con el mismo nombre tapa al heredado.
+- **Resource hijo que depende de uno del padre** (v22.3): `chain()` dentro de `params`, sin esperar
+  al padre para arrancar. Si el padre falla, el hijo falla con `ResourceDependencyError`.
+
+```ts
+resources: (ctx) => ({
+  permisos: resource({
+    // ctx.resources() se lee SOLO dentro de params: en el cuerpo de `resources` lanza y la navegación falla
+    params: ({ chain }) => chain(ctx.resources()['usuario'] as Resource<Usuario>).rol,
+    loader: ({ params: rol }) => cargarPermisos(rol),
+  }),
+}),
+```
 - Código nuevo: router resources en vez de `ResolveFn`. Resolvers existentes no se migran salvo que
   se toque esa ruta. Es developer preview: confirmar la API en `angular.dev` antes de usar algo que
   no esté acá.
@@ -392,7 +411,10 @@ export const authGuard: CanActivateFn = (_route, state) =>
 ```
 
 - Para redirigir, **devolver** un `UrlTree` o un `RedirectCommand` (este acepta opciones de
-  navegación: `new RedirectCommand(urlTree, { skipLocationChange: true })`). Desde v22.2 también se
+  navegación: `new RedirectCommand(urlTree, { skipLocationChange: true })`). Para mostrar la página
+  "no encontrado" **conservando en la barra la URL pedida**:
+  `new RedirectCommand(router.parseUrl('/no-encontrado'), { browserUrl: router.currentNavigation()?.finalUrl })`.
+  `browserUrl` cambia solo la barra de direcciones; `params` y `data` son los de la ruta real. Desde v22.2 también se
   puede **lanzar** el `RedirectCommand` (22.2.4+ para que respete el orden de los guards); preferir
   devolverlo.
   - ❌ `router.navigate()` dentro del guard y `return false`.
@@ -437,9 +459,14 @@ provideRouter(
 ),
 ```
 
+- `withComponentInputBinding()`: por defecto el router escribe `undefined` en **todo** input del
+  componente ruteado que no esté en params, query params o `data`. Un `input('lista')` pierde su
+  default y su tipo miente. Si el componente ruteado tiene inputs que no vienen del router:
+  `withComponentInputBinding({ unmatchedInputBehavior: 'undefinedIfStale' })` (v22+), que escribe
+  `undefined` solo en los inputs que el router ya había llenado (ej. un query param que se quitó).
 - `withInMemoryScrolling`: vuelve arriba al navegar y restaura el scroll con atrás / adelante. Sin
   esto, la página nueva abre en la posición de scroll de la anterior.
-- **Anunciado para v22.3** (no verificado en una versión estable): un link que solo cambia un query
+- **v22.3** (en el changelog oficial desde `22.3.0-next.3`; hoy `22.3.0-rc.0`, todavía no estable): un link que solo cambia un query
   param (tabs por `?tab=`, filtros) no debe saltar arriba: `scroll="manual"` en ese `routerLink` y
   el resto de los links sigue con la restauración global. Usarlo solo si el `@angular/router`
   instalado lo tiene (si no, el template falla al compilar).
@@ -453,6 +480,24 @@ provideRouter(
   tipea pierde el foco en cada tecla. En esa navegación:
   `this._router.navigate([], { queryParams: { q }, focusReset: 'manual' })`. Sin Navigation API no
   hace falta.
+- **Error boundary por ruta** (`@developerPreview 22.3`, hoy solo en `22.3.0-rc.0`): `errorComponent`
+  en la ruta muestra un fallback dentro del `<router-outlet>` cuando el componente ruteado falla
+  (constructor, DI, `ngOnInit`, template, loader de un `resource()`); layout, menú y outlets hermanos
+  siguen vivos. Usarlo solo si el `@angular/router` instalado lo tiene.
+  - Sin `withErrorBoundaries()` en `provideRouter`, `errorComponent` **se ignora**. Ahí van también
+    `defaultErrorComponent` (rutas sin fallback propio) y `onError` (telemetría, §5.3).
+  - El fallback recibe el error por `readonly error = input<Error>()` y, con
+    `withComponentInputBinding()`, los params de la ruta. Se importa eager: no admite `loadComponent`.
+  - No atrapa guards ni resolvers (eso es `NavigationError`: `withNavigationErrorHandler`) ni un error
+    del propio fallback. Para una parte del template: `@boundary` (§3.12).
+  - Texto del fallback: mismas reglas que §3.12 (sin stack ni detalles internos, §15).
+
+```ts
+// app.config.ts
+provideRouter(routes, withComponentInputBinding(), withErrorBoundaries({ defaultErrorComponent: ErrorDeRuta }));
+// app.routes.ts
+{ path: 'inventario/:sku', component: InventarioDetalle, errorComponent: InventarioError }
+```
 - `withPreloading(PreloadAllModules)`: descarga los chunks lazy en segundo plano después del
   arranque. Con muchas features pesadas, una `PreloadingStrategy` propia que precargue solo las
   rutas marcadas (`data: { precargar: true }`):

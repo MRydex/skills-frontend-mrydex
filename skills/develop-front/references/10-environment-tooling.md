@@ -506,6 +506,13 @@ ng build --base-href /mi-app/        # o "baseHref": "/mi-app/" en la configurac
 ```
 
 Rutas siempre relativas en `fetch('appsettings.json')` y assets (§10.4); el `baseHref` las resuelve.
+En CSS / SCSS, `url('/assets/...')` con barra inicial queda literal en el build e **ignora el
+`baseHref`** (404 bajo subcarpeta): usar una ruta relativa al archivo o, para assets de una librería,
+`url('@acme/ui-lib/assets/...')` ([18](./18-librerias-angular.md) §18.4).
+
+En **Git Bash** (Windows), `--base-href /mi-app/` se convierte en una ruta de disco
+(`<base href="C:/Program Files/Git/mi-app/">`). Poner `"baseHref"` en `angular.json`, o anteponer
+`MSYS_NO_PATHCONV=1` al comando. Revisar siempre el `<base>` en el `index.html` del `dist/`.
 
 **Configuraciones de build extra** (`uat`, `studio`, `design` con mocks, etc.): **usá las que el repo
 ya tiene** en `angular.json` (`ng build -c uat`). No inventes configuraciones nuevas ni agregues mocks

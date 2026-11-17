@@ -6,7 +6,8 @@
 [4.7](#47-en-el-template) En el template · [4.8](#48-migración-desde-subject--switchmap--rxresource) Migración desde `Subject` ·
 [4.9](#49-reglas-de-oro-de-resource) Reglas de oro · [4.10](#410-composición-de-resources-snapshot--resourcefromsnapshots) Composición con `snapshot` ·
 [4.11](#411-resource--loader-custom-no-http-y-cancelación-con-abortsignal) `resource()` custom y cancelación ·
-[4.12](#412-mutaciones-httpclient--reloadupdate-nunca-resource-para-escribir) Mutaciones · [4.13](#413-debounce-de-params) Debounce de `params`
+[4.12](#412-mutaciones-httpclient--reloadupdate-nunca-resource-para-escribir) Mutaciones · [4.13](#413-debounce-de-params) Debounce de `params` ·
+[4.14](#414-sondeo-de-un-trabajo-largo-exportación-importación-reporte) Sondeo de un trabajo largo
 
 La **Resource API es estable desde Angular 22** (`resource`, `rxResource`, `httpResource`). Es la
 **única** forma admitida de incorporar lecturas asíncronas al modelo de signals: un resource toma un
@@ -240,6 +241,28 @@ Sobre un `value()` ya mapeado con `computed` (§4.6) se itera directo:
   `takeUntilDestroyed()` que llama a `reload()`; intervalo como constante nombrada
   (`PENDIENTES_POLL_MS = 5 * 60_000`). Nunca `setInterval` suelto ni polling desde el
   componente: se duplica por cada instancia y sigue vivo al navegar.
+- **Refresco al volver a la pestaña** (datos que quedan viejos con la pestaña en segundo plano):
+  `visibilitychange` + `reload()`, con un mínimo entre recargas como constante nombrada. Va donde se
+  declara el resource. Sin `effect()` sobre un signal de visibilidad: ese `effect` corre también en
+  el primer render y duplica la carga inicial.
+
+```ts
+const REFRESCO_MIN_MS = 60_000;
+
+constructor() {
+  this.refrescarAlVolver();
+}
+
+private refrescarAlVolver(): void {
+  fromEvent(this._document, 'visibilitychange') // _document = inject(DOCUMENT)
+    .pipe(
+      filter(() => this._document.visibilityState === 'visible'),
+      throttleTime(REFRESCO_MIN_MS), // ir y volver varias veces seguidas recarga una sola vez
+      takeUntilDestroyed(), // sin argumento: solo dentro del constructor
+    )
+    .subscribe(() => this.pedidos.reload());
+}
+```
 - **Tabla paginada sin parpadeo**: mientras carga la página siguiente, conservar la anterior con
   `linkedSignal` en vez de mostrar vacío:
 
@@ -438,5 +461,50 @@ protected readonly resultados = httpResource<Resultado[]>(() => {
 
 No mezclar el debounce con lógica de carga dentro del `loader`/callback de `httpResource`: el resource
 debe reaccionar a un signal ya estable, no decidir cuándo dispararse. En v21 o menor no hay `debounced()`: §20.8.
+
+### 4.14 Sondeo de un trabajo largo (exportación, importación, reporte)
+
+El backend arranca el trabajo con un POST y devuelve un id; el front consulta el estado hasta que
+termina. Si hay hub de SignalR, el avance llega por push y no se sondea ([16](./16-websocket-signalr.md)).
+
+- El POST es una mutación: `HttpClient` y, al responder, se guarda el id en un signal (§4.12).
+- El sondeo es una lectura: `rxResource` con ese id en `params` (`undefined` ⇒ `idle`, §4.5). Cada
+  emisión del `stream` actualiza `value()`.
+- El `Observable` del sondeo vive en el servicio HTTP, no en el componente.
+
+```ts
+// exportaciones-http.ts
+const EXPORTACION_POLL_MS = 2_000;
+const EXPORTACION_POLL_MAX = 150; // 5 min: siempre acotado
+
+seguir(id: string): Observable<Exportacion> {
+  return timer(0, EXPORTACION_POLL_MS).pipe(
+    take(EXPORTACION_POLL_MAX),
+    // exhaustMap: si un GET tarda más que el intervalo, no se cancela ni se apila otro.
+    exhaustMap(() => this._http.get<Exportacion>(`${environment.API_URL}exportaciones/${id}`)),
+    // true (inclusive): emite también el estado final, que es el que trae el link o el error.
+    takeWhile((exportacion) => exportacion.estado === 'en-curso', true),
+  );
+}
+
+// exportar.ts
+private readonly _idExportacion = signal<string | undefined>(undefined);
+
+protected readonly exportacion = rxResource({
+  params: () => this._idExportacion(),
+  stream: ({ params: id }) => this._exportacionesHttp.seguir(id),
+});
+
+protected exportar(): void {
+  this._exportacionesHttp.iniciar().subscribe(({ id }) => this._idExportacion.set(id));
+}
+```
+
+- **No** `switchMap` dentro del `timer`: con un GET más lento que el intervalo, cada tick cancela el
+  anterior y el estado no llega hasta que corta el tope.
+- **No** `Subject` + `toSignal` para todo el flujo: un error del POST o de un GET mata el stream y el
+  botón deja de responder. Con el resource, el fallo queda en `error()` y se reintenta con `reload()`.
+- Sin `takeWhile` inclusivo se pierde el último valor (`listo` / `fallido`) y la UI queda en "en curso".
+- Si el tope corta con el trabajo todavía `en-curso`: avisar que sigue en proceso y ofrecer `reload()`.
 
 ---

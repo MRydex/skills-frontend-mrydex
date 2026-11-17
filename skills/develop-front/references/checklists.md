@@ -61,7 +61,8 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Se manejan los estados `loading` / `error` en el template, no solo el éxito?
 - [ ] ¿Mutaciones (POST/PUT/DELETE) por `HttpClient` en el servicio + `reload()` / `update()`, **no** por resource? ¿Un botón que muta por fila (me gusta, activar) queda bloqueado mientras su request está en vuelo? (§4.12)
 - [ ] ¿Params de query con `HttpParams` u objeto `params`, no concatenando strings?
-- [ ] ¿Refrescar con el **mismo id** usa `reload()`? ¿Polling solo en el servicio, con `interval` + `takeUntilDestroyed()` y constante nombrada? ¿Tabla paginada conserva la página anterior con `linkedSignal` mientras carga? (§4.9)
+- [ ] ¿Refrescar con el **mismo id** usa `reload()`? ¿Polling solo en el servicio, con `interval` + `takeUntilDestroyed()` y constante nombrada? ¿Refresco al volver a la pestaña con `visibilitychange` + `throttleTime`, sin `effect()`? ¿Tabla paginada conserva la página anterior con `linkedSignal` mientras carga? (§4.9)
+- [ ] ¿Sondeo de un trabajo largo con `rxResource` sobre el id, `timer` + `exhaustMap` + `takeWhile(..., true)` en el servicio y tope de intentos? ¿Sin `switchMap` en el `timer` ni `Subject` + `toSignal`? (§4.14)
 - [ ] ¿Datos de ruta con `resources` en la `Route` (no `ResolveFn` nuevo)? ¿`nonBlocking()` solo para lo secundario, con `error()` manejado en el template? ([09](./09-performance-zoneless.md) §9.6.2)
 - [ ] ¿Se valida el shape de la respuesta (`parse` con Zod/Valibot) cuando el contrato no es confiable?
 
@@ -182,7 +183,8 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿`remoteEntry.json` y manifest sin cache, CORS con origen exacto? (§17.11)
 
 ### Librerías Angular ([18](./18-librerias-angular.md)) (si aplica)
-- [ ] (si aplica) ¿Entry points importados por nombre de paquete (sin rutas relativas entre ellos ni ciclos)? ¿Angular en `peerDependencies`? (§18.2, §18.3)
+- [ ] (si aplica) ¿Entry points importados por nombre de paquete (sin rutas relativas entre ellos ni ciclos, revisado a mano con el builder `@angular/build:library`)? ¿Entry point nuevo declarado donde pide el builder (`ng-package.json` o `exports`) y con el comodín en `paths`? ¿Angular en `peerDependencies`? (§18.1 a §18.3)
+- [ ] (si aplica) ¿SCSS, imágenes y archivos declarados como `assets`, SCSS con condición `sass` en `exports`, y el README dice qué copia la app? ¿URLs de assets sin `/` inicial (relativas en template / TS, `url('@scope/lib/assets/...')` en SCSS), revisadas con `baseHref`? (§18.4, §10.13)
 - [ ] (si aplica) ¿Librería sin lógica de negocio: contratos abstractos con `provide`/`useClass` en la app y config por `provideUiLib()`? (§18.5, §18.6)
 - [ ] (si aplica) ¿`.npmrc` con HTTPS y `${NPM_TOKEN}` (sin token commiteado), versión SemVer, CHANGELOG y `npm pack` probado? (§18.7 a §18.9)
 

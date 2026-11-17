@@ -1134,7 +1134,7 @@ Registrar la custom property con tipo deja que el navegador la interpole en `@ke
 
 ### 13.30 Transiciones entre rutas (`withViewTransitions`)
 
-El router anima el cambio de página con la View Transitions API (developer preview). Sin soporte
+El router anima el cambio de página con la View Transitions API (developer preview hasta v22.2; estable desde v22.3). Sin soporte
 del navegador, navega igual, sin animación.
 
 ```ts

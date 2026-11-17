@@ -673,7 +673,7 @@ la pantalla en blanco. Es el equivalente a los Error Boundaries de React.
 - **Usar en**: widgets aislados que pueden fallar sin tumbar la página (gráficos, tarjetas de un
   dashboard, componentes de terceros). **No envolver** toda la app ni cada componente: el error de
   datos HTTP sigue yendo por el estado `error()` del resource y el interceptor (§4, §5); `@boundary`
-  es para errores de render.
+  es para errores de render. Para la pantalla ruteada entera: `errorComponent` en la ruta (§9.6).
 - **No atrapa**: errores del contenido proyectado (`<ng-content>`) ni del propio `@error` (suben al
   boundary externo). Para componentes creados por código, `createComponent` / `ViewContainerRef`
   aceptan un callback `onError`.

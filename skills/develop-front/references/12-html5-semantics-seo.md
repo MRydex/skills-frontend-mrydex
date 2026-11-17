@@ -263,7 +263,10 @@ mejorarla — le miente sobre qué es el elemento y qué hace.
   y el heading se pierde). `name` compartido entre varios los hace excluyentes sin JS (Baseline sep 2024).
 - **Botón de copiar**: `navigator.clipboard.writeText()` dentro de `try` / `catch` (solo funciona en HTTPS). El
   resultado, también el fallo, se anuncia en un `<span role="status">` que ya está en el DOM vacío, no creado
-  con `@if`. No deshabilitar el botón al copiar: pierde el foco.
+  con `@if`. No deshabilitar el botón al copiar: pierde el foco. Copiar una **tabla**:
+  `navigator.clipboard.write([new ClipboardItem({ 'text/plain': ..., 'text/html': ... })])` con las dos
+  versiones como `Blob` (texto separado por tabs y `<table>`): Excel y Sheets pegan celdas, un editor de
+  texto pega el plano. Las celdas del `<table>` se escapan (§15): son datos, no HTML.
 - **Campos de identificadores** (DNI, CUIT, expediente, usuario): `spellcheck="false"`, `autocapitalize="none"`
   y `autocorrect="off"`, para que el navegador no subraye ni corrija el valor.
 - **`autocomplete` describe datos de quien escribe.** Un campo con datos de un tercero (un imputado, un
