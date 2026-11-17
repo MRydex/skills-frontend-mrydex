@@ -378,6 +378,47 @@ export class Usuarios {
 Usar **update local** solo cuando el backend devuelve el recurso actualizado (o se puede derivar
 sin ambigüedad); ante la duda, `reload()` es más simple y menos propenso a desincronizarse.
 
+**Mutación repetida sobre el mismo ítem** (me gusta, activar / desactivar, favorito en cada fila). Cada
+llamada es un request propio, así que la de un ítem nunca cancela la de otro. El problema son dos
+clics seguidos sobre el **mismo** ítem: salen dos requests y el orden en que llegan al servidor no
+está garantizado. Se resuelve bloqueando ese ítem mientras su request está en vuelo, con los ids en
+un signal:
+
+```ts
+private readonly _guardando = signal<ReadonlySet<number>>(new Set());
+readonly guardando = this._guardando.asReadonly();
+
+async cambiarActivo(id: number, activo: boolean): Promise<void> {
+  if (this._guardando().has(id)) return; // ya hay un request de este usuario
+  this._guardando.update((ids) => new Set(ids).add(id));
+  try {
+    const actualizado = await firstValueFrom(
+      this._http.patch<Usuario>(`${this._BASE}/${id}`, { activo }),
+    );
+    this.usuarios.update((lista) => lista.map((u) => (u.id === id ? actualizado : u)));
+  } finally {
+    this._guardando.update((ids) => new Set([...ids].filter((otro) => otro !== id)));
+  }
+}
+```
+
+```html
+@for (usuario of usuarios.usuarios.value(); track usuario.id) {
+  <button
+    type="button"
+    [disabled]="usuarios.guardando().has(usuario.id)"
+    (click)="usuarios.cambiarActivo(usuario.id, !usuario.activo)"
+  >
+    {{ usuario.activo ? 'Desactivar' : 'Activar' }}
+  </button>
+}
+```
+
+- El body lleva el valor final (`{ activo: true }`), no "invertir": repetirlo da el mismo resultado.
+- Una escritura no se cancela: abortar el request en el navegador no deshace lo que el servidor ya
+  aplicó. Por eso acá no va `switchMap`, ni `Subject` + `groupBy` + `mergeMap` para cancelar por ítem.
+- El `finally` libera el ítem también si el request falla; el error sigue hasta quien llamó.
+
 ### 4.13 Debounce de `params`
 
 El resource **no** debouncea por sí mismo: si `params` cambia en cada tecla, el loader corre en cada

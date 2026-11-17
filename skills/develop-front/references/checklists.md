@@ -59,7 +59,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿El `value()` se mapea/filtra con `computed` (no con `effect`)?
 - [ ] ¿Las lecturas de `value()` están guardadas con `hasValue()` / `@else if`, o hay `defaultValue`?
 - [ ] ¿Se manejan los estados `loading` / `error` en el template, no solo el éxito?
-- [ ] ¿Mutaciones (POST/PUT/DELETE) por `HttpClient` en el servicio + `reload()` / `update()`, **no** por resource? (§4.12)
+- [ ] ¿Mutaciones (POST/PUT/DELETE) por `HttpClient` en el servicio + `reload()` / `update()`, **no** por resource? ¿Un botón que muta por fila (me gusta, activar) queda bloqueado mientras su request está en vuelo? (§4.12)
 - [ ] ¿Params de query con `HttpParams` u objeto `params`, no concatenando strings?
 - [ ] ¿Refrescar con el **mismo id** usa `reload()`? ¿Polling solo en el servicio, con `interval` + `takeUntilDestroyed()` y constante nombrada? ¿Tabla paginada conserva la página anterior con `linkedSignal` mientras carga? (§4.9)
 - [ ] ¿Datos de ruta con `resources` en la `Route` (no `ResolveFn` nuevo)? ¿`nonBlocking()` solo para lo secundario, con `error()` manejado en el template? ([09](./09-performance-zoneless.md) §9.6.2)
