@@ -1152,6 +1152,21 @@ const UNIDADES = [
 ] as const satisfies readonly (readonly [Intl.RelativeTimeFormatUnit, number])[];
 ```
 
+Moneda: en el template, el pipe `currency`; en TS (texto para un export, un `title`, un mensaje),
+`Intl.NumberFormat` con `style: 'currency'`. El separador, los decimales y el lugar del símbolo los
+pone el locale: no armarlos a mano con `toFixed` + `replace`. El formateador se crea una vez y se
+reusa, no uno por llamada.
+
+```html
+{{ total() | currency: 'ARS' }}
+```
+
+```ts
+private readonly _moneda = new Intl.NumberFormat(inject(LOCALE_ID), { style: 'currency', currency: 'ARS' });
+
+readonly totalTexto = computed(() => this._moneda.format(this.total())); // es-AR: "$ 1.234,50"
+```
+
 ### 2.16 NgRx (solo si el repo ya lo usa)
 
 La forma por defecto de estado compartido es un servicio con signals (§2.12): no se suma NgRx sin
