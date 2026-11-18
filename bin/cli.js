@@ -1013,14 +1013,35 @@ ${colors.bold}${colors.cyan}Herramientas del agente:${colors.reset} claude-code-
   if (isDryRun) {
     if (!noExternal) console.log(`${colors.dim}[dry-run] Claude Code: activar ${CLAUDE_PLUGINS.map(({ id }) => id).join(', ')}${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: hooks SessionStart, guard-spec, guard-secrets, format-prettier, guard-rules + CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=${AUTOCOMPACT_PCT} + CLAUDE_CODE_SUBAGENT_MODEL=${SUBAGENT_MODEL} + skillListingBudgetFraction=${SKILL_LISTING_FRACTION}${colors.reset}`);
-    console.log(`${colors.dim}[dry-run] Claude Code: permissions.deny de secretos, MCP context7${colors.reset}`);
+    console.log(`${colors.dim}[dry-run] Claude Code: permissions.deny de secretos, MCP context7, quitar restos de Headroom${colors.reset}`);
     console.log(`${colors.dim}[dry-run] Claude Code: advisorModel=${advisorArg ?? 'sin cambios (no se configura por defecto)'}${colors.reset}`);
     return;
   }
 
   addUvBinToPath();
+  removeLegacyHeadroom(homeDir);
   if (!noExternal) installClaudePlugins(homeDir);
   installSessionStartHook(homeDir);
+}
+
+// Headroom de versiones anteriores fuera de settings.json (MCP, variables de usuario, tarea programada).
+// La variable de usuario ANTHROPIC_BASE_URL al proxy sigue desviando cada sesión aunque settings.json esté
+// limpio, y la tarea relanza el proxy cada 2 min. El plugin y su marketplace se quitan en installSessionStartHook.
+function removeLegacyHeadroom(homeDir) {
+  if (runCommand('headroom', ['--version']).ok) {
+    runCommand('headroom', ['install', 'remove', '--profile', 'init-user']);
+    runCommand('headroom', ['unwrap', 'claude']);
+  }
+  if (runShell('claude mcp get headroom', homeDir).ok) runShell('claude mcp remove headroom --scope user', homeDir);
+  if (process.platform === 'win32') {
+    const script = [
+      "[Environment]::GetEnvironmentVariables('User').Keys | Where-Object { $_ -like 'HEADROOM_*' } | ForEach-Object { [Environment]::SetEnvironmentVariable($_, $null, 'User') }",
+      `if ([Environment]::GetEnvironmentVariable('ANTHROPIC_BASE_URL', 'User') -eq '${LEGACY_HEADROOM_URL}') { [Environment]::SetEnvironmentVariable('ANTHROPIC_BASE_URL', $null, 'User') }`,
+      "Unregister-ScheduledTask -TaskName 'headroom-init-user-health' -Confirm:$false -ErrorAction SilentlyContinue",
+    ].join('; ');
+    runCommand('powershell', ['-NoProfile', '-NonInteractive', '-Command', script]);
+  }
+  logOk('Claude Code: restos de Headroom quitados (cerrar el editor y la terminal para que tome las variables)');
 }
 
 // Comandos instalados por npm (.cmd en Windows): necesitan shell. Solo se pasan líneas fijas.
@@ -1149,6 +1170,10 @@ function installSessionStartHook(homeDir) {
     settings.hooks[event] = settings.hooks[event].filter((entry) => !entry.hooks?.some(stale));
     if (settings.hooks[event].length === 0) delete settings.hooks[event];
   }
+
+  // Plugin de Headroom de versiones anteriores: sus hooks relanzan el proxy en cada sesión
+  if (settings.enabledPlugins) delete settings.enabledPlugins['headroom@headroom-marketplace'];
+  if (settings.extraKnownMarketplaces) delete settings.extraKnownMarketplaces['headroom-marketplace'];
 
   settings.env ??= {};
   if (settings.env.ANTHROPIC_BASE_URL === LEGACY_HEADROOM_URL) delete settings.env.ANTHROPIC_BASE_URL;
