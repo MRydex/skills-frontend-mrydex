@@ -683,9 +683,14 @@ npm audit              # completo: incluye el tooling de build (dev)
 **Qué hacer con el resultado:**
 - **Reportar todo hallazgo**, también los del chequeo inicial aunque la tarea no toque dependencias. Una línea por hallazgo: severidad, paquete, de qué dependencia viene y si hay fix.
 - **`high` / `critical` en runtime**: avisar antes de entregar. Si los trajo el cambio, bloquean la entrega igual que en CI; si ya estaban, se reportan y decide el usuario.
-- **Corregir** con `npm audit fix`, solo si la tarea toca dependencias o el usuario lo pide (todo pedido de auditoría cuenta, §11.9). Después, `npm ci`, build, prueba de la app y `npm audit` de nuevo para confirmar que no quedó nada.
-- **Nunca `npm audit fix --force` sin preguntar**: instala versiones mayores con cambios que rompen.
-- **Sin fix disponible**: reportarlo y proponer una salida, sin aplicarla sin aprobación. Opciones: `overrides` en `package.json`, reemplazar la dependencia o sacarla si se resuelve con el framework.
+- **Corregir siempre que haya vulnerabilidades**, con el árbol de git limpio y en este orden:
+  1. **Actualizar Angular dentro de su major actual** (patch y minor): `ng update @angular/core@<major> @angular/cli@<major>`, más los `@angular/*` que use el proyecto (`cdk`, `material`, `ssr`) en esa misma major. Muchas vulnerabilidades del framework y de sus dependencias se van con eso. Sin `--force`; un conflicto de peer deps se resuelve como en §20 (tabla de problemas).
+  2. **`npm audit fix`** para lo que quede.
+  3. **`overrides` en `package.json`** para lo que `npm audit fix` no resuelve (dependencia transitiva con el padre fijado a una versión vulnerable): fijar el paquete a la versión mínima corregida que indica `npm audit`, anidado bajo el padre si solo ese lo trae (`"overrides": { "padre": { "paquete": "^x.y.z" } }`). Después, `npm install` para regenerar el lockfile.
+  4. **Verificar**: `npm ci`, build, prueba manual de lo que usa el paquete y `npm audit` de nuevo. Si el build o la app se rompen, revertir ese paso y reportarlo.
+- **Se pregunta antes**: `npm audit fix --force`, subir Angular de major (es una migración, §20) y un `override` que salta de major respecto de lo que pide el padre. Instalan cambios que rompen.
+- **Sin fix ni override posible** (no hay versión corregida): reportarlo y proponer reemplazar la dependencia o sacarla si se resuelve con el framework, sin aplicarlo sin aprobación.
+- Cada `override` se anota en el reporte con el motivo (CVE o aviso) y se revisa en el próximo `ng update`: si el padre ya trae la versión corregida, se borra.
 - Vulnerabilidades solo en `dev`: reportar con menor prioridad. No llegan al usuario, pero sí corren en las máquinas de build.
 
 **Lo que `npm audit` no ve: Zero Wire (Cloudflare Radar).** Feed público y gratis de avisos sobre vulnerabilidades

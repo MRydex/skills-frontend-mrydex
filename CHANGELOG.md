@@ -5,6 +5,15 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ## [Unreleased]
 
+### Cambiado
+
+- `15` §15.10, regla 8 de `SKILL.md`, `11` §11.9 y templates: con vulnerabilidades de `npm audit` se corrige
+  siempre y en orden: `ng update` de Angular dentro de su major actual, `npm audit fix` y `overrides` en
+  `package.json` para lo que siga. Se pregunta antes `--force`, subir Angular de major o un override que salta de
+  major. Cada override se reporta con su motivo y se borra cuando el padre ya trae la versión corregida.
+- `11` §11.9 paso 2: si el proyecto ya tiene los scripts `knip` y `jscpd` en `package.json`, la auditoría usa
+  `npm run knip` y `npm run jscpd` en vez de `npx`.
+
 ### Corregido
 
 Revisión de concurrencia de toda la skill: ejemplos que fallaban con doble clic, respuestas fuera de orden, muchos

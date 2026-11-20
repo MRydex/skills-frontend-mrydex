@@ -288,6 +288,9 @@ motivo). Ninguna se saltea en silencio.
    referencias es candidato, no prueba.
 2. **Correr las herramientas** (gratis, con `npx`, sin sumarlas al `package.json`) y revisar a mano lo
    que no ven: calidad y eficiencia se leen en el código, no solo en el reporte de una herramienta.
+   Si el proyecto ya las tiene como script (`"knip": "knip"`, `"jscpd": "jscpd src"`), usar
+   `npm run knip` y `npm run jscpd`: corren la versión fijada en el lockfile y la configuración del
+   repo (`knip.json`, `.jscpd.json`).
 3. **Verificar cada candidato** antes de reportarlo o borrarlo. Uso dinámico que las herramientas no
    ven: rutas lazy (`loadComponent`, `loadChildren`), `providers`, selectores en templates, `exposes`
    de Native Federation (§17), claves de `environment`, API pública de una librería. Falso positivo:
@@ -296,8 +299,9 @@ motivo). Ninguna se saltea en silencio.
    evidencia, acción y riesgo. Orden: bugs, dependencias sin uso (bundle y supply chain), eficiencia
    con impacto medible, lógica duplicada, el resto.
 5. **Corregir**, en tandas chicas (§11.4) y sin cambiar comportamiento:
-   - Vulnerabilidades: corregirlas siempre, primero las de runtime (§15.10). `npm audit fix`; lo que
-     pide versión mayor (`--force`), `overrides` o reemplazar el paquete se pregunta antes. Después:
+   - Vulnerabilidades: corregirlas siempre, primero las de runtime (§15.10). `ng update` de Angular
+     dentro de su major, `npm audit fix` y `overrides` para lo que siga; `--force`, cambio de major de
+     Angular, override que salta de major o reemplazar el paquete se pregunta antes. Después:
      `npm ci`, build, prueba manual de lo que usa el paquete y `npm audit` de nuevo hasta que no quede
      nada corregible. Lo que no tiene fix se reporta con la salida propuesta.
    - Código sin uso verificado: borrarlo, no comentarlo. Dependencia sin uso: `npm uninstall` y
