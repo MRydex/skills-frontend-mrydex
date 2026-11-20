@@ -7,6 +7,13 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- `04` §4.5: resource que depende de otro con `chain()` (v22+): devuelve el valor solo cuando el otro resolvió y
+  propaga su estado (`idle`, `loading`, error con `ResourceDependencyError`). Reemplaza leer `otro.value()` a mano.
+- `09`: `prefetch on hover(ref)` junto a `on interaction(ref)` para bajar el código de un bloque `@defer` cuando el
+  puntero llega al botón que lo abre.
+- `13` §13.14: container scroll-state queries (`scrollable`, `stuck`, `snapped`) para un botón "volver arriba" o la
+  sombra de una cabecera pegada sin JavaScript. Solo Chromium 133+; sin soporte queda el estado por defecto.
+
 - `04` §4.12: mutación repetida sobre el mismo ítem (me gusta, activar / desactivar por fila). El ítem queda
   bloqueado mientras su request está en vuelo, con los ids en un signal; una escritura no se cancela, así que no va
   `switchMap` ni `Subject` + `groupBy`. El checklist lo pregunta.

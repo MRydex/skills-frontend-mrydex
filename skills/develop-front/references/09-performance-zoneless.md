@@ -121,6 +121,17 @@ render "lazy" con un prefetch más agresivo:
 }
 ```
 
+Con un botón que abre el bloque, `prefetch on hover(ref)` baja el código cuando el puntero llega al
+botón y `on interaction(ref)` lo muestra al hacer clic. En táctil no hay hover: ahí baja con el clic.
+
+```html
+<button type="button" #abrir>Ver gráfico de ventas</button>
+
+@defer (on interaction(abrir); prefetch on hover(abrir)) {
+  <app-grafico-ventas />
+}
+```
+
 Para servicios pesados (no componentes), usar `injectAsync()` en vez de `@defer` (ver
 [02-typescript-signals.md](./02-typescript-signals.md) §2.14).
 

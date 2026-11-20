@@ -178,6 +178,27 @@ readonly estados = httpResource(() => {
 });
 ```
 
+**Resource que depende de otro resource** (v22+): `chain()`, que llega en el contexto de `params` y
+del callback de `httpResource`. Devuelve el valor del otro resource solo cuando ya resolvió y, si no,
+le pasa su estado a este: `idle` ⇒ `idle`, cargando ⇒ `loading` (sin request), error ⇒ `error()` con
+`ResourceDependencyError`. Reemplaza leer `otro.value()` a mano y devolver `undefined`, que deja al
+dependiente en `idle` mientras el otro carga y no propaga su error.
+
+```ts
+readonly usuario = httpResource<Usuario>(() => `${environment.API_URL}usuarios/yo`);
+
+readonly pedidos = httpResource<Pedido[]>(
+  ({ chain }) => {
+    const usuario = chain(this.usuario); // solo devuelve cuando `usuario` ya resolvió
+    return usuario ? `${environment.API_URL}usuarios/${usuario.id}/pedidos` : undefined;
+  },
+  { defaultValue: [] },
+);
+```
+
+El `usuario ?` no sobra: sin `defaultValue`, el tipo de `value()` incluye `undefined` y `chain()` lo
+conserva. Si el dato ya viene en la misma respuesta, no se encadena: un solo request.
+
 ### 4.6 Derivar / mapear el `value()` con `computed`
 
 Para transformar la respuesta (mapear `Response`→modelo, filtrar, ordenar) se usa un `computed` que

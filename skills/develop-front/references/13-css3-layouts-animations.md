@@ -436,6 +436,32 @@ insertan, no del tamaño de la pantalla.
 - `container-type: size` exige `block-size` definido en el contenedor, o sus hijos colapsan; para consultar solo
   el ancho, `inline-size`. Las unidades `cq*` sin un ancestro contenedor caen a las del viewport chico
   (`svw` / `svh`).
+- **Container *scroll-state* queries** — consultan el estado de scroll de un contenedor: si puede
+  scrollear hacia un lado (`scrollable`), si un `position: sticky` quedó pegado (`stuck`) o qué hijo
+  quedó encajado en un scroll snap (`snapped`). Reemplazan el listener de `scroll` y el
+  `IntersectionObserver` para sombras de cabecera pegada o un botón "volver arriba". **Solo Chromium
+  133+**; Firefox y Safari no lo implementan. No hace falta `@supports`: un motor sin soporte descarta
+  la consulta, así que el estado por defecto (fuera del `@container`) tiene que ser el usable.
+
+```css
+html { container-type: scroll-state; }
+
+.volver-arriba {
+  transition: opacity 0.2s, translate 0.2s, visibility 0.2s;
+}
+
+/* `scrollable: top` = se puede scrollear hacia arriba. Con `not`: la página está arriba de todo */
+@container not scroll-state(scrollable: top) {
+  .volver-arriba {
+    opacity: 0;
+    visibility: hidden; /* fuera del orden de tabulación mientras no se ve */
+    translate: 0 1rem;
+  }
+}
+```
+
+  Sin soporte, el botón queda siempre visible. La consulta aplica a **descendientes** del contenedor,
+  nunca al contenedor mismo.
 
 ### 13.15 Anchor positioning
 
