@@ -1026,13 +1026,16 @@ ${colors.bold}${colors.cyan}Herramientas del agente:${colors.reset} claude-code-
 
 // Headroom de versiones anteriores fuera de settings.json (MCP, variables de usuario, tarea programada).
 // La variable de usuario ANTHROPIC_BASE_URL al proxy sigue desviando cada sesión aunque settings.json esté
-// limpio, y la tarea relanza el proxy cada 2 min. El plugin y su marketplace se quitan en installSessionStartHook.
+// limpio, y la tarea relanza el proxy cada 2 min. El plugin y su marketplace se desinstalan acá; si el CLI falla,
+// installSessionStartHook igual los saca de settings.json.
 function removeLegacyHeadroom(homeDir) {
   if (runCommand('headroom', ['--version']).ok) {
     runCommand('headroom', ['install', 'remove', '--profile', 'init-user']);
     runCommand('headroom', ['unwrap', 'claude']);
   }
   if (runShell('claude mcp get headroom', homeDir).ok) runShell('claude mcp remove headroom --scope user', homeDir);
+  runShell('claude plugin uninstall headroom@headroom-marketplace --scope user', homeDir);
+  runShell('claude plugin marketplace remove headroom-marketplace', homeDir);
   if (process.platform === 'win32') {
     const script = [
       "[Environment]::GetEnvironmentVariables('User').Keys | Where-Object { $_ -like 'HEADROOM_*' } | ForEach-Object { [Environment]::SetEnvironmentVariable($_, $null, 'User') }",
