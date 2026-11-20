@@ -258,20 +258,41 @@ Sobre un `value()` ya mapeado con `computed` (§4.6) se itera directo:
   abierto, re-seleccionar la misma fila) no dispara el loader. Para datos frescos: `reload()`
   explícito; nunca `set(undefined)` + `set(id)` para "forzarlo".
 - **Refresco periódico** (badge, contador, lista que cambian otros usuarios) cuando no hay hub
-  ([16](./16-websocket-signalr.md) §16.1): en el **servicio**, `interval(INTERVALO_MS)` con
-  `takeUntilDestroyed()` que llama a `reload()`; intervalo como constante nombrada
-  (`PENDIENTES_POLL_MS = 5 * 60_000`). Nunca `setInterval` suelto ni polling desde el
-  componente: se duplica por cada instancia y sigue vivo al navegar.
+  ([16](./16-websocket-signalr.md) §16.1): en el **servicio**, un `timer` con `takeUntilDestroyed()` que
+  llama a `reload()`; intervalo como constante nombrada. Nunca `setInterval` suelto ni polling desde el
+  componente: se duplica por cada instancia y sigue vivo al navegar. Tres detalles: el primer tick
+  espera el intervalo más un desfase al azar (con `interval` todos los clientes pegan a la vez); un
+  tick con la pestaña oculta se salta (al volver, el refresco de abajo recarga); y el resource lleva
+  `SKIP_SPINNER` ([05](./05-http-interceptors.md) §5.4) en su `context`, porque un refresco de fondo no
+  debe abrir el overlay global (para eso usa `isLoading()` local).
 - **Refresco al volver a la pestaña** (datos que quedan viejos con la pestaña en segundo plano):
   `visibilitychange` + `reload()`, con un mínimo entre recargas como constante nombrada. Va donde se
   declara el resource. Sin `effect()` sobre un signal de visibilidad: ese `effect` corre también en
   el primer render y duplica la carga inicial.
 
 ```ts
+const PEDIDOS_POLL_MS = 5 * 60_000;
 const REFRESCO_MIN_MS = 60_000;
+const SIN_SPINNER = new HttpContext().set(SKIP_SPINNER, true);
+
+readonly pedidos = httpResource<Pedido[]>(
+  () => ({ url: `${environment.API_URL}pedidos`, context: SIN_SPINNER }),
+  { defaultValue: [] },
+);
 
 constructor() {
+  this.refrescarPeriodico();
   this.refrescarAlVolver();
+}
+
+private refrescarPeriodico(): void {
+  // timer, no interval: el primer tick espera el intervalo + un desfase al azar, y cada cliente queda con el suyo
+  timer(PEDIDOS_POLL_MS + Math.random() * PEDIDOS_POLL_MS * 0.2, PEDIDOS_POLL_MS)
+    .pipe(
+      filter(() => this._document.visibilityState === 'visible'), // oculta: se salta; al volver recarga el de abajo
+      takeUntilDestroyed(), // sin argumento: solo dentro del constructor
+    )
+    .subscribe(() => this.pedidos.reload());
 }
 
 private refrescarAlVolver(): void {
@@ -402,19 +423,62 @@ export class Usuarios {
 
   readonly usuarios = httpResource<Usuario[]>(() => this._BASE, { defaultValue: [] });
 
+  private readonly _guardando = signal<ReadonlySet<number>>(new Set());
+  readonly guardando = this._guardando.asReadonly();
+  private readonly _conflicto = signal<number | undefined>(undefined); // id con 409 sin resolver
+  readonly conflicto = this._conflicto.asReadonly();
+
   // Opción A — recarga simple: vuelve a pegarle al backend, fuente de verdad = servidor.
-  async eliminar(id: number): Promise<void> {
-    await firstValueFrom(this._http.delete<void>(`${this._BASE}/${id}`));
-    this.usuarios.reload();
+  eliminar(id: number): Promise<void> {
+    return this._conBloqueo(id, async () => {
+      await firstValueFrom(this._http.delete<void>(`${this._BASE}/${id}`));
+      this.usuarios.reload();
+    });
   }
 
   // Opción B — update local con lo que devolvió la mutación: sin un GET extra al servidor.
   // El resource pasa a status() === 'local' hasta el próximo reload/cambio de params.
-  async renombrar(id: number, nombre: string): Promise<void> {
-    const actualizado = await firstValueFrom(
-      this._http.patch<Usuario>(`${this._BASE}/${id}`, { nombre }),
-    );
-    this.usuarios.update((lista) => lista.map((u) => (u.id === id ? actualizado : u)));
+  renombrar(usuario: Usuario, nombre: string): Promise<void> {
+    return this._modificar(usuario, { nombre });
+  }
+
+  cambiarActivo(usuario: Usuario, activo: boolean): Promise<void> {
+    return this._modificar(usuario, { activo });
+  }
+
+  recargar(): void {  // el usuario aceptó perder lo editado
+    this._conflicto.set(undefined);
+    this.usuarios.reload();
+  }
+
+  seguirEditando(): void {
+    this._conflicto.set(undefined);
+  }
+
+  // rowVersion = el que vino en el Response, tal cual. 409 = otro usuario guardó antes (ver "Conflictos de edición").
+  private _modificar(usuario: Usuario, cambios: Partial<Pick<Usuario, 'nombre' | 'activo'>>): Promise<void> {
+    return this._conBloqueo(usuario.id, async () => {
+      try {
+        const actualizado = await firstValueFrom(
+          this._http.patch<Usuario>(`${this._BASE}/${usuario.id}`, { ...cambios, rowVersion: usuario.rowVersion }),
+        );
+        this.usuarios.update((lista) => lista.map((u) => (u.id === usuario.id ? actualizado : u)));
+      } catch (error) {
+        if (error instanceof HttpErrorResponse && error.status === 409) this._conflicto.set(usuario.id);
+        else throw error;
+      }
+    });
+  }
+
+  // Una mutación por ítem a la vez: si ya hay una en vuelo, la llamada se ignora.
+  private async _conBloqueo(id: number, mutacion: () => Promise<void>): Promise<void> {
+    if (this._guardando().has(id)) return;
+    this._guardando.update((ids) => new Set(ids).add(id));
+    try {
+      await mutacion();
+    } finally {
+      this._guardando.update((ids) => new Set([...ids].filter((otro) => otro !== id)));
+    }
   }
 }
 ```
@@ -422,36 +486,24 @@ export class Usuarios {
 Usar **update local** solo cuando el backend devuelve el recurso actualizado (o se puede derivar
 sin ambigüedad); ante la duda, `reload()` es más simple y menos propenso a desincronizarse.
 
-**Mutación repetida sobre el mismo ítem** (me gusta, activar / desactivar, favorito en cada fila). Cada
-llamada es un request propio, así que la de un ítem nunca cancela la de otro. El problema son dos
-clics seguidos sobre el **mismo** ítem: salen dos requests y el orden en que llegan al servidor no
-está garantizado. Se resuelve bloqueando ese ítem mientras su request está en vuelo, con los ids en
-un signal:
+`set` / `update` con una carga en curso (`loading` o `reloading`, p. ej. el sondeo de §4.9 o el refresco
+por visibilidad) **cancelan esa carga**: el resource aborta el request y descarta su respuesta
+(verificado en v22.2). La respuesta vieja no pisa el
+cambio local, pero tampoco llega: el dato que traía se pierde hasta el próximo `reload()`.
 
-```ts
-private readonly _guardando = signal<ReadonlySet<number>>(new Set());
-readonly guardando = this._guardando.asReadonly();
-
-async cambiarActivo(id: number, activo: boolean): Promise<void> {
-  if (this._guardando().has(id)) return; // ya hay un request de este usuario
-  this._guardando.update((ids) => new Set(ids).add(id));
-  try {
-    const actualizado = await firstValueFrom(
-      this._http.patch<Usuario>(`${this._BASE}/${id}`, { activo }),
-    );
-    this.usuarios.update((lista) => lista.map((u) => (u.id === id ? actualizado : u)));
-  } finally {
-    this._guardando.update((ids) => new Set([...ids].filter((otro) => otro !== id)));
-  }
-}
-```
+**Mutación repetida sobre el mismo ítem** (me gusta, activar / desactivar, favorito, renombrar,
+eliminar). Cada llamada es un request propio, así que la de un ítem nunca cancela la de otro. El
+problema son dos clics seguidos sobre el **mismo** ítem: salen dos requests y el orden en que llegan al
+servidor no está garantizado (dos renombres: gana el último en llegar; dos `eliminar`: el segundo da
+404). Se resuelve bloqueando ese ítem mientras su request está en vuelo, con los ids en un signal:
+`_conBloqueo` del ejemplo, que usan **todas** las mutaciones del servicio.
 
 ```html
 @for (usuario of usuarios.usuarios.value(); track usuario.id) {
   <button
     type="button"
     [disabled]="usuarios.guardando().has(usuario.id)"
-    (click)="usuarios.cambiarActivo(usuario.id, !usuario.activo)"
+    (click)="usuarios.cambiarActivo(usuario, !usuario.activo)"
   >
     {{ usuario.activo ? 'Desactivar' : 'Activar' }}
   </button>
@@ -462,6 +514,36 @@ async cambiarActivo(id: number, activo: boolean): Promise<void> {
 - Una escritura no se cancela: abortar el request en el navegador no deshace lo que el servidor ya
   aplicó. Por eso acá no va `switchMap`, ni `Subject` + `groupBy` + `mergeMap` para cancelar por ítem.
 - El `finally` libera el ítem también si el request falla; el error sigue hasta quien llamó.
+
+**Conflictos de edición (dos usuarios sobre el mismo registro).** Sin control, el segundo en guardar
+pisa al primero sin enterarse. El backend manda `rowVersion` (string base64) en el Response (campo `rowVersion: string` del modelo); el front
+lo guarda **tal cual** (no lo parsea ni lo modifica) y lo devuelve en el **body** del PUT / PATCH, como
+`_modificar`. Si no coincide, el backend responde **409**. Ante un 409:
+
+- **No** reintentar solo ni reenviar con el `rowVersion` nuevo: eso pisaría el cambio del otro.
+- Avisar "otro usuario modificó este registro" y ofrecer **recargar** (se pierde lo editado) o
+  **seguir editando**; decide el usuario. El servicio expone el `conflicto` como signal y no conoce la
+  UI (§2.10).
+- El `errorInterceptor` deja pasar el 409 sin modal ([05](./05-http-interceptors.md) §5.3): el aviso
+  es este, uno solo. Si el del repo muestra modal para todo error, `SKIP_ERROR_HANDLER` en esa request
+  (§5.4).
+- Al recargar, el formulario se reinicia con el valor nuevo; el `rowVersion` viejo no se reutiliza.
+
+```html
+@if (usuarios.conflicto()) {
+  <p role="alert">Otro usuario modificó este registro. Si recargás, se pierde lo que editaste.</p>
+  <button type="button" (click)="usuarios.recargar()">Recargar</button>
+  <button type="button" (click)="usuarios.seguirEditando()">Seguir editando</button>
+}
+```
+
+**Update optimista** (mostrar el cambio antes de la respuesta). El default sigue siendo bloquear el
+ítem hasta que el request termina. El optimista se justifica solo en acciones de un clic que casi nunca
+fallan y donde la espera se nota (favorito, me gusta, activar): guardar el valor anterior, aplicar el
+`update` local ya, **seguir bloqueando el ítem** mientras está en vuelo y, en el `catch`, restaurar el
+valor guardado (no "invertir") y dejar que el error siga. No usarlo en registros con `rowVersion`
+editables ni cuando el backend puede rechazar por reglas de negocio: el 409 o la validación harían
+parpadear el valor falso. Sin una razón concreta, no se agrega.
 
 ### 4.13 Debounce de `params`
 
@@ -497,12 +579,16 @@ termina. Si hay hub de SignalR, el avance llega por push y no se sondea ([16](./
 // exportaciones-http.ts
 const EXPORTACION_POLL_MS = 2_000;
 const EXPORTACION_POLL_MAX = 150; // 5 min: siempre acotado
+// Sin overlay global en cada vuelta (§5.4): el avance se muestra en la pantalla
+const SIN_SPINNER = new HttpContext().set(SKIP_SPINNER, true);
 
 seguir(id: string): Observable<Exportacion> {
   return timer(0, EXPORTACION_POLL_MS).pipe(
     take(EXPORTACION_POLL_MAX),
     // exhaustMap: si un GET tarda más que el intervalo, no se cancela ni se apila otro.
-    exhaustMap(() => this._http.get<Exportacion>(`${environment.API_URL}exportaciones/${id}`)),
+    exhaustMap(() =>
+      this._http.get<Exportacion>(`${environment.API_URL}exportaciones/${id}`, { context: SIN_SPINNER }),
+    ),
     // true (inclusive): emite también el estado final, que es el que trae el link o el error.
     takeWhile((exportacion) => exportacion.estado === 'en-curso', true),
   );
@@ -516,9 +602,24 @@ protected readonly exportacion = rxResource({
   stream: ({ params: id }) => this._exportacionesHttp.seguir(id),
 });
 
-protected exportar(): void {
-  this._exportacionesHttp.iniciar().subscribe(({ id }) => this._idExportacion.set(id));
+protected readonly iniciando = signal(false);
+
+protected async exportar(): Promise<void> {
+  if (this.iniciando()) return; // doble clic: sin esto salen dos exportaciones y el id del sondeo salta al segundo
+  this.iniciando.set(true);
+  try {
+    const { id } = await firstValueFrom(this._exportacionesHttp.iniciar());
+    this._idExportacion.set(id);
+  } finally {
+    this.iniciando.set(false); // también si el POST falla: el botón no queda trabado
+  }
 }
+```
+
+```html
+<button type="button" [disabled]="iniciando() || exportacion.value()?.estado === 'en-curso'" (click)="exportar()">
+  Exportar
+</button>
 ```
 
 - **No** `switchMap` dentro del `timer`: con un GET más lento que el intervalo, cada tick cancela el
@@ -526,6 +627,8 @@ protected exportar(): void {
 - **No** `Subject` + `toSignal` para todo el flujo: un error del POST o de un GET mata el stream y el
   botón deja de responder. Con el resource, el fallo queda en `error()` y se reintenta con `reload()`.
 - Sin `takeWhile` inclusivo se pierde el último valor (`listo` / `fallido`) y la UI queda en "en curso".
+- El POST (`iniciar()`) **no** lleva `SKIP_SPINNER`: es la acción del usuario. Si falla, el error llega a
+  quien llamó (el interceptor de errores ya avisa; ver §4.12); el `finally` solo libera el botón.
 - Si el tope corta con el trabajo todavía `en-curso`: avisar que sigue en proceso y ofrecer `reload()`.
 
 ---

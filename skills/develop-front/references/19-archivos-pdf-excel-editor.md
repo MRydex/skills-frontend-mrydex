@@ -33,17 +33,42 @@ lo pida; evaluá la dependencia como cualquier otra (§15.10) y el costo en bund
 export class FileDownload {
   private readonly _http = inject(HttpClient);
 
+  private readonly _suscripciones = new Map<string, Subscription>();
+  private readonly _enCurso = signal<ReadonlySet<string>>(new Set()); // para deshabilitar el botón
+  readonly descargando = this._enCurso.asReadonly();
+
   download(url: string, fallbackName: string): void {
-    this._http.get(url, { responseType: 'blob', observe: 'response' }).subscribe((res) => {
-      const blob = res.body;
-      if (!blob) return;
-      const name = this._fileName(res.headers.get('Content-Disposition')) ?? fallbackName;
-      const href = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = href;
-      a.download = name;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(href));   // liberar el Blob; diferido para no cortar la descarga
+    if (this._suscripciones.has(url)) return; // doble clic: dos descargas del mismo archivo
+    this._marcar(url, true);
+    const sub = this._http
+      .get(url, { responseType: 'blob', observe: 'response' })
+      .pipe(finalize(() => this._marcar(url, false))) // éxito, error y cancelación
+      .subscribe((res) => {
+        const blob = res.body;
+        if (!blob) return;
+        const name = this._fileName(res.headers.get('Content-Disposition')) ?? fallbackName;
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = href;
+        a.download = name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(href));   // liberar el Blob; diferido para no cortar la descarga
+      });
+    this._suscripciones.set(url, sub);
+  }
+
+  /** Corta una descarga en curso (el navegador aborta el request). */
+  cancelar(url: string): void {
+    this._suscripciones.get(url)?.unsubscribe();
+  }
+
+  private _marcar(url: string, activa: boolean): void {
+    if (!activa) this._suscripciones.delete(url);
+    this._enCurso.update((urls) => {
+      const siguiente = new Set(urls);
+      if (activa) siguiente.add(url);
+      else siguiente.delete(url);
+      return siguiente;
     });
   }
 
@@ -57,7 +82,10 @@ export class FileDownload {
 ```
 
 - El `.subscribe()` manual es una **excepción acotada**: la descarga disparada por un click es una
-  acción puntual, como una mutación; un solo `subscribe`, sin guardar la `Subscription` (§2.9, §4.1).
+  acción puntual, como una mutación (§2.9, §4.1). Se guarda la `Subscription` solo para **cancelar** y
+  para ignorar el segundo clic; el botón lleva `[disabled]="descarga.descargando().has(url)"` y, si la
+  descarga es lenta, un "Cancelar" que llama a `cancelar(url)`. Si falla, el error llega al
+  `errorInterceptor` y el `finalize` libera el botón.
 - `observe: 'response'` es lo que permite leer `Content-Disposition`. Para que el navegador deje leerlo
   en una request cross-origin, **el backend debe exponerlo**: `Access-Control-Expose-Headers:
   Content-Disposition` (en .NET, `WithExposedHeaders("Content-Disposition")` en la política CORS). Sin
@@ -83,6 +111,7 @@ export class FileDownload {
 ```ts
 protected readonly fileError = signal<string | null>(null);
 private readonly _maxBytes = 5 * 1024 * 1024;
+protected readonly subidas = inject(Subidas);
 
 protected onFileSelected(event: Event): void {
   const file = (event.target as HTMLInputElement).files?.item(0);
@@ -92,13 +121,7 @@ protected onFileSelected(event: Event): void {
     return;
   }
   this.fileError.set(null);
-  this._upload(file);
-}
-
-private _upload(file: File): void {
-  const body = new FormData();
-  body.append('file', file, file.name);
-  this._http.post('https://api.example.com/adjuntos', body).subscribe();
+  this.subidas.encolar(file);
 }
 ```
 
@@ -116,23 +139,86 @@ private _upload(file: File): void {
   sin avisar):
 
 ```ts
-protected readonly progress = signal(0);
+// shared/services/subidas.ts — una cola con tope; cada archivo tiene su propio progreso
+type EstadoSubida = 'en-cola' | 'subiendo' | 'listo' | 'error' | 'cancelada';
+interface Subida { id: number; nombre: string; progreso: number; estado: EstadoSubida }
 
-this._http.post('https://api.example.com/adjuntos', body, {
-  reportProgress: true,
-  observe: 'events',
-}).subscribe((event) => {
-  if (event.type === HttpEventType.UploadProgress && event.total) {
-    this.progress.set(Math.round((100 * event.loaded) / event.total));
-  } else if (event.type === HttpEventType.Response) {
-    this.progress.set(100);
+const SUBIDAS_EN_PARALELO = 3; // HTTP/1.1 limita ~6 conexiones por origen: no ocuparlas todas
+// Sin overlay global (tapa la barra de progreso) y el error se muestra por archivo, no en un modal por cada uno (§5.4)
+const CONTEXTO = new HttpContext().set(SKIP_SPINNER, true).set(SKIP_ERROR_HANDLER, true);
+
+@Service()
+export class Subidas {
+  private readonly _http = inject(HttpClient);
+  private readonly _subidas = signal<Subida[]>([]);
+  readonly subidas = this._subidas.asReadonly();
+  private readonly _activas = new Map<number, Subscription>();
+  private _pendientes: { id: number; file: File }[] = [];
+  private _siguienteId = 0;
+
+  encolar(file: File): void {
+    const id = ++this._siguienteId;
+    this._subidas.update((lista) => [...lista, { id, nombre: file.name, progreso: 0, estado: 'en-cola' }]);
+    this._pendientes.push({ id, file });
+    this._avanzar();
   }
-});
+
+  /** En cola: sale de la cola. En curso: el navegador aborta el request (el backend descarta lo incompleto). */
+  cancelar(id: number): void {
+    this._pendientes = this._pendientes.filter((p) => p.id !== id);
+    this._cambiar(id, { estado: 'cancelada' });
+    this._activas.get(id)?.unsubscribe();
+  }
+
+  private _avanzar(): void {
+    while (this._activas.size < SUBIDAS_EN_PARALELO && this._pendientes.length > 0) {
+      const { id, file } = this._pendientes.shift()!;
+      const body = new FormData();
+      body.append('file', file, file.name);
+      this._cambiar(id, { estado: 'subiendo' });
+      const sub = this._http
+        .post(`${environment.API_URL}adjuntos`, body, { reportProgress: true, observe: 'events', context: CONTEXTO })
+        .pipe(finalize(() => { this._activas.delete(id); this._avanzar(); })) // libera el cupo siempre
+        .subscribe({
+          next: (event) => {
+            if (event.type === HttpEventType.UploadProgress && event.total) {
+              this._cambiar(id, { progreso: Math.round((100 * event.loaded) / event.total) });
+            } else if (event.type === HttpEventType.Response) {
+              this._cambiar(id, { progreso: 100, estado: 'listo' });
+            }
+          },
+          error: () => this._cambiar(id, { estado: 'error' }),
+        });
+      this._activas.set(id, sub);
+    }
+  }
+
+  private _cambiar(id: number, cambios: Partial<Subida>): void {
+    this._subidas.update((lista) => lista.map((s) => (s.id === id ? { ...s, ...cambios } : s)));
+  }
+}
 ```
 
 ```html
-<progress [value]="progress()" max="100" aria-label="Progreso de subida"></progress>
+@for (subida of subidas.subidas(); track subida.id) {
+  <li>
+    {{ subida.nombre }}
+    <progress [value]="subida.progreso" max="100" [attr.aria-label]="'Progreso de ' + subida.nombre"></progress>
+    @if (subida.estado === 'error') {
+      <span role="alert">No se pudo subir {{ subida.nombre }}.</span>
+    }
+    @if (subida.estado === 'en-cola' || subida.estado === 'subiendo') {
+      <button type="button" (click)="subidas.cancelar(subida.id)">Cancelar</button>
+    }
+  </li>
+}
 ```
+
+- Un `progress` **por archivo**: uno compartido se pisa con dos subidas a la vez. Con `multiple` en el
+  input, un `encolar` por archivo.
+- La cola limita las subidas en paralelo; el resto espera `en-cola`. `cancelar` sirve en cola y en curso,
+  y el `finalize` libera el cupo también al fallar o cancelar. Una subida cancelada o fallida no se reintenta
+  sola: el usuario la vuelve a elegir.
 
 ### 19.4 CSV y Excel
 

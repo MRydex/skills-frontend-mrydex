@@ -45,7 +45,9 @@ Steyer (*streaming resources* con WebSockets).
 - **Una sola conexión por hub y por pestaña.** Nunca proveer el servicio en `providers` de un componente
   que aparece en varias pantallas: cada instancia abre un socket nuevo y navegar entre pantallas
   reconecta. Si la conexión tiene sentido solo en una feature, el servicio se inicia al entrar a la ruta
-  y se detiene al salir (§16.5), pero sigue siendo uno. Un servicio en `providers` de la ruta no se
+  y se detiene al salir (§16.5), pero sigue siendo uno. Cada pestaña abierta es otra conexión: con muchos
+  usuarios y varias pestañas cada uno, el servidor sostiene un múltiplo de sockets (avisar al back para
+  dimensionar). Compartir un socket entre pestañas es un tema aparte y no se hace por iniciativa propia. Un servicio en `providers` de la ruta no se
   destruye al salir salvo con `withAutoCleanupInjectors()` en `provideRouter`: sin eso, `detener()`
   explícito.
 - **El componente nunca ve `HubConnection`.** El servicio expone signals de solo lectura y métodos con
@@ -57,20 +59,28 @@ Steyer (*streaming resources* con WebSockets).
 ### 16.3 Construir la conexión (`HubConnectionBuilder`)
 
 ```ts
-const REINTENTOS_MS = [0, 2_000, 5_000, 10_000, 20_000, 30_000];
+const BASE_MS = 5_000;
+const TOPE_MS = 30_000;
+const PISO_MS = 1_000;
+
+/** Full jitter: al azar entre PISO_MS y un techo que se duplica por intento (5, 10, 20, 30 s). Nunca 0. */
+export function esperaReintentoMs(intento: number): number {
+  const techo = Math.min(TOPE_MS, BASE_MS * 2 ** intento);
+  return PISO_MS + Math.random() * (techo - PISO_MS);
+}
 
 private _crearHub(): HubConnection {
   return new HubConnectionBuilder()
     .withUrl(`${this._settings.apiUrl()}hubs/notificaciones`, {
       transport: HttpTransportType.WebSockets,
       skipNegotiation: true,                        // válido solo con transport WebSockets
-      accessTokenFactory: () => this._auth.token() ?? '',
+      // tokenVigente() espera la renovación en curso: nunca reconecta con un token vencido (§16.9)
+      accessTokenFactory: () => this._auth.tokenVigente().then((token) => token ?? ''),
     })
     .withAutomaticReconnect({
-      // Nunca se rinde: tope de 30 s más jitter para que no reconecten todos juntos.
-      nextRetryDelayInMilliseconds: ({ previousRetryCount }) =>
-        REINTENTOS_MS[Math.min(previousRetryCount, REINTENTOS_MS.length - 1)] +
-        Math.random() * 1_000,
+      // Nunca se rinde. El jitter es proporcional al delay: tras un deploy miles de clientes
+      // reconectan al mismo tiempo, y un jitter fijo de 1 s no los reparte.
+      nextRetryDelayInMilliseconds: ({ previousRetryCount }) => esperaReintentoMs(previousRetryCount),
     })
     .withServerTimeout(60_000)                      // >= 2 x KeepAliveInterval del servidor
     // .withStatefulReconnect(): solo sin skipNegotiation (se negocia en /negotiate)
@@ -120,7 +130,21 @@ readonly sinLeer = computed(() => this._notificaciones().filter((n) => !n.leida)
   seguidos con un solo `set` pierden el primero. Acumular en un array con `update`.
 - **Listas acotadas.** Un evento por segundo durante una jornada es memoria sin techo. Cortar con
   `slice(-N)` en el `update` o paginar el historial por HTTP.
-- **Inmutable**: `update((l) => [...l, nueva].slice(-200))`, nunca mutar el array del signal.
+- **Inmutable**: nunca mutar el array del signal. Y **deduplicar por id**: el servidor puede reenviar
+  (`withStatefulReconnect`) y la recarga por HTTP (§16.6) trae mensajes que el socket ya entregó.
+
+```ts
+/** Orden de `base`, luego los nuevos; un id repetido se reemplaza en su lugar. */
+function fusionar<T extends { id: number }>(base: T[], nuevos: T[], max = 200): T[] {
+  const porId = new Map(base.map((x) => [x.id, x] as const));
+  for (const n of nuevos) porId.set(n.id, n);
+  return [...porId.values()].slice(-max);
+}
+```
+
+- **Ráfagas**: cada evento es un `update` con una copia de a lo sumo `max` elementos; acotada, no hace
+  falta agrupar. Si medís cientos de eventos por segundo, juntarlos en un buffer y volcarlos con un
+  `setTimeout` corto (no `requestAnimationFrame`: se pausa con la pestaña oculta).
 
 ### 16.5 Ciclo de vida: iniciar, detener, limpiar
 
@@ -129,6 +153,7 @@ private _hub: HubConnection | null = null;
 private _cola: Promise<void> = Promise.resolve();
 private _detenidoAMano = false;   // onclose también corre después de stop(): no reconectar
 private _reintento?: ReturnType<typeof setTimeout>;
+private _fallos = 0;               // intentos seguidos sin conectar; _alConectar lo vuelve a 0
 private readonly _destroyRef = inject(DestroyRef);
 
 constructor() {
@@ -177,7 +202,7 @@ private _programarReintento(): void {
   clearTimeout(this._reintento);
   this._reintento = setTimeout(() => {
     if (!this._detenidoAMano) void this.iniciar();
-  }, 5_000 + Math.random() * 1_000);
+  }, esperaReintentoMs(this._fallos++));   // misma política que withAutomaticReconnect (§16.3)
 }
 ```
 
@@ -185,7 +210,8 @@ private _programarReintento(): void {
   identidad del usuario anterior; además vaciar `_salas`, que `pagehide` sí conserva) y salir de la
   feature si la conexión es de esa feature.
 - **`unirseASala` / `salirDeSala`** actualizan `_salas` antes del `invoke` y solo invocan con el hub en
-  `Connected`; si no, la sala queda anotada y `_alConectar` la une al conectar.
+  `Connected`; si no, la sala queda anotada y `_alConectar` la une al conectar. Ambos van por `_encolar`
+  (§16.6): entrar y salir de la misma sala en ráfaga se ejecuta en el orden de las llamadas.
 - **El reintento programado revisa `_detenidoAMano`** antes de llamar `iniciar()`, y `detener()` cancela
   el timer pendiente. Si no, un reintento después del logout reabre el socket sin usuario (401 sin fin).
 - **`hub.on` una sola vez por instancia de hub.** Registrar en cada `iniciar()` duplica los handlers
@@ -227,16 +253,48 @@ private _registrarEventos(hub: HubConnection): void {
 // Conexión nueva (start o reconexión): el servidor olvidó los grupos.
 private async _alConectar(hub: HubConnection): Promise<void> {
   this._estado.set('conectado');
+  this._fallos = 0;
   // allSettled: una sala que falla no deja sin recargar el resto
   await Promise.allSettled([...this._salas].map((id) => hub.invoke(HubMetodos.UNIRSE, id)));
-  this._refrescar();                 // historial por HTTP (resource.reload()): lo emitido durante el corte no llega
+  void this._refrescar();            // lo emitido durante el corte no llega
+}
+
+// Mergea, no reemplaza: lo que el socket entregó mientras corría el GET se conserva y no se duplica.
+private async _refrescar(): Promise<void> {
+  try {
+    const raw = await firstValueFrom(this._http.get<unknown[]>(`${this._settings.apiUrl()}notificaciones`));
+    const servidor = raw.map(parsearNotificacion).filter((n): n is Notificacion => n !== null);
+    this._notificaciones.update((actual) => fusionar(servidor, actual));   // §16.4
+  } catch {
+    // sin red todavía: la próxima reconexión o el próximo evento lo corrige
+  }
+}
+
+unirseASala(id: number): Promise<void> {
+  this._salas.add(id);
+  return this._encolar(() => this._invocarSala(HubMetodos.UNIRSE, id));
+}
+
+salirDeSala(id: number): Promise<void> {
+  this._salas.delete(id);
+  return this._encolar(() => this._invocarSala(HubMetodos.SALIR, id));
+}
+
+private async _invocarSala(metodo: string, id: number): Promise<void> {
+  if (this._hub?.state === HubConnectionState.Connected) await this._hub.invoke(metodo, id);
 }
 ```
 
 - **Reconectar = conexión nueva** (`connectionId` nuevo). El servidor olvidó los grupos: volver a
   unirse a cada uno desde el estado del servicio (`_salas`).
-- **Lo que pasó durante el corte se perdió.** Al reconectar, recargar por HTTP (`resource.reload()`)
-  lo que el socket mantenía al día.
+- **Lo que pasó durante el corte se perdió.** Al reconectar, traerlo por HTTP y **fusionarlo** con lo
+  que ya hay. No `resource.reload()` ni `set` con la respuesta: reemplazar descarta los eventos que
+  llegaron mientras corría el GET. Con `withStatefulReconnect` el servidor además reenvía mensajes: por
+  eso `fusionar` deduplica por id.
+- **Entrar y salir de una sala van por la cola (`_encolar`).** Si el "salir" corriera fuera de ella, en A, B, A
+  (cambio rápido de sala) el "salir" de la primera A llegaría después del "unirse" de la segunda y dejaría
+  al usuario fuera de A. En cola, el orden de las llamadas es el orden en el servidor y `_salas` queda bien.
+  Si dos consumidores usan la misma sala a la vez, hace falta un conteo por sala.
 - **UI del estado de conexión** con `@switch (hub.estado())`, en una región `aria-live="polite"`
   ([12](./12-html5-semantics-seo.md) §12.6). Mostrar "reconectando" y un botón "reintentar"; "reconectado"
   por unos segundos y desaparece. Nunca un spinner que bloquea la pantalla.
@@ -265,7 +323,7 @@ export const NotificacionesEventos = {
 hub.on(NotificacionesEventos.NUEVA, (raw: unknown) => {
   const notificacion = parsearNotificacion(raw);   // mapper: guard + ISO string -> Date
   if (!notificacion) return;                       // payload inválido: se descarta, no rompe
-  this._notificaciones.update((l) => [...l, notificacion].slice(-200));
+  this._notificaciones.update((l) => fusionar(l, [notificacion]));   // dedupe por id (§16.4)
 });
 ```
 
@@ -305,7 +363,7 @@ protected readonly mensajes = resource({
   stream: async ({ params, abortSignal }) => {
     const items = signal<ResourceStreamItem<Mensaje[]>>({ value: [] });
     const baja = this._chat.escuchar(ChatEventos.MENSAJE, parsearMensaje, (m) => {
-      if (m.salaId === params) items.update((i) => ('value' in i ? { value: [...i.value, m] } : i));
+      if (m.salaId === params) items.update((i) => ('value' in i ? { value: fusionar(i.value, [m]) } : i));
     });
     // Antes del await: si cambia la sala durante unirseASala, la baja igual corre.
     const union = this._chat.unirseASala(params);
@@ -313,8 +371,9 @@ protected readonly mensajes = resource({
       'abort',
       () => {
         baja();
-        // salir recién cuando termine la unión: si no, la unión llega después y deja al usuario en el grupo
-        void union.then(() => this._chat.salirDeSala(params)).catch(() => {});
+        // salirDeSala va por la misma cola que unirseASala: corre después de la unión y antes de la
+        // unión de la próxima sala. Un `union.then(salir)` tardío pisaría al unirse de nuevo a la misma.
+        void this._chat.salirDeSala(params).catch(() => {});
       },
       { once: true },
     );
@@ -333,7 +392,9 @@ protected readonly mensajes = resource({
 
 - **Identidad solo del token.** `accessTokenFactory` devuelve el token en memoria
   ([15](./15-security.md) §15.5). Se llama en cada conexión y reconexión: devolver siempre el token
-  vigente, nunca uno capturado al construir.
+  vigente, nunca uno capturado al construir. Puede devolver `string | Promise<string>`: usar
+  `tokenVigente()` de `Auth` ([15](./15-security.md) §15.5.3), que espera la renovación en curso. Leer
+  el signal de forma síncrona reconecta con un token vencido y da 401 en cada intento.
 - Hub de un remote embebido: el token sale del servicio de auth de la librería compartida (singleton en
   `shared`), el mismo que usa el interceptor del shell. Sin librería compartida, de un input
   `obtenerToken` que le pasa el shell ([17](./17-microfrontends.md) §17.8). Con la librería de auth duplicada, el widget
@@ -358,6 +419,7 @@ llevarlo a signal con `rxResource` (RxJS solo como flujo, regla 2):
 
 ```ts
 private readonly _settings = inject(AppSettings);
+private readonly _http = inject(HttpClient);
 private readonly _estado = signal<'conectando' | 'conectado' | 'reconectando'>('conectando');
 readonly estado = this._estado.asReadonly(); // el indicador de conexión lee esta signal
 
@@ -372,14 +434,21 @@ private readonly _socket = webSocket<unknown>({
 
 readonly cotizaciones = rxResource({
   stream: () =>
-    this._socket.pipe(
+    // defer: cada (re)conexión vuelve a pedir el snapshot por HTTP (como §16.6) además de abrir el socket.
+    // El snapshot pasa por el mismo scan, que deduplica por id lo que el socket ya entregó.
+    defer(() =>
+      merge(
+        this._http.get<unknown[]>(`${this._settings.apiUrl()}cotizaciones`).pipe(mergeMap((l) => l)),
+        this._socket,
+      ),
+    ).pipe(
       map(parsearCotizacion),
       filter((c): c is Cotizacion => c !== null),
-      // retry antes de scan: reconectar no vacía la lista. resetOnSuccess: el backoff vuelve a 1 s.
-      retry({ delay: (_, intento) => timer(Math.min(30_000, 1_000 * 2 ** (intento - 1))), resetOnSuccess: true }),
+      // retry antes de scan: reconectar no vacía la lista. Mismo jitter que §16.3 (esperaReintentoMs).
+      retry({ delay: (_, intento) => timer(esperaReintentoMs(intento - 1)), resetOnSuccess: true }),
       // Cierre limpio del server: el subject completa sin error y retry no actúa; repeat reconecta igual
-      repeat({ delay: () => timer(5_000) }),
-      scan((acc, c) => [...acc, c].slice(-100), [] as Cotizacion[]),
+      repeat({ delay: () => timer(esperaReintentoMs(0)) }),
+      scan((acc, c) => fusionar(acc, [c], 100), [] as Cotizacion[]),
     ),
   defaultValue: [],
 });
@@ -426,6 +495,7 @@ pasos 2, 3 y 7, y el reporte dice qué pasos quedaron sin probar (§11.3).
 | `Subject` / `effect()` para eventos | `signal.update` en el handler + `computed()` |
 | Identidad por `?username=` | Token en `accessTokenFactory`, identidad desde claims en el back |
 | URL de hub hardcodeada por entorno | Config en runtime, mismo origen |
-| Reconectar sin reunirse a grupos ni recargar | `onreconnected`: grupos + `reload()` por HTTP |
+| Reconectar sin reunirse a grupos ni recargar | `onreconnected`: grupos + recarga por HTTP fusionada por id (§16.6) |
+| Salir de una sala fuera de la cola, o recarga que reemplaza la lista | `_encolar` para unirse / salir; `fusionar` por id |
 | `blur` / `focus` para presencia, `unload` para salir | `visibilitychange`, `pagehide` / `pageshow` |
 | Comandos con validación por `invoke` | `HttpClient` (interceptores, `ProblemDetails`) |

@@ -585,6 +585,12 @@ export class App {
 }
 ```
 
+> **Inactividad y varias pestañas**: el ejemplo mide **una pestaña**. Si el aviso termina en un logout que
+> se difunde por `BroadcastChannel` ([15](./15-security.md) §15.5), una pestaña sin uso cerraría la sesión
+> de otra que el usuario está usando. Hoy el ejemplo no hace logout, pero si se conecta: la actividad de
+> cada pestaña se publica por el canal (una marca de tiempo, a lo sumo una vez por minuto) y el temporizador
+> corre sobre la última actividad de **cualquier** pestaña.
+
 ```ts
 // ❌ MAL — estado con BehaviorSubject
 private _perfil$ = new BehaviorSubject<Perfil | null>(null);
@@ -614,19 +620,34 @@ resultado se vuelca a signals o se refresca el resource (nunca un resource para 
 ver [04-resource-api.md](./04-resource-api.md) §4.9).
 
 ```ts
-// ✅ BIEN — mutación puntual
+protected readonly guardando = signal(false);
+
+// ✅ BIEN — mutación puntual, bloqueada mientras está en vuelo
 onClickGuardar(): void {
-  this._itemsHttp.actualizar(this.form().value()).subscribe({
-    next: () => this.itemsResource.reload(),
-  });
+  if (this.guardando()) return; // doble clic = dos requests
+  this.guardando.set(true);
+  this._itemsHttp
+    .actualizar(this.form().value())
+    .pipe(finalize(() => this.guardando.set(false))) // también si falla: el botón no queda trabado
+    .subscribe({ next: () => this.itemsResource.reload() });
 }
 
 // ✅ BIEN — alternativa async/await, sin RxJS a la vista
 async onClickGuardar(): Promise<void> {
-  await firstValueFrom(this._itemsHttp.actualizar(this.form().value()));
-  this.itemsResource.reload();
+  if (this.guardando()) return;
+  this.guardando.set(true);
+  try {
+    await firstValueFrom(this._itemsHttp.actualizar(this.form().value()));
+    this.itemsResource.reload();
+  } finally {
+    this.guardando.set(false);
+  }
 }
 ```
+
+El botón lleva `[disabled]="guardando()"`. El fallo no se traga: el `errorInterceptor` ([05](./05-http-interceptors.md)
+§5.3) avisa y el `finally` / `finalize` solo libera el botón. Misma regla para toda acción de un clic que
+escribe (exportar, enviar, aprobar); por ítem de una lista: §4.12.
 
 ### 2.10 Servicios
 
@@ -862,10 +883,17 @@ export class AdminArea {
 // admin-area-change.ts (PRODUCTOR) — escribe en el servicio tras la mutación exitosa
 private readonly _adminArea = inject(AdminArea);
 
+protected readonly guardando = signal(false);
+
 private _setUsuarioIdArea(user: User, idArea: number): void {
-  this._areasHttp.setUsuarioIdArea(user, idArea, user.idUsuario).subscribe({
-    next: (user) => this._adminArea.notificarCambioArea(user),  // notifica; no conoce al hermano
-  });
+  if (this.guardando()) return; // doble clic = dos cambios de área
+  this.guardando.set(true);
+  this._areasHttp
+    .setUsuarioIdArea(user, idArea, user.idUsuario)
+    .pipe(finalize(() => this.guardando.set(false)))
+    .subscribe({
+      next: (user) => this._adminArea.notificarCambioArea(user),  // notifica; no conoce al hermano
+    });
 }
 
 // admin-area-historic.ts (CONSUMIDOR) — linkedSignal: reacciona pero queda editable
@@ -999,6 +1027,11 @@ export class AvisoVersion {
   o en el constructor, nunca dentro de un handler. En un singleton root el canal vive lo que la app
   (el `close()` corre al destruirla; no contradice a 15 §15.5).
 - Sin `esValido` cualquier script del mismo origen puede meter basura en el signal: validar siempre.
+- **Una pestaña que se abre después no recibe el estado actual**: `BroadcastChannel` no repite mensajes
+  viejos, solo entrega los que se mandan con la pestaña ya abierta, y arranca con `inicial`. Si el valor
+  tiene que valer también para pestañas nuevas (el aviso descartado), guardarlo además en
+  `localStorage` (con `try/catch`) y leerlo como `inicial`; si no importa (un filtro de UI), dejar
+  `inicial`. Para sesión y logout la fuente es la de [15](./15-security.md) §15.5, no este signal.
 
 > **Seguridad**: nunca tokens, datos del usuario ni nada sensible por el canal; solo eventos o valores
 > de UI. El nombre del canal es visible a cualquier script del mismo origen (extensiones, terceros

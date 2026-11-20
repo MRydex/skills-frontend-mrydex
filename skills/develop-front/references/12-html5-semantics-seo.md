@@ -172,8 +172,7 @@ mejorarla — le miente sobre qué es el elemento y qué hace.
 
 - **`hidden`** → atributo booleano global; el navegador omite el render visual (equivalente nativo a
   un estado oculto controlable por JS, sin pelear con `display: none` vía CSS).
-- **`role="…"` genérico**: reservarlo para los casos sin equivalente nativo (`role="alert"`,
-  `role="status"`, patrones compuestos tipo `tablist`/`tab`/`tabpanel`). Para esos patrones complejos
+- **`role="…"` genérico**: reservarlo para los casos sin equivalente nativo (`role="alert"`, patrones compuestos tipo `tablist`/`tab`/`tabpanel`). Para esos patrones complejos
   en Angular, usar `@angular/aria` (ver [03-html-templates.md](./03-html-templates.md) §3.1) en vez de
   armar el `role`/teclado a mano.
 - `target="_blank"` + **`rel="noreferrer"`** → al abrir enlaces externos en pestaña nueva, evita
@@ -192,6 +191,20 @@ mejorarla — le miente sobre qué es el elemento y qué hace.
   oculto (`Editar <span class="u-sr-only">{{ fila.nombre }}</span>`) o con `aria-label`. El nombre accesible
   contiene el texto visible tal cual (WCAG 2.5.3) y no repite el rol: `<nav aria-label="Principal">`, no
   "Navegación principal".
+- **Mensaje de estado** (aviso, "Copiado", resultado de una acción): `<output>`, no `<p role="status">` (Sonar
+  `Web:S6819`); ya trae `role="status"` implícito. Es inline: `display: block` en su clase si va en su propio
+  renglón. Solo admite contenido de frase (texto, `<span>`, `<strong>`): con `<p>` o `<div>` adentro, se deja
+  `role="status"` en el contenedor.
+- **Ícono clickeable** (cerrar, eliminar): `<button type="button" [attr.aria-label]>` con el ícono adentro en un
+  `<span aria-hidden="true">`, nunca `<span role="button" tabindex="0">` con `keydown` a mano (Sonar `Web:S6819`).
+  Las clases del ícono (`mask` + `background-color`) van en el `<span>`, no en el `<button>`; el botón lleva el reset
+  `display: inline-flex; padding: 0; border: 0; background: none;`.
+- **Nombre accesible de un `<select>`** (Sonar `Web:S7927`): el texto visible es la opción elegida, así que el
+  `aria-label` usa una palabra que está en las opciones (`aria-label="Página"` con opciones "Página 3"), no una
+  frase distinta ("Página de la firma").
+- **`role="application"` a propósito** (lienzo o recuadro que se mueve con flechas): Sonar `Web:S6845` marca su
+  `tabindex`. Es falso positivo: sin ese rol, el lector de pantalla se queda con las flechas. Se marca en la misma
+  línea que abre el tag: `<!-- NOSONAR: motivo --><div`.
 - **`<ul>` sin viñetas en Safari**: con `list-style: none` o `display: flex` Safari deja de anunciarla como
   lista. Si la lista importa (menú, etiquetas, cards), `role="list"` en ese `<ul>`; en el resto es redundante.
 
@@ -262,7 +275,7 @@ mejorarla — le miente sobre qué es el elemento y qué hace.
 - **`<details>`**: sin headings, enlaces ni botones dentro de `<summary>` (varios lectores lo exponen como botón
   y el heading se pierde). `name` compartido entre varios los hace excluyentes sin JS (Baseline sep 2024).
 - **Botón de copiar**: `navigator.clipboard.writeText()` dentro de `try` / `catch` (solo funciona en HTTPS). El
-  resultado, también el fallo, se anuncia en un `<span role="status">` que ya está en el DOM vacío, no creado
+  resultado, también el fallo, se anuncia en un `<output>` que ya está en el DOM vacío, no creado
   con `@if`. No deshabilitar el botón al copiar: pierde el foco. Copiar una **tabla**:
   `navigator.clipboard.write([new ClipboardItem({ 'text/plain': ..., 'text/html': ... })])` con las dos
   versiones como `Blob` (texto separado por tabs y `<table>`): Excel y Sheets pegan celdas, un editor de

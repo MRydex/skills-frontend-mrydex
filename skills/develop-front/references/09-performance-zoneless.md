@@ -284,12 +284,13 @@ export class DetalleItem {
   }
 
   private _forzarRecreacion(): void {
-    const original = this._router.routeReuseStrategy.shouldReuseRoute;
-    this._router.routeReuseStrategy.shouldReuseRoute = () => false;
+    const estrategia = this._router.routeReuseStrategy;
+    const original = estrategia.shouldReuseRoute.bind(estrategia); // bind: una estrategia propia puede usar `this`
+    estrategia.shouldReuseRoute = () => false;
 
     // La estrategia es global del Router: restaurarla al salir de esta ruta
     this._destroyRef.onDestroy(() => {
-      this._router.routeReuseStrategy.shouldReuseRoute = original;
+      estrategia.shouldReuseRoute = original;
     });
   }
 }
@@ -313,6 +314,11 @@ Qué se recrea y qué no:
 
 - El estado que debe reiniciarse va en un servicio declarado en `providers` del componente, nunca en
   `root` ni en `providers` de la ruta.
+- Capturar y restaurar funciona porque en una navegación el router destruye lo saliente **antes** de crear
+  lo entrante (`deactivateChildRoutes` y después `activateChildRoutes`, `ActivateRoutes.activate`): el nuevo
+  componente captura la estrategia ya restaurada. Con dos instancias vivas a la vez (el componente en dos
+  outlets) o una estrategia que reutiliza vistas (`shouldDetach`) ese orden no vale y la estrategia puede
+  quedar en `false`: ahí, la estrategia global de abajo.
 - `shouldReuseRoute = () => false` aplica a **todo el árbol activo**, incluidos layouts padre: también
   se recrean mientras la estrategia esté activa. Por eso se restaura en `DestroyRef.onDestroy`.
 - Si la app tiene un layout pesado (menú, header con estado) o varias rutas necesitan este
@@ -827,6 +833,11 @@ agregar(recibido: MensajeRecibido): void {
 }
 ```
 
+**Ráfagas** (decenas de mensajes por segundo): el `update` de arriba copia el array y dispara un render por
+mensaje. Si la medición lo muestra, acumular lo recibido en un arreglo común del servicio y volcarlo con **un**
+`update` cada ~100 ms (`setTimeout`, no `requestAnimationFrame`: con la pestaña oculta no corre). Cambia cuándo
+aparece cada mensaje: no se agrega sin medir.
+
 ```html
 <!-- chat.html: el input queda en el padre; la lista, en el hijo -->
 <app-lista-mensajes [mensajes]="mensajes()" />
@@ -936,9 +947,14 @@ export class BusquedaWorker {
     inject(DestroyRef).onDestroy(() => this._worker.terminate());
   }
 
-  buscar(criterio: Criterio): Promise<Producto[]> {
+  buscar(criterio: Criterio, abortSignal: AbortSignal): Promise<Producto[]> {
     const { port1, port2 } = new MessageChannel();
     return new Promise((resolve, reject) => {
+      // búsqueda vieja: se suelta el puerto y la promesa termina; el worker no se entera
+      abortSignal.addEventListener('abort', () => {
+        port1.close();
+        reject(abortSignal.reason);
+      }, { once: true });
       port1.onmessage = ({ data }: MessageEvent<Respuesta>) => {
         port1.close();
         if ('error' in data) {
@@ -958,7 +974,7 @@ export class BusquedaWorker {
 readonly criterio = debounced(signal(''), 300);
 readonly resultados = resource({
   params: this.criterio,
-  loader: ({ params }) => this._busqueda.buscar(params),   // un pedido viejo que llega tarde se descarta solo
+  loader: ({ params, abortSignal }) => this._busqueda.buscar(params, abortSignal),
 });
 ```
 
@@ -970,6 +986,10 @@ readonly resultados = resource({
 - Un error dentro del worker se contesta por el puerto (`try/catch` del ejemplo) y llega como
   `error()` del `resource`. `this._worker.onerror` queda solo para un worker que murió sin contestar
   (error al cargar el módulo): loguear y recrear el worker.
+- `abortSignal` libera la promesa y el puerto del pedido viejo, pero **no interrumpe el cálculo**: un
+  worker síncrono termina cada búsqueda aunque nadie la espere, y las que están en cola corren igual. Si
+  las búsquedas son lentas, el `debounced()` es la defensa; interrumpir de verdad es `terminate()` y
+  recrear el worker (pierde su estado), solo si la medición lo justifica.
 - Datos grandes que viajan seguido (miles de filas en cada búsqueda): mandarlos **una vez** al worker
   (`postMessage({ tipo: 'cargar', filas })`) y después solo el criterio; o `transfer` del
   `ArrayBuffer`. Copiar el dataset en cada llamada anula la ganancia.

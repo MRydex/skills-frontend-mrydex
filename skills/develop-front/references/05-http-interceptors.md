@@ -3,7 +3,7 @@
 Índice: [5.1](#51-por-qué-no-el-patrón-effect-por-recurso-resourceerrorhandler) Por qué no `effect` por recurso ·
 [5.2](#52-spinner--interceptor--servicio-con-contador-de-peticiones) Spinner · [5.3](#53-errores--interceptor--fachada-de-modal-lib-agnóstica) Errores (§5.3.1 `ErrorHandler`, §5.3.2 telemetría de salida con `keepalive`) ·
 [5.4](#54-opt-out-por-request-con-httpcontext-tokens) `HttpContext` opt-out · [5.5](#55-registro-en-appconfigts-el-orden-importa) Registro y orden ·
-[5.6](#56-cómo-se-combina-con-la-resource-api) Combinación con Resource API · [5.7](#57-retries) Retries ·
+[5.6](#56-cómo-se-combina-con-la-resource-api) Combinación con Resource API · [5.7](#57-retries) Retries (§5.7.1 `Idempotency-Key`) ·
 [5.8](#58-funcionales-vs-basados-en-clase-di) Funcionales vs. basados en clase (DI) · [5.9](#59-withxhr-vs-fetch-y-progreso-de-subida) `withXhr` vs. fetch ·
 [5.10](#510-interceptor-de-fechas-solo-si-el-contrato-lo-pide) Interceptor de fechas
 
@@ -98,12 +98,19 @@ SweetAlert2, `MatDialog`, un toast propio…): el interceptor **no debe conocerl
 
 ```ts
 // shared/services/error-notifier.ts — única clase que conoce la librería de UI
+const VENTANA_AVISO_MS = 5_000; // un mismo aviso no se repite dentro de esta ventana
+
 @Service()
 export class ErrorNotifier {
   private readonly _modal = inject(NzModalService);   // o MatDialog / MessageService / Swal...
+  private _ultimo = { titulo: '', en: 0 };
 
   handle(error: HttpErrorResponse): void {
     const { title, message } = this._mapError(error);
+    // Con la API caída, N requests fallan juntos: sin esto, N modales iguales apilados.
+    const ahora = Date.now();
+    if (this._ultimo.titulo === title && ahora - this._ultimo.en < VENTANA_AVISO_MS) return;
+    this._ultimo = { titulo: title, en: ahora };
     this._modal.error({ nzTitle: title, nzContent: message });
   }
 
@@ -111,7 +118,7 @@ export class ErrorNotifier {
     switch (error.status) {
       case 0:   return { title: 'Sin conexión', message: 'No se pudo contactar al servidor.' };
       case 400: return { title: 'Solicitud inválida', message: error.error?.message ?? 'Revisá los datos.' };
-      case 401: return { title: 'Sesión expirada', message: 'Volvé a iniciar sesión.' };
+      // 401 no pasa por acá: lo resuelve el authInterceptor (renovar token o cerrar sesión, [15](./15-security.md) §15.5.3)
       case 403: return { title: 'Sin permisos', message: 'No tenés acceso a este recurso.' };
       case 404: return { title: 'No encontrado', message: 'El recurso no existe.' };
       case 500: return { title: 'Error del servidor', message: 'Ocurrió un error inesperado.' };
@@ -123,17 +130,26 @@ export class ErrorNotifier {
 
 ```ts
 // interceptors/error-interceptor.ts
+// 401: lo maneja el authInterceptor, una sola vez por ráfaga (modal propio por request = N "Sesión expirada").
+// 409: conflicto de edición (`rowVersion`) o Idempotency-Key en curso: tiene que llegar a quien llamó,
+// que muestra "otro usuario modificó este registro". Un modal genérico lo taparía.
+const LOS_MANEJA_OTRO = [401, 409];
+
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notifier = inject(ErrorNotifier);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (!req.context.get(SKIP_ERROR_HANDLER)) notifier.handle(error);
+      if (!req.context.get(SKIP_ERROR_HANDLER) && !LOS_MANEJA_OTRO.includes(error.status)) notifier.handle(error);
       return throwError(() => error);   // re-propaga: el resource sigue viendo error() para UI inline
     }),
   );
 };
 ```
+
+Quien llama a un alta/edición con `rowVersion` ([04](./04-resource-api.md)) o `Idempotency-Key` (§5.7.1)
+atiende el `409` en su `error:` (`error.status === 409`); el `retryInterceptor` tampoco lo reintenta
+(no está en `REINTENTABLE`).
 
 #### 5.3.1 Errores fuera de HTTP: `ErrorHandler` global
 
@@ -202,15 +218,21 @@ export class Telemetria {
 }
 
 // shared/services/app-error-handler.ts (amplía §5.3.1)
+const MAX_CRASHES_POR_SESION = 10; // un error de render en bucle dispararía un POST por frame
+
 @Service({ autoProvided: false })
 export class AppErrorHandler implements ErrorHandler {
   private readonly telemetria = inject(Telemetria);
+  private readonly _crashesEnviados = new Set<string>();
 
   handleError(error: unknown): void {
     if (error instanceof HttpErrorResponse) return; // ya lo notificó el errorInterceptor
     console.error(error);
-    const mensaje = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-    this.telemetria.enviar('crash', mensaje.slice(0, 2_000)); // sin stack: suele traer URLs con datos
+    const mensaje = (error instanceof Error ? `${error.name}: ${error.message}` : String(error)).slice(0, 2_000);
+    // el mismo mensaje se manda una vez, y con tope por sesión
+    if (this._crashesEnviados.has(mensaje) || this._crashesEnviados.size >= MAX_CRASHES_POR_SESION) return;
+    this._crashesEnviados.add(mensaje);
+    this.telemetria.enviar('crash', mensaje); // sin stack: suele traer URLs con datos
   }
 }
 ```
@@ -235,6 +257,7 @@ interceptores, sin ensuciar headers ni la URL. Se declara con un valor por defec
 // interceptors/http-context.ts
 export const SKIP_SPINNER = new HttpContextToken<boolean>(() => false);
 export const SKIP_ERROR_HANDLER = new HttpContextToken<boolean>(() => false);
+export const SKIP_AUTH = new HttpContextToken<boolean>(() => false); // login y renovación de token ([15](./15-security.md) §15.5.3)
 
 // uso en una petición puntual (polling silencioso, error mostrado inline, etc.)
 this._http.get<Data>('/api/poll', {
@@ -282,8 +305,9 @@ export const appConfig: ApplicationConfig = {
 > - `spinnerInterceptor` va **antes** que ambos (más lejos del backend, más "afuera"): su
 >   `finalize()` envuelve toda la secuencia de reintentos, así el spinner no parpadea entre intento e
 >   intento.
-> - `authInterceptor` va primero porque solo necesita tocar la request saliente (agregar el header)
->   antes de que se dispare cualquier otra cosa.
+> - `authInterceptor` va primero: agrega el header a la request saliente y, al ser el más externo, ve el
+>   401 **después** de `error` y `retry`. Ahí renueva el token y reintenta la request una vez
+>   ([15](./15-security.md) §15.5.3); `errorInterceptor` ignora el 401 para no abrir un modal por request.
 
 ### 5.6 Cómo se combina con la Resource API
 
@@ -309,6 +333,15 @@ en un interceptor, no repetido con el operador `retry` de RxJS en cada servicio.
 // Solo se reintenta lo que puede arreglarse solo: sin red (0), timeout (408), límite (429) y 5xx.
 // Un 400/401/403/404 no cambia esperando: falla enseguida.
 const REINTENTABLE = (status: number) => status === 0 || status === 408 || status === 429 || status >= 500;
+const MAX_ESPERA_MS = 10_000; // si el servidor pide esperar más, no se reintenta: el spinner no cuelga tanto
+
+// `Retry-After`: segundos ("120") o fecha HTTP ("Wed, 21 Oct 2026 07:28:00 GMT"). null si falta o no se entiende.
+const retryAfterMs = (error: HttpErrorResponse): number | null => {
+  const valor = error.headers?.get('Retry-After');
+  if (!valor) return null;
+  const ms = /^\d+$/.test(valor.trim()) ? Number(valor) * 1000 : Date.parse(valor) - Date.now();
+  return Number.isNaN(ms) ? null : Math.max(0, ms);
+};
 
 export const retryInterceptor: HttpInterceptorFn = (req, next) => {
   // Reintentar solo métodos idempotentes seguros por defecto: GET (y HEAD, si aplica).
@@ -319,10 +352,12 @@ export const retryInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     retry({
       count: 3, // siempre acotado
-      delay: (error: HttpErrorResponse, attempt) =>
-        REINTENTABLE(error.status)
-          ? timer(2 ** attempt * 500) // backoff exponencial: 1 s, 2 s, 4 s
-          : throwError(() => error),
+      delay: (error: HttpErrorResponse, attempt) => {
+        if (!REINTENTABLE(error.status)) return throwError(() => error);
+        const espera = retryAfterMs(error) ?? 2 ** attempt * 500; // backoff exponencial: 1 s, 2 s, 4 s
+        if (espera > MAX_ESPERA_MS) return throwError(() => error);
+        return timer(espera + Math.random() * 500); // jitter: sin él, los clientes sincronizados reintentan juntos
+      },
     }),
   );
 };
@@ -331,10 +366,49 @@ export const retryInterceptor: HttpInterceptorFn = (req, next) => {
 > Cortar por `status < 500` deja sin reintento al `0` (sin red), que es justo el caso que más se arregla
 > solo: la lista de reintentables es explícita.
 >
+> `Retry-After` manda sobre el backoff (el servidor sabe cuándo se libera). Entre origen distinto, el
+> navegador solo lo deja leer si el backend manda `Access-Control-Expose-Headers: Retry-After`.
+>
 > **Nunca** reintentar POST/PUT/PATCH/DELETE a ciegas: si la primera petición sí llegó a impactar en
 > el servidor pero la respuesta se perdió, un retry automático puede duplicar la operación (alta doble,
 > pago doble). Si hace falta reintentar una mutación, eso va explícito en el servicio, con una
-> idempotency key o confirmación del backend, no en el interceptor global.
+> idempotency key o confirmación del backend (§5.7.1), no en el interceptor global.
+
+#### 5.7.1 `Idempotency-Key` en altas que no admiten duplicado
+
+**Solo** para altas donde un duplicado hace daño (pagos, pedidos, envíos de trámites). Un alta
+común, una edición o un borrado no la llevan: es complejidad sin motivo. Contrato con el backend:
+header `Idempotency-Key`; si la misma key sigue en curso responde `409`; si ya terminó, devuelve el
+resultado guardado (el reintento no crea nada nuevo).
+
+La key se genera **una vez por intención del usuario** (un envío del formulario), no por clic ni por
+request, y se **reutiliza** si esa misma intención se reintenta, también con el botón "Reintentar"
+tras un error de red. Una intención nueva lleva una key nueva.
+
+```ts
+export class NuevoPedido {
+  private readonly _http = inject(HttpClient);
+  private _claveEnvio: string | null = null;   // una por intención; null = la próxima es intención nueva
+
+  enviar(pedido: PedidoRequest): void {
+    const clave = (this._claveEnvio ??= crypto.randomUUID());   // el reintento reutiliza la misma
+    this._http
+      .post<PedidoResponse>(`${environment.API_URL}pedidos`, pedido, { headers: { 'Idempotency-Key': clave } })
+      .subscribe({
+        next: () => { this._claveEnvio = null; },   // cumplida: la siguiente intención usa otra key
+        error: (e: HttpErrorResponse) => {
+          // se conserva la key: reintentar es la misma intención. 409 = ya se está procesando.
+          if (e.status === 409) this._avisarEnCurso();
+        },
+      });
+  }
+}
+```
+
+- Si el usuario **cambia los datos** después de un error, es otra intención: `this._claveEnvio = null`.
+  Mismo key con otro body es un error de uso (el backend puede rechazarlo).
+- `crypto.randomUUID()` solo en contexto seguro (HTTPS o `localhost`).
+- `errorInterceptor` deja pasar el `409` a quien llama (§5.3); el reintento automático sigue siendo solo `GET`.
 
 ### 5.8 Funcionales vs. basados en clase (DI)
 

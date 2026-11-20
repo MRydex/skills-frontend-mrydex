@@ -20,6 +20,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿`input()` / `input.required()` / `model()` / `output()` (no decoradores), marcados `readonly`?
 - [ ] ¿Los miembros que solo usa el template están `protected`?
 - [ ] ¿Sin `@HostBinding` ni `@HostListener` (todo en `host: {}`)? ¿Atajos con pseudo-eventos (`keydown.control.s` + `keydown.meta.s`), no `event.key` a mano?
+- [ ] ¿Sonar TS limpio? Constantes de búsqueda como `ReadonlySet` + `.has()` (`S7776`); un import por módulo (`S3863`); `!x` y no `x == false` (`S1125`, y ojo que `null == false` es `false`); miembros `private` que nunca se reasignan, `readonly` (`S2933`); sin `length > 0 &&` antes de `.some()` (`S7745`); sin operador coma (`S878`): para loguear y seguir en un `.catch`, helper tipado `(e: unknown): T => { console.warn(msg, e); return valor; }`, porque `console.warn` devuelve `void` y `?? valor` no lo angosta (TS2322); reintento único sin `await` en loop (`S9382`): un intento, el chequeo en el `catch` y un segundo intento.
 - [ ] ¿Configs con `satisfies`, conjuntos con métodos de `Set` (si el `lib` los trae) y fechas con `Intl` / pipes, sin librerías de fechas nuevas? (§2.15)
 - [ ] ¿Las propiedades `private` tienen prefijo `_`? ¿Sin `public` explícito?
 - [ ] ¿Estado escribible encapsulado: `private _signal` + `readonly` + método mutador?
@@ -60,6 +61,9 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Las lecturas de `value()` están guardadas con `hasValue()` / `@else if`, o hay `defaultValue`?
 - [ ] ¿Se manejan los estados `loading` / `error` en el template, no solo el éxito?
 - [ ] ¿Mutaciones (POST/PUT/DELETE) por `HttpClient` en el servicio + `reload()` / `update()`, **no** por resource? ¿Un botón que muta por fila (me gusta, activar) queda bloqueado mientras su request está en vuelo? (§4.12)
+- [ ] ¿Toda mutación (eliminar, renombrar, guardar, exportar) bloquea el ítem o el botón mientras su request está en vuelo, y lo libera también al fallar? (§4.12, §2.9)
+- [ ] ¿El modelo trae `rowVersion` y vuelve tal cual en el body del PUT / PATCH? Ante 409, ¿se avisa y decide el usuario, sin reintento ni pisado automático? (§4.12)
+- [ ] ¿Sondeos y refrescos de fondo con `SKIP_SPINNER`, desfase al azar y sin correr con la pestaña oculta? (§4.9, §4.14)
 - [ ] ¿Params de query con `HttpParams` u objeto `params`, no concatenando strings?
 - [ ] ¿Refrescar con el **mismo id** usa `reload()`? ¿Polling solo en el servicio, con `interval` + `takeUntilDestroyed()` y constante nombrada? ¿Refresco al volver a la pestaña con `visibilitychange` + `throttleTime`, sin `effect()`? ¿Tabla paginada conserva la página anterior con `linkedSignal` mientras carga? (§4.9)
 - [ ] ¿Sondeo de un trabajo largo con `rxResource` sobre el id, `timer` + `exhaustMap` + `takeWhile(..., true)` en el servicio y tope de intentos? ¿Sin `switchMap` en el `timer` ni `Subject` + `toSignal`? (§4.14)
@@ -70,6 +74,9 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿`ErrorHandler` global que filtra `HttpErrorResponse` (ya notificado) + `provideBrowserGlobalErrorListeners()`? (§5.3.1)
 - [ ] ¿Telemetría de salida con `pagehide` + `visibilitychange` y `keepalive: true`, `subscribe({ error })` que no lanza, sin PII ni stack? ¿Nunca `unload` ni `sendBeacon` con endpoint autenticado? (§5.3.2)
 - [ ] ¿Spinner y errores resueltos por **interceptores funcionales**, NO por `effect` por recurso?
+- [ ] ¿Errores en ráfaga (API caída) muestran un solo aviso? ¿El `errorInterceptor` deja pasar el 409 a quien llama? (§5.3)
+- [ ] ¿El reintento es solo de GET, respeta `Retry-After` y tiene jitter? (§5.7)
+- [ ] (si aplica) ¿Las altas que no admiten duplicado (pagos, pedidos) llevan `Idempotency-Key`, generada una vez por intención? (§5.7.1)
 - [ ] ¿El spinner usa un **contador de peticiones** (sin parpadeo con requests concurrentes)?
 - [ ] ¿El interceptor de errores mapea el **status real** y delega en `ErrorNotifier`?
 - [ ] ¿La librería del modal está aislada en `ErrorNotifier` (el interceptor no la conoce)?
@@ -86,6 +93,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Cero `effect()`? Campos dependientes con opciones `computed()` y, si hace falta, `validate()` / `validateTree()` (§6.10)
 - [ ] ¿Los campos `hidden` usan `valueOf(path.x)` en el schema y `@if (!f.x().hidden())` en el template?
 - [ ] ¿Validaciones en el schema (`required`, `email`, `validateTree` para cruzadas, `validateAsync` / `validateHttp` para async)?
+- [ ] ¿Cada campo de texto tiene `pattern()` (formato conocido) o `maxLength()` + `sinCodigo()` (texto libre)? ¿Se rechaza con error de campo, sin limpiar en silencio? ([15](./15-security.md) §15.3.1)
 - [ ] ¿Errores visibles solo con `touched() && invalid()`, con `aria-invalid` y `aria-describedby`?
 - [ ] ¿El submit se habilita con el estado del form (`form().valid()`)?
 - [ ] ¿`disabled` / `readonly` / `hidden` declarados en el schema con `when`, no en el template? ¿Campos `hidden` envueltos en `@if`?
@@ -164,6 +172,8 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Eventos en objeto `as const` 1:1 con el back, payload `unknown` + parser? (§16.7)
 - [ ] ¿Todo handler de un consumidor que se destruye tiene su `off`, registrado antes del primer `await`? (§16.8)
 - [ ] ¿Identidad solo por token (`accessTokenFactory`), nunca `?username=`? (§16.9)
+- [ ] ¿Entrar y salir de grupos pasa por la misma cola que `iniciar` / `detener`? ¿La recarga tras reconectar fusiona por id en vez de reemplazar? (§16.4, §16.6)
+- [ ] ¿Reintentos con jitter proporcional al delay y primer reintento no inmediato? ¿`accessTokenFactory` con `tokenVigente()`? (§16.3, §16.9)
 
 ### Microfrontends ([17](./17-microfrontends.md))
 - [ ] ¿Adopción justificada con ADR (equipos o deploys independientes), no para reusar componentes? (§17.1)
@@ -191,10 +201,12 @@ Proceso del agente · Verificación rápida (Do & Don't).
 ### Archivos y exportación ([19](./19-archivos-pdf-excel-editor.md)) (si aplica)
 - [ ] (si aplica) ¿Descarga con `Blob` + `revokeObjectURL`, `Content-Disposition` leído con `observe: 'response'`, sin librería nueva? (§19.2)
 - [ ] (si aplica) ¿Subida con `<input type="file">` accesible y validación del backend (la del cliente es UX)? (§19.3)
+- [ ] (si aplica) ¿Subidas con progreso por archivo, tope de paralelas y cancelación? ¿Descarga protegida contra doble clic? (§19.2, §19.3)
 - [ ] (si aplica) ¿`exceljs` / `pdfjs-dist` con import dinámico, y celdas saneadas contra CSV injection? ¿HTML del editor sin `bypassSecurityTrustHtml`? (§19.4 a §19.7)
 
 ### Auth OIDC y firma digital ([15](./15-security.md) §15.5.1, §15.5.2) (si aplica)
 - [ ] (si aplica) ¿Code + PKCE, init con timeout y ruta de error, `returnUrl` validado como ruta interna y token solo a las URLs de la API propia?
+- [ ] (si aplica) ¿Un 401 en ráfaga dispara una sola renovación de token y un solo cierre de sesión? ¿Login y renovación con `SKIP_AUTH`? (§15.5.3)
 - [ ] (si aplica) ¿PIN nunca guardado ni logueado y limpiado tras usarlo? ¿Sin `crypto-js` nuevo? ¿Firma validada en el backend?
 
 ### Migración ([20](./20-migracion-angular.md)) (si aplica)
@@ -216,18 +228,22 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿`<title>` por ruta (`title` en `Route` / `TitleStrategy`) y metadatos SEO? ¿Migas de pan derivadas de ese mismo `title` (`<nav aria-label>` + `<ol>` + `aria-current="page"`), sin `data: { breadcrumb }`? (§12.8)
 - [ ] ¿Foco gestionado al navegar entre vistas? (§12.9)
 - [ ] ¿Botones con el mismo texto (un "Editar" por fila) distinguibles por lector de pantalla? ¿`aria-disabled` donde la acción deshabilitada tiene que poder descubrirse? (§12.6)
+- [ ] ¿Mensajes de estado con `<output>` e íconos clickeables con `<button>` (no `role="status"` / `role="button"` en `<p>` / `<span>`)? ¿`aria-label` que contiene texto visible, también en `<select>`? (§12.6)
 - [ ] `<dialog>` propio: ¿sin `role`, `aria-modal` ni trampa de foco agregados? ¿El cierre con click afuera usa el handler y no solo `closedby`? (§12.7)
 - [ ] ¿Campos de identificadores con `spellcheck="false"`? ¿Pasos o fondo inactivos con `inert`? (§12.7, §12.9)
 
 ### CSS ([13](./13-css3-layouts-animations.md))
 - [ ] ¿`box-sizing: border-box` global?
-- [ ] ¿Sin `!important` (salvo excepción justificada) ni IDs como selectores de estilo?
+- [ ] ¿Sin `!important` (salvo excepción justificada) ni IDs como selectores de estilo? Sobre NG-ZORRO casi nunca hace falta: el selector anidado (`.form__radio .ant-radio`) ya es más específico; quitarlo y mirar la pantalla.
+- [ ] ¿Sin selectores repetidos en el mismo archivo (se unen en un bloque), bloques vacíos ni CSS comentado? (Sonar `css:S4666`, `S4658`, `S125`)
+- [ ] ¿Texto de hover/activo con contraste AA contra un fondo sólido? Un fondo `rgba()` semitransparente no garantiza el 4.5:1 (Sonar `css:S7924`).
+- [ ] ¿`&` dentro de un `@mixin` marcado por Sonar `css:S8776` ("Missing scoping root")? Falso positivo: `// NOSONAR` en la línea y un comentario arriba del archivo con el motivo.
 - [ ] ¿`gap` en vez de márgenes para separar hijos de flex/grid?
 - [ ] ¿Texto del back o del usuario con `overflow-wrap: anywhere` (no `word-break: break-word` ni `break-all`) y `min-width: 0` en hijos de flex/grid, para que un texto largo no rompa la UI? (§13.5)
 - [ ] ¿Contenedor con padding lateral fijo + contenido en `%` / `vw` / `vh` antes de media queries? (§13.11)
 - [ ] ¿Layouts responsive con `auto-fill` / `auto-fit` + `minmax()` o `@container` antes que media queries?
 - [ ] ¿`z-index` aplicado sobre un stacking context real?
-- [ ] ¿Transiciones con propiedades concretas (no `all`)? ¿Se anima `transform` / `opacity`, no layout?
+- [ ] ¿Transiciones con propiedades concretas (no `all`, tampoco `transition: 0.3s` sin propiedad, que equivale a `all`; Sonar `css:S9449`)? ¿Se anima `transform` / `opacity`, no layout?
 - [ ] ¿Aparición/desaparición de `<dialog>` / popovers con `@starting-style` + `allow-discrete`?
 - [ ] ¿Tema claro/oscuro con `color-scheme` + `light-dark()` en vez de duplicar reglas?
 - [ ] ¿APIs que no son Baseline (`interpolate-size`, `base-select`, anchor positioning) bajo `@supports` con fallback?
@@ -247,6 +263,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 ## Checklist de seguridad ([15](./15-security.md))
 - [ ] ¿Revisión Red Team del cambio hecha (tabla de §15.2) y sin respuestas "sí"?
 - [ ] ¿Sin `bypassSecurityTrust*` con datos externos, sin `nativeElement.innerHTML`, `eval` ni `new Function`? ¿Pipes que devuelven HTML escapan la entrada? (§15.3)
+- [ ] ¿Ningún `<input>` / `<textarea>` acepta etiquetas ni código (`pattern()` o `sinCodigo()`), el dato se muestra con interpolación y el backend valida lo mismo? (§15.3.1)
 - [ ] ¿`autoCsp` activo en producción? ¿CSP nueva desplegada primero como Report-Only? (§15.4)
 - [ ] ¿Token en memoria o cookie `HttpOnly`, nunca en `localStorage`? ¿`authInterceptor` compara origen con `URL`? ¿Autorización validada en backend? ¿Logout avisado a las otras pestañas por `BroadcastChannel` con un evento, nunca el token? (§15.5)
 - [ ] ¿XSRF configurado con sesión por cookie? ¿Sin mutaciones por `GET`? (§15.6)

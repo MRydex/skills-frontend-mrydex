@@ -668,9 +668,17 @@ export class AppUpdate {
     // Cache rota o versión que ya no existe en el servidor: la pestaña no puede seguir sin recargar.
     this.swUpdate.unrecoverable.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this._recargaObligatoria.set(true));
 
-    // Primer chequeo con la app estable; después al volver a la pestaña, al navegar y cada 30 min.
+    // Primer chequeo con la app estable; después al volver a la pestaña, al navegar y cada ~30 min.
+    // Con jitter (+0–5 min): las pestañas abiertas a la vez no le pegan juntas a ngsw.json. Oculta: se salta.
     void this.appRef.whenStable().then(() => this.verificar());
-    const intervalo = setInterval(() => void this.verificar(), 30 * 60_000);
+    let temporizador: ReturnType<typeof setTimeout>;
+    const programar = () => {
+      temporizador = setTimeout(() => {
+        if (document.visibilityState === 'visible') void this.verificar();
+        programar();
+      }, 30 * 60_000 + Math.random() * 5 * 60_000);
+    };
+    programar();
     const alVolver = () => {
       if (document.visibilityState === 'visible') void this.verificar();
     };
@@ -679,7 +687,7 @@ export class AppUpdate {
       .pipe(filter((e) => e instanceof NavigationEnd), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => void this.verificar());
     this.destroyRef.onDestroy(() => {
-      clearInterval(intervalo);
+      clearTimeout(temporizador);
       document.removeEventListener('visibilitychange', alVolver);
     });
   }

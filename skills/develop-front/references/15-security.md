@@ -4,9 +4,9 @@
 
 - 15.1 Regla general y modo de trabajo
 - 15.2 Revisión Red Team de cada cambio (pensar como atacante)
-- 15.3 XSS: sanitización de Angular, `innerHTML` y `DomSanitizer`
+- 15.3 XSS: sanitización de Angular, `innerHTML` y `DomSanitizer` (15.3.1 Texto que escribe el usuario)
 - 15.4 CSP y Trusted Types
-- 15.5 Autenticación, tokens y autorización (15.5.1 OIDC en la SPA, 15.5.2 Firma digital en el cliente)
+- 15.5 Autenticación, tokens y autorización (15.5.1 OIDC en la SPA, 15.5.2 Firma digital en el cliente, 15.5.3 Renovación del token)
 - 15.6 CSRF / XSRF
 - 15.7 Navegación, redirects y links externos
 - 15.8 Datos sensibles y secretos en el front
@@ -44,7 +44,7 @@ Antes de entregar, responder cada pregunta sobre el código tocado:
 
 | Superficie | Pregunta del atacante |
 | :--- | :--- |
-| Entradas (forms, query params, route params, `input()`) | ¿Puedo meter HTML, script, URL o un valor fuera de rango y que llegue sin validar al DOM o al backend? |
+| Entradas (forms, query params, route params, `input()`) | ¿Puedo meter HTML, script, URL o un valor fuera de rango y que llegue sin validar al DOM o al backend? ¿Cada campo de texto tiene `pattern()` o `maxLength()` + `sinCodigo()` (§15.3.1)? |
 | Renderizado | ¿Algún dato controlable termina en `[innerHTML]`, `bypassSecurityTrust*`, `nativeElement.innerHTML` o un atributo `href`/`src`? |
 | URLs y navegación | ¿Puedo forzar un redirect a un dominio externo (`returnUrl`, `next`)? |
 | Tokens y sesión | ¿El token viaja a un origen que no es la API propia? ¿Queda en `localStorage`? |
@@ -125,6 +125,98 @@ export class HighlightSearchPipe implements PipeTransform {
 this.html = this._sanitizer.bypassSecurityTrustHtml(respuesta.descripcion);
 ```
 
+#### 15.3.1 Texto que escribe el usuario (`<input>`, `<textarea>`, filtros)
+
+Ningún campo de texto acepta etiquetas ni código. Son tres defensas y van en este orden de importancia:
+
+1. **Mostrar el dato con interpolación** (`{{ }}`). Es la que de verdad frena el ataque: un
+   `<script>` guardado se ve como texto y no corre.
+2. **El backend valida de nuevo con la misma regla** (`SinCodigo()` de FluentValidation, mismo
+   patrón: si cambia en un lado, cambia en el otro) y guarda con parámetros. El validador del front
+   se salta con una llamada directa a la API: solo no protege nada.
+3. **El front rechaza al escribir o pegar**, con un validador del schema. Avisa al usuario en el campo
+   y corta el intento antes de que salga.
+
+Reglas:
+
+- **Campo con formato conocido** (nombre, documento, teléfono, código): `pattern()` con la lista de
+  caracteres **permitidos**. Lo que no está en la lista no entra.
+- **Campo de texto libre** (observaciones, descripción, comentario, búsqueda): `maxLength()` +
+  `sinCodigo()`. Siempre los dos.
+- **Rechazar, nunca limpiar.** Borrar `<script>` en silencio deja armar `<scr<script>ipt>` y cambia
+  el dato sin que el usuario lo sepa. El campo queda inválido con su mensaje y el submit no sale.
+- **No escapar antes de enviar** (`&lt;` en la base): el dato queda roto y se escapa dos veces. Se
+  guarda el texto tal cual y se escapa al mostrarlo (punto 1).
+- Lo mismo para texto que llega por **query params o route params** y termina en un filtro o en la
+  pantalla: `tieneCodigo(valor)` antes de usarlo; si da `true`, se descarta.
+- Un campo que **necesita** marcado (editor enriquecido) no usa `sinCodigo`: va por [19](./19-archivos-pdf-excel-editor.md)
+  §19.7. Texto que se exporta a CSV: además §19.5.
+
+```ts
+// shared/validators/sin-codigo.ts
+import { SchemaPath, validate } from '@angular/forms/signals';
+
+// Atributos que ejecutan o cargan algo. `on` + 3 letras o más: el evento más corto es `oncut`, y deja pasar "ONG =".
+const ATRIBUTO = 'on[a-z]{3,}|style|src|srcset|srcdoc|href|xlink:href|formaction|action|background|poster';
+// Entidades que, decodificadas dos veces, vuelven a ser `<`, `"`, `:` y compañía.
+const ENTIDAD = 'lt|gt|quot|amp|apos|colon|tab|newline|lpar|rpar|equals|sol|bsol|grave|num|semi|nbsp';
+
+// 1) etiqueta: `<` o `</` + letra, `<!`, `<?`. `\u3008` (〈): SQL Server lo guarda como `<` en una columna `varchar`.
+// 2) atributo suelto que rompe otro atributo: `" onerror=`, `' style=`, ` src=`.
+// 3) entidad HTML: `&#60;`, `&lt;`, `&colon;`.
+const MARCADO = new RegExp(
+  `[<\\u3008]/?[\\p{L}\\u{10000}-\\u{10FFFF}]|[<\\u3008][!?]` +
+    `|(?:^|[ \\t\\n\\r\\f"'\`/])(?:${ATRIBUTO})[ \\t\\n\\r\\f]*=` +
+    `|&(?:#[0-9x]|(?:${ENTIDAD});)`,
+  'iu',
+);
+// URL que ejecuta, al inicio del texto o de un valor. Se busca sin TAB ni saltos: el navegador los ignora en `java\nscript:`.
+const ESQUEMA = /(?:^|["'`=(]) *(?:(?:javascript|vbscript) *:|data *: *(?:text|image|application)\/)/i;
+// Caracteres de control (menos TAB, LF y CR), los que invierten el sentido del texto y Unicode inválido.
+const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u202A-\u202E\u2066-\u2069\uFFFE\uFFFF\p{Cs}]/u;
+// 30 marcas combinantes seguidas: nadie lo escribe, y normalizarlas cuesta tiempo cuadrático (12 s con 200.000).
+const APILADO = /[\p{M}\u{10000}-\u{10FFFF}]{30,}/u;
+
+export function tieneCodigo(texto: string): boolean {
+  if (CONTROL.test(texto) || APILADO.test(texto)) return true;
+  // NFKC: `＜script＞` (ancho completo) pasa a `<script>` antes de comparar
+  const plano = texto.normalize('NFKC');
+  return MARCADO.test(plano) || ESQUEMA.test(plano.replace(/[\t\n\r]/g, ''));
+}
+
+export function sinCodigo(path: SchemaPath<string>): void {
+  validate(path, ({ value }) =>
+    tieneCodigo(value())
+      ? { kind: 'sinCodigo', message: 'El texto no puede incluir etiquetas HTML ni código (por ejemplo <b> u onclick=)' }
+      : null,
+  );
+}
+```
+
+```ts
+// uso en el schema del form
+maxLength(path.nombre, 80);
+pattern(path.nombre, /^[\p{L}\p{M}' .-]+$/u, { message: 'Solo letras, espacios, apóstrofe y guion' });
+maxLength(path.observaciones, 2000);
+sinCodigo(path.observaciones);
+```
+
+Qué pasa y qué no (probado contra 100 ataques y 68 textos normales, con la misma respuesta en el
+front y en el backend):
+
+- Pasan: `a < b`, `precio <= 100`, `me gusta <3`, `Tom & Jerry`, `ONG = organización`,
+  `Curso de JavaScript: avanzado`, URLs con `?a=1&b=2`, emojis, acentos y saltos de línea.
+- Se rechazan aunque no sean un ataque: `a <b` y `<sin datos>` (`<` pegado a una letra: el navegador
+  lo lee como etiqueta), `online=si` al inicio o después de un espacio, `precio&nbsp;final` pegado
+  desde una web, y texto con marcas de dirección (hebreo o árabe pegado con U+202A a U+202E).
+- No lo cubre, a propósito: texto codificado (`%3Cscript%3E`, `<`), que es inerte salvo que
+  otra capa lo decodifique dos veces.
+- Un campo donde el usuario escribe código a propósito (un snippet, una fórmula) no lleva
+  `sinCodigo`: lleva `maxLength()` y se muestra solo con interpolación.
+- **No editar el patrón a mano en un solo lado.** Un cambio se prueba con los mismos casos en el
+  front y en el backend; un patrón "más simple" suele reabrir una evasión (`java\nscript:`,
+  `" style=`, `&colon;`) o volver cuadrático el tiempo de validación.
+
 ### 15.4 CSP y Trusted Types
 
 - Activar **`autoCsp`** en `angular.json` (build de producción). Angular genera una CSP con hashes
@@ -190,12 +282,18 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 };
 ```
 
+  Esta es la base. Con bearer token que vence (casi siempre), el interceptor también renueva y reintenta
+  ante el 401: versión completa en §15.5.3.
+
 - Guards (`canMatch`, `canActivate`) ocultan rutas; **no protegen datos**. Cada endpoint valida
   permisos en el backend. Preferir `canMatch` para no descargar el chunk de una ruta sin permiso.
 - **Permisos en la UI por flag del backend** (`puedeEliminar`), expuesto en un solo `computed`;
   nunca listas de `idUsuario` o `idArea` en el template ni en el `.ts`: son fáciles de leer en el
   bundle, se desactualizan con cada alta y no protegen nada ([02](./02-typescript-signals.md) §2.17).
-- En logout: limpiar signals de sesión, stores con datos del usuario y cualquier storage propio. El endpoint
+- En logout: **recargar la página** hacia el login (`location.assign`), no `router.navigate`. La recarga
+  descarta de una vez los signals, los stores, los resources vivos y las requests en vuelo: una respuesta tardía del
+  usuario anterior no cae en un store que ya es del siguiente. Con `navigate`, la SPA sigue viva y hay que
+  vaciar y cancelar a mano cada pieza. Además, limpiar cualquier storage propio. El endpoint
   de logout del backend responde además `Clear-Site-Data: "cookies", "storage", "cache"`, que borra en el
   navegador lo que el código pudo dejar.
 - **Logout en todas las pestañas**: con el token en memoria no hay evento `storage` que avise a las
@@ -208,17 +306,32 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 ```ts
 @Service()
 export class Auth {
-  private readonly _router = inject(Router);
+  private readonly _http = inject(HttpClient);
   private readonly _canal = new BroadcastChannel('auth');
+  private readonly _token = signal<string | null>(null); // en memoria, nunca en storage
+  private _cerrada = false;
+  readonly accessToken = this._token.asReadonly();
   readonly usuario = signal<Usuario | null>(null);
 
   constructor() {
     this._escucharOtrasPestanas();
   }
 
-  logout() {
-    this._cerrarLocal();
-    this._canal.postMessage('logout');
+  logout(motivo?: 'expirada') {
+    const cerrar = () => {
+      this._cerrarLocal(motivo);
+      this._canal.postMessage('logout');
+    };
+    if (motivo === 'expirada') return cerrar(); // el backend ya no tiene sesión que revocar
+    // El backend revoca la sesión y borra la cookie. Sin esta llamada la cookie sigue válida: tras recargar,
+    // el primer 401 renueva el token (§15.5.3) y la sesión revive sola.
+    this._http
+      .post(`${environment.API_URL}auth/logout`, null, {
+        withCredentials: true,
+        context: new HttpContext().set(SKIP_AUTH, true).set(SKIP_ERROR_HANDLER, true),
+      })
+      .pipe(timeout(5_000), finalize(cerrar)) // con o sin respuesta, la sesión local se cierra
+      .subscribe({ error: () => undefined }); // sin red no hay a quién avisar: la cookie vence sola
   }
 
   // otra pestaña cerró sesión: esta también
@@ -228,15 +341,21 @@ export class Auth {
     };
   }
 
-  private _cerrarLocal() {
+  // Idempotente: N requests con 401 a la vez llaman acá N veces y la sesión se cierra una sola.
+  private _cerrarLocal(motivo?: 'expirada') {
+    if (this._cerrada) return;
+    this._cerrada = true;
+    this._token.set(null);
     this.usuario.set(null);
-    this._router.navigate(['/login']);
+    const login = new URL('login', document.baseURI); // respeta <base href>
+    if (motivo) login.searchParams.set('motivo', motivo); // la pantalla de login explica "Sesión expirada"
+    location.assign(login);
   }
 }
 ```
 
-- 401 → sesión vencida: redirigir a login. 403 → sin permiso: mostrar mensaje. Nunca reintentar
-  automáticamente con otras credenciales.
+- 401 → renovar el token una vez (§15.5.3); si no se puede, login. 403 → sin permiso: mostrar mensaje.
+  Nunca reintentar automáticamente con otras credenciales.
 
 #### 15.5.1 Auth OIDC en la SPA
 
@@ -293,6 +412,130 @@ de escritorio). Si no, no agregues firma en el front.
   documento firmado sea el esperado. Que el front "verifique" es solo información para el usuario.
 - La clave privada no sale del dispositivo ni del firmador; el front envía el documento (o su hash)
   y recibe la firma.
+
+#### 15.5.3 Renovación del token (bearer en memoria)
+
+**Aplica solo si** el proyecto usa bearer token de vida corta en memoria y refresh token en cookie `HttpOnly`
+(§15.5), sin librería OIDC. Con cookie de sesión (BFF) no hay nada que renovar: el 401 va al login.
+
+- **Con librería OIDC, la renueva ella: no armar esto.** `angular-auth-oidc-client`: `silentRenew: true` +
+  `useRefreshToken: true` (y `renewTimeBeforeTokenExpiresInSeconds`); `angular-oauth2-oidc`:
+  `setupAutomaticSilentRefresh()`; MSAL: `acquireTokenSilent` dentro de `MsalInterceptor`. Se configura y se
+  verifica en las DevTools (una sola llamada de renovación aunque haya N requests); no se escribe un segundo
+  mecanismo encima.
+- **Contrato con el backend** (skill de backend): el refresh token **rota en cada uso** y el backend acepta el
+  anterior durante una **ventana corta de gracia**, para dos pestañas que renuevan a la vez. Fuera de esa
+  ventana, reusar un refresh token revoca la sesión: por eso la renovación es **única**, nunca una por request.
+- **Una renovación en curso para todos** (una promesa compartida): N requests con 401 a la vez producen **una**
+  llamada de renovación. El request original se **reintenta una sola vez** con el token nuevo. Si la renovación
+  falla con 401/403 se cierra sesión una vez (`_cerrarLocal` es idempotente). Un fallo de red al renovar **no**
+  cierra sesión: la sesión puede seguir viva. En ese caso el 401 original llega a quien llamó **sin modal**
+  (`errorInterceptor` lo ignora, §5.3): la pantalla muestra su estado de error con reintentar. Lo mismo el 401
+  del login (`SKIP_AUTH`): lo atiende el formulario.
+- **Entre pestañas**: `navigator.locks.request` hace que renueve una por vez. La cookie `HttpOnly` es compartida,
+  así que la que espera el lock renueva a su vez con la cookie ya rotada y obtiene **su propio** access token.
+  El token **no** se pasa entre pestañas (ni `BroadcastChannel` ni storage): sigue solo en memoria.
+- `tokenVigente()` es el método para quien necesita el token fuera de `HttpClient` (por ejemplo,
+  `accessTokenFactory` de SignalR, [16](./16-websocket-signalr.md)): espera la renovación en curso o renueva si venció.
+- Login, renovación y logout llevan `SKIP_AUTH` (§5.4): sin él, un 401 de credenciales malas dispararía una renovación.
+- **CSRF de `auth/refresh` y `auth/logout`**: se autentican solo con la cookie. La cookie del refresh token va
+  `HttpOnly; Secure; SameSite=Strict` y el backend valida el header `Origin` en esos dos endpoints: otro sitio
+  no lee la respuesta, pero sin esa validación puede forzar rotaciones o cerrar la sesión.
+
+```ts
+// shared/services/auth.ts (amplía §15.5; el access token de la respuesta vence en `expiresIn` segundos)
+@Service()
+export class Auth {
+  private readonly _http = inject(HttpClient);
+  private readonly _canal = new BroadcastChannel('auth');
+  private readonly _token = signal<string | null>(null);
+  private _venceEn = 0;
+  private _renovacion: Promise<string | null> | null = null;
+  private _cerrada = false;
+  readonly accessToken = this._token.asReadonly();
+  readonly usuario = signal<Usuario | null>(null);
+
+  // Token listo para usar: espera la renovación en curso o renueva si no hay o venció (margen de 30 s).
+  tokenVigente(): Promise<string | null> {
+    if (this._renovacion) return this._renovacion;
+    const token = this._token();
+    return token && Date.now() < this._venceEn - 30_000 ? Promise.resolve(token) : this.renovar();
+  }
+
+  // El 401 llegó con `rechazado`: si otro request ya renovó, se usa ese token y no se renueva de nuevo.
+  renovarTrasRechazo(rechazado: string | null): Promise<string | null> {
+    const actual = this._token();
+    return actual && actual !== rechazado ? Promise.resolve(actual) : this.renovar();
+  }
+
+  renovar(): Promise<string | null> {
+    if (this._cerrada) return Promise.resolve(null); // sesión ya cerrada: renovar no sirve
+    return (this._renovacion ??= this._renovarUnaVez().finally(() => (this._renovacion = null)));
+  }
+
+  guardarToken(r: { accessToken: string; expiresIn: number }): void { // lo llama también el login
+    this._token.set(r.accessToken);
+    this._venceEn = Date.now() + r.expiresIn * 1000;
+  }
+
+  private _renovarUnaVez(): Promise<string | null> {
+    const pedir = async (): Promise<string | null> => {
+      try {
+        const r = await firstValueFrom(
+          this._http.post<{ accessToken: string; expiresIn: number }>(`${environment.API_URL}auth/refresh`, null, {
+            withCredentials: true, // la cookie HttpOnly con el refresh token
+            context: new HttpContext().set(SKIP_AUTH, true).set(SKIP_ERROR_HANDLER, true).set(SKIP_SPINNER, true),
+          }).pipe(timeout(10_000)), // sin tope, una red colgada deja trabados la promesa compartida y el lock de las otras pestañas
+        );
+        if (this._cerrada) return null; // cerraron sesión mientras renovaba: no reponer el token
+        this.guardarToken(r);
+        return r.accessToken;
+      } catch (e) {
+        if (e instanceof HttpErrorResponse && (e.status === 401 || e.status === 403)) this.logout('expirada');
+        return null;
+      }
+    };
+    // una pestaña por vez; sin Web Locks (navegador viejo) corre igual y la ventana de gracia del backend cubre el cruce
+    return 'locks' in navigator ? navigator.locks.request('auth-refresh', pedir) : pedir();
+  }
+  // logout(), _cerrarLocal() y _escucharOtrasPestanas(): igual que en §15.5
+}
+```
+
+```ts
+// interceptors/auth-interceptor.ts (reemplaza al de §15.5)
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const auth = inject(Auth);
+  const apiOrigin = new URL(environment.API_URL).origin;
+  const destino = new URL(req.url, location.origin).origin;
+  if (req.context.get(SKIP_AUTH) || destino !== apiOrigin) return next(req);
+
+  const conToken = (token: string) => req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
+  const enviado = auth.accessToken();   // sin token (recién recargada la página): sale así y el 401 dispara la renovación
+
+  return next(enviado ? conToken(enviado) : req).pipe(
+    catchError((error: unknown) => {
+      if (!(error instanceof HttpErrorResponse) || error.status !== 401) return throwError(() => error);
+      return from(auth.renovarTrasRechazo(enviado)).pipe(
+        switchMap((nuevo) =>
+          nuevo
+            ? next(conToken(nuevo)).pipe(   // reintento único: si vuelve 401, la sesión no sirve
+                catchError((e: unknown) => {
+                  if (e instanceof HttpErrorResponse && e.status === 401) auth.logout('expirada');
+                  return throwError(() => e);
+                }),
+              )
+            : throwError(() => error),
+        ),
+      );
+    }),
+  );
+};
+```
+
+- El reintento reenvía el mismo body: vale para JSON. Un body de un solo uso (stream) no se puede reenviar.
+- El token nunca va a `localStorage` ni `BroadcastChannel` (§15.5). La renovación tampoco guarda el refresh
+  token en JS: viaja solo en la cookie.
 
 ### 15.6 CSRF / XSRF
 
@@ -467,7 +710,7 @@ y SSR), **IIS** y **Angular SSR**. Son pocos avisos y la mayoría no toca un fro
 
 ### 15.11 Blue Team: detección, logging y respuesta
 
-- El `errorInterceptor` (§5.3) reporta al backend los eventos de seguridad: 401 y 403 repetidos,
+- El `errorInterceptor` (§5.3) y el `authInterceptor` (§15.5.3, que es quien ve el 401) reportan al backend los eventos de seguridad: 401 y 403 repetidos,
   errores de CSP, fallos de validación de token. **Sin** datos sensibles en el payload.
 - CSP con `report-to` / `report-uri` hacia un endpoint del backend para detectar intentos de XSS y
   scripts inyectados.

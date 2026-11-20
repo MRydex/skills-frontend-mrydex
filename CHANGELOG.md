@@ -5,7 +5,61 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ## [Unreleased]
 
+### Corregido
+
+Revisión de concurrencia de toda la skill: ejemplos que fallaban con doble clic, respuestas fuera de orden, muchos
+usuarios a la vez o varias pestañas.
+
+- `04` §4.12: todas las mutaciones del ejemplo bloquean el ítem mientras su request está en vuelo (`_conBloqueo`);
+  antes `eliminar` y `renombrar` podían salir dos veces. `renombrar` y `cambiarActivo` reciben el `Usuario` entero.
+- `04` §4.14 y `02` §2.9, §2.12: `exportar()`, `onClickGuardar` y `_setUsuarioIdArea` bloqueados contra doble clic
+  y liberados también si el request falla.
+- `04` §4.9 y §4.14: sondeos y refrescos de fondo con `SKIP_SPINNER` (el overlay global aparecía en cada vuelta);
+  el refresco periódico usa `timer` con desfase al azar y se salta con la pestaña oculta.
+- `05` §5.3: `ErrorNotifier` no repite el mismo aviso dentro de 5 s (con la API caída se apilaban N modales). El
+  `errorInterceptor` deja pasar el 401 (lo resuelve `authInterceptor`) y el 409 (lo resuelve quien llama).
+- `05` §5.3.2: `AppErrorHandler` manda cada crash una vez por mensaje y con tope por sesión.
+- `05` §5.7: el reintento respeta `Retry-After` (segundos o fecha HTTP, con tope) y suma jitter.
+- `15` §15.5: el logout recarga la página hacia el login (`location.assign`) en vez de navegar, para que una
+  respuesta tardía del usuario anterior no caiga en un store vivo; `_cerrarLocal` es idempotente y `logout()` llama a
+  `auth/logout` antes de cerrar en local (sin eso la cookie seguía válida y la sesión revivía al recargar).
+- `16` §16.6 y §16.8: entrar y salir de una sala van por la misma cola; en un cambio rápido A, B, A el "salir"
+  atrasado dejaba al usuario fuera de A.
+- `16` §16.3, §16.5 y §16.10: reintentos con jitter proporcional al delay y primer reintento no inmediato (tras un
+  deploy todos los clientes reconectaban en el mismo segundo). WebSocket nativo: igual, y recarga por HTTP al reconectar.
+- `16` §16.4 y §16.6: la recarga por HTTP al reconectar se fusiona por id (`fusionar`) en vez de reemplazar; no se
+  pierden ni se duplican los eventos que llegan durante el GET ni los reenvíos de `withStatefulReconnect`.
+- `16` §16.9: `accessTokenFactory` usa `tokenVigente()`, que espera la renovación en curso.
+- `19` §19.2 y §19.3: descarga con protección de doble clic y cancelación; subidas con progreso por archivo, tope
+  de 3 en paralelo, cancelación y error por archivo (antes un `progress` compartido y `.subscribe()` sin manejo).
+- `09` §9.3 y §9.10: `shouldReuseRoute` capturado con `bind`; el worker de búsqueda recibe el `abortSignal`.
+- `10` §10.14: el chequeo del Service Worker lleva desfase al azar y se salta con la pestaña oculta.
+
 ### Agregado
+
+- `12` §12.6 y checklists: lo aprendido al limpiar warnings de Sonar en un proyecto real. Mensajes de estado con
+  `<output>` (no `role="status"`), íconos clickeables con `<button>`, `aria-label` de `<select>` con texto de las
+  opciones, `NOSONAR` justificado para `role="application"` y para `&` en mixins (`css:S8776`). Checklist CSS:
+  `!important` sobre NG-ZORRO, selectores repetidos, contraste sobre fondos `rgba()`. Checklist TS: las reglas de
+  Sonar que más saltan (`ReadonlySet`, operador coma, `await` en loop, `== false`, `readonly`). Transiciones: tampoco
+  `transition: 0.3s` sin propiedad (`css:S9449`).
+- `15` §15.3.1 (nueva): ningún `<input>` ni `<textarea>` acepta etiquetas ni código. Validador `sinCodigo()` para texto
+  libre (etiquetas, atributos sueltos como `" onerror=` o `" style=`, `javascript:` y `data:` al inicio de un valor,
+  entidades, caracteres de control, Unicode inválido y marcas combinantes apiladas) y `pattern()` con caracteres
+  permitidos para campos con formato. Se rechaza con error de campo, no se limpia. Misma respuesta que `SinCodigo()`
+  del backend. `06` §6.3 y checklists lo suman.
+- `15` §15.5.3 (nueva): renovación del token. Una sola renovación en curso para todos los requests, reintento único
+  del request original, cierre de sesión una vez si falla, `navigator.locks` entre pestañas y `tokenVigente()`. Con
+  librería OIDC la renueva ella. `05` §5.4 suma `SKIP_AUTH` para login y renovación.
+- `04` §4.12: conflictos de edición con `rowVersion` (base64 en el body del PUT / PATCH, 409 si no coincide): no se
+  reintenta ni se pisa, el usuario elige recargar o seguir editando. Mismo contrato en la skill de backend.
+- `05` §5.7.1 (nueva): `Idempotency-Key` en altas que no admiten duplicado; una key por intención del usuario,
+  reutilizada en el reintento. Mismo contrato en la skill de backend.
+- `04` §4.12: qué hace un resource con `set` / `update` durante una carga (la cancela y descarta su respuesta), y
+  cuándo se justifica un update optimista con rollback.
+- Notas: `16` §16.2 (cada pestaña es otra conexión) y §16.4 (ráfagas de eventos), `09` §9.9.1 (agrupar ráfagas solo
+  si se mide), `02` §2.13.1 (una pestaña nueva no recibe el estado de un `BroadcastChannel`) y §2.9 (inactividad con
+  varias pestañas).
 
 - `04` §4.5: resource que depende de otro con `chain()` (v22+): devuelve el valor solo cuando el otro resolvió y
   propaga su estado (`idle`, `loading`, error con `ResourceDependencyError`). Reemplaza leer `otro.value()` a mano.

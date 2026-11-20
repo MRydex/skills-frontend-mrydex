@@ -188,6 +188,9 @@ inválido o pendiente.
   listo. Sin `submit()` (envío manual), un `signal` `enviando` que se pone en `true` al entrar,
   `return` si ya estaba, y vuelve a `false` en éxito **y** en error (`finally`): si solo se limpia
   en el éxito, el botón queda muerto tras el primer fallo.
+- **Ningún campo de texto acepta etiquetas ni código.** Formato conocido: `pattern()` con los
+  caracteres permitidos. Texto libre (`<input>` o `<textarea>`): `maxLength()` + `sinCodigo()`
+  ([15](./15-security.md) §15.3.1). Se rechaza con error de campo, nunca se limpia en silencio.
 - **Select hijo de un select padre**: al cambiar el padre, el hijo vuelve a vacío en el mismo
   handler (`f.idLocalidad().reset()`), y sus opciones salen de un `computed` del padre (§6.10). Si no se
   resetea, queda un valor que no existe en la lista nueva y viaja así al back.
