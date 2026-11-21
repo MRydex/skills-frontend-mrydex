@@ -209,7 +209,7 @@ front y en el backend):
 - Se rechazan aunque no sean un ataque: `a <b` y `<sin datos>` (`<` pegado a una letra: el navegador
   lo lee como etiqueta), `online=si` al inicio o después de un espacio, `precio&nbsp;final` pegado
   desde una web, y texto con marcas de dirección (hebreo o árabe pegado con U+202A a U+202E).
-- No lo cubre, a propósito: texto codificado (`%3Cscript%3E`, `<`), que es inerte salvo que
+- No lo cubre, a propósito: texto codificado (`%3Cscript%3E`, `\u003cscript\u003e`), que es inerte salvo que
   otra capa lo decodifique dos veces.
 - Un campo donde el usuario escribe código a propósito (un snippet, una fórmula) no lleva
   `sinCodigo`: lleva `maxLength()` y se muestra solo con interpolación.
@@ -797,6 +797,7 @@ saltea en silencio, y la profundidad de cada una la decide el agente según lo q
 | Área | Revisión base | Herramienta profunda |
 | :--- | :--- | :--- |
 | XSS y render de datos | §15.2, §15.3 | `offensive-xss`, `testing-for-xss-vulnerabilities` |
+| Campos de texto (`<input>`, `<textarea>`, filtros, query y route params) | §15.3.1. Listar **cada** campo (`grep -rn -e '<textarea' -e '<input' --include='*.html'`, más los campos de texto de la librería de UI; sin contar `checkbox`, `radio`, `number`, `date` ni `file`) y ver en su schema `pattern()` o `maxLength()` + `sinCodigo()`. Texto de query o route params: `tieneCodigo()` antes de usarlo. El dato se muestra con interpolación y el backend valida lo mismo. Un campo sin validador es un hallazgo; si falta `shared/validators/sin-codigo.ts`, también (en forms reactivos, un `ValidatorFn` que llama a `tieneCodigo()`) | `offensive-xss`, `testing-for-xss-vulnerabilities` |
 | Prototype pollution (merge/clone de JSON externo) | §15.2 | `exploiting-prototype-pollution-in-javascript` |
 | CSP y Trusted Types | §15.4 | `security-audit` |
 | Auth, tokens y JWT | §15.5 | `offensive-jwt`, `testing-for-json-web-token-vulnerabilities`, `implementing-jwt-signing-and-verification` |

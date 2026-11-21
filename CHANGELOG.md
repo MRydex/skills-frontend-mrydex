@@ -13,6 +13,10 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
   major. Cada override se reporta con su motivo y se borra cuando el padre ya trae la versión corregida.
 - `11` §11.9 paso 2: si el proyecto ya tiene los scripts `knip` y `jscpd` en `package.json`, la auditoría usa
   `npm run knip` y `npm run jscpd` en vez de `npx`.
+- `15` §15.14: la auditoría de seguridad tiene un área propia "Campos de texto". Lista cada `<input>` y
+  `<textarea>` del alcance y marca como hallazgo el que no tiene `pattern()` o `maxLength()` + `sinCodigo()`
+  (§15.3.1). Antes quedaba implícito dentro de "XSS y render de datos".
+- `15` §15.3.1: el ejemplo de texto codificado que el validador no cubre decía `<`; ahora `\u003cscript\u003e`.
 
 ### Corregido
 
