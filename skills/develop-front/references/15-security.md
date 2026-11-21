@@ -649,6 +649,10 @@ Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
   bloquea el merge.
 - Antes de sumar una dependencia: mantenimiento activo, descargas, licencia, vulnerabilidades
   conocidas y si la funcionalidad se resuelve con el framework. Menos dependencias, menos superficie.
+- **El nombre de un paquete no se escribe de memoria.** Antes de `npm install <paquete>` propuesto por el
+  agente: `npm view <paquete> name version repository.url` y confirmar que es el paquete buscado (repo y
+  autor esperados). Un nombre inventado por el modelo puede no existir o estar registrado por un atacante.
+  Lo mismo vale para versiones y flags: se leen de `package.json`, `node_modules` o la doc, no se suponen.
 - Mantener Angular al día con `ng update` (los parches de seguridad salen para las versiones con
   soporte). `ng build` después de cada upgrade: un renombre en una librería interna no lo avisa
   `npm install`.

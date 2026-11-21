@@ -5,6 +5,13 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ## [Unreleased]
 
+### Agregado
+
+- `15` §15.10: el nombre de un paquete npm no se escribe de memoria. Antes de un `npm install <paquete>` propuesto
+  por el agente se corre `npm view <paquete>` y se confirma repo y autor. Versiones y flags se leen del proyecto o
+  de la doc. Sale del repaso de drona23/claude-token-efficient (fila nueva en `FUENTES.md`); el resto de ese repo
+  ya estaba cubierto o no aplica.
+
 ### Cambiado
 
 - `15` §15.10, regla 8 de `SKILL.md`, `11` §11.9 y templates: con vulnerabilidades de `npm audit` se corrige
