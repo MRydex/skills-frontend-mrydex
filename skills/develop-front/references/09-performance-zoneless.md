@@ -105,7 +105,7 @@ modales, gráficos, contenido below-the-fold.
 |------------------------------|--------------------------------------------------------------|
 | `on idle` / `on idle(500)`   | El navegador queda inactivo (con timeout opcional en ms)     |
 | `on viewport` / `on viewport(ref)` | El bloque (o el elemento `ref`) entra en el viewport    |
-| `on viewport({ trigger: ref, rootMargin: '100px', threshold: 0.5 })` | Igual, con las opciones de `IntersectionObserver` (salvo `root`). Dentro de un contenedor con scroll propio (tabla, panel, modal) `rootMargin` no adelanta la carga: usar `scrollMargin: '100px'` (v22.3+, hoy `22.3.0-rc.0`) |
+| `on viewport({ trigger: ref, rootMargin: '100px', threshold: 0.5 })` | Igual, con las opciones de `IntersectionObserver` (salvo `root`). Dentro de un contenedor con scroll propio (tabla, panel, modal) `rootMargin` no adelanta la carga: usar `scrollMargin: '100px'` (v22.3+) |
 | `on interaction` / `(ref)`   | Click/keydown sobre el bloque o sobre `ref`                   |
 | `on hover`                   | Hover sobre el bloque                                         |
 | `on timer(500ms)`            | Pasa el tiempo indicado                                       |
@@ -384,7 +384,7 @@ export class ProductoDetalle {
 - Solo lecturas. Mutaciones con `HttpClient` en el servicio (§4.12).
 - **Recargar sin renavegar**: al componente le llega solo el valor del resource bloqueante. Para
   `reload()` o leer el estado: `inject(ActivatedRoute).resources?.['producto']`.
-- **Herencia** (v22.3, hoy `22.3.0-rc.0`): una ruta hija recibe los resources de sus ancestros, también
+- **Herencia** (v22.3): una ruta hija recibe los resources de sus ancestros, también
   como inputs. Un resource propio con el mismo nombre tapa al heredado.
 - **Resource hijo que depende de uno del padre** (v22.3): `chain()` dentro de `params`, sin esperar
   al padre para arrancar. Si el padre falla, el hijo falla con `ResourceDependencyError`.
@@ -483,7 +483,7 @@ provideRouter(
   `undefined` solo en los inputs que el router ya había llenado (ej. un query param que se quitó).
 - `withInMemoryScrolling`: vuelve arriba al navegar y restaura el scroll con atrás / adelante. Sin
   esto, la página nueva abre en la posición de scroll de la anterior.
-- **v22.3** (en el changelog oficial desde `22.3.0-next.3`; hoy `22.3.0-rc.0`, todavía no estable): un link que solo cambia un query
+- **v22.3**: un link que solo cambia un query
   param (tabs por `?tab=`, filtros) no debe saltar arriba: `scroll="manual"` en ese `routerLink` y
   el resto de los links sigue con la restauración global. Usarlo solo si el `@angular/router`
   instalado lo tiene (si no, el template falla al compilar).
@@ -497,7 +497,7 @@ provideRouter(
   tipea pierde el foco en cada tecla. En esa navegación:
   `this._router.navigate([], { queryParams: { q }, focusReset: 'manual' })`. Sin Navigation API no
   hace falta.
-- **Error boundary por ruta** (`@developerPreview 22.3`, hoy solo en `22.3.0-rc.0`): `errorComponent`
+- **Error boundary por ruta** (`@developerPreview 22.3`): `errorComponent`
   en la ruta muestra un fallback dentro del `<router-outlet>` cuando el componente ruteado falla
   (constructor, DI, `ngOnInit`, template, loader de un `resource()`); layout, menú y outlets hermanos
   siguen vivos. Usarlo solo si el `@angular/router` instalado lo tiene.
@@ -559,6 +559,24 @@ export class PrecargaSelectiva implements PreloadingStrategy {
   reemplazan filtrar `router.events` para saber dónde se está o si hay una navegación en curso. Para derivar
   algo del árbol de rutas activo (ej. migas de pan desde el `title` de cada ruta), `computed()` que lee
   `lastSuccessfulNavigation()` y recorre `routerState.snapshot` ([12](./12-html5-semantics-seo.md) §12.8).
+- **Botón "Volver" que no saca al usuario de la app**: `location.back()` solo si hubo una navegación previa
+  dentro de la app; si la pantalla se abrió directo (link, pestaña nueva, recarga), ir a una ruta fija. Nunca
+  `history.back()` a ciegas.
+
+```ts
+private readonly _router = inject(Router);
+private readonly _location = inject(Location); // de @angular/common
+readonly fallback = input('/');
+
+onClickVolver(): void {
+  // previousNavigation es null en la primera navegación de la app: no hay a dónde volver adentro.
+  if (this._router.lastSuccessfulNavigation()?.previousNavigation) {
+    this._location.back();
+  } else {
+    this._router.navigateByUrl(this.fallback());
+  }
+}
+```
 
 #### 9.6.5 Conservar una pantalla al ir y volver (lista → detalle)
 

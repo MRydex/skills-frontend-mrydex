@@ -613,6 +613,7 @@ function doctor(homeDir, repoRoot) {
     ['hooks de edición', EDIT_HOOKS.every(({ event, file }) => JSON.stringify(settings.hooks?.[event] ?? []).includes(file))],
     ['permissions.deny', Array.isArray(settings.permissions?.deny)],
     ['MCP context7', runShell('claude mcp get context7', homeDir).ok],
+    ['CLI agent-browser (skill agent-browser)', runShell('agent-browser --version', homeDir).ok],
   ];
   const oldDirs = ['.claude', '.agents'].map((dir) => path.join(homeDir, dir, 'skills', OLD_SKILL_NAME)).filter(fs.existsSync);
   checks.push([`sin carpeta con el nombre anterior (${OLD_SKILL_NAME})`, oldDirs.length === 0]);
@@ -880,7 +881,9 @@ const EXTERNAL_SKILLS = [
   },
   {
     repo: 'emilkowalski/skills',
-    // Solo las de web sin React: se excluyen write-swift, animate-expo, mobile-native, apple-design y ask-sonner
+    // Solo estas 9, las de web sin React. El resto del repo no se instala: nativo (write-swift, animate-expo,
+    // mobile-native, apple-design), consultas (ask-emil, ask-sonner, learn-taste) y las que repiten a
+    // improve-animations / review-animations (animation-performance, choreograph, gestures, remove-animations)
     skills: [
       'animate', 'animation-vocabulary', 'break-ui', 'emil-design-eng',
       'find-animation-opportunities', 'improve-animations', 'pick-ui-library', 'prototype', 'review-animations',
@@ -889,10 +892,11 @@ const EXTERNAL_SKILLS = [
   // Web Interface Guidelines de Vercel: audita .html/.scss (a11y + UX) y devuelve archivo:línea (§14.9)
   { repo: 'vercel-labs/agent-skills', skills: ['web-design-guidelines'] },
   // Navegador headless para verificar una pantalla sin dejar archivos de test (§8, §14.9).
-  // La skill usa la CLI `agent-browser` de npm; la primera vez baja Chromium con `agent-browser install`.
+  // La skill usa la CLI `agent-browser` de npm, que instala installExternalSkills; Chromium baja con `agent-browser install`.
   { repo: 'vercel-labs/agent-browser', skills: ['agent-browser'] },
-  // Interroga al usuario hasta cerrar las decisiones antes de programar (alternativa a interview-me)
-  { repo: 'mattpocock/skills', skills: ['grill-me'] },
+  // Interroga al usuario hasta cerrar las decisiones antes de programar (alternativa a interview-me).
+  // `grill-me` es solo el comando: su SKILL.md delega en `grilling`, que trae el método. Van las dos.
+  { repo: 'mattpocock/skills', skills: ['grill-me', 'grilling'] },
   // Busca e instala skills de skills.sh según la tarea (alternativa a using-agent-skills)
   { repo: 'vercel-labs/skills', skills: ['find-skills'] },
   // Código mínimo: reglas de ponytail en todos los agentes (las 6 skills)
@@ -993,6 +997,12 @@ ${colors.bold}${colors.cyan}Skills externas:${colors.reset} instalando la últim
       if (enabled.length) console.log(`  ${colors.dim}${repo}: el agente ya puede cargar solo ${enabled.join(', ')} (venían solo para /nombre)${colors.reset}`);
     } else console.log(`  ${colors.yellow}⚠${colors.reset} ${repo} falló. Correr a mano: npx ${npxArgs.join(' ')}`);
   }
+  // La skill `agent-browser` es solo un índice: el método lo sirve la CLI (`agent-browser skills get core`).
+  // Sin la CLI la skill no hace nada. Chromium no se baja acá (pesa): lo trae `agent-browser install` al usarla.
+  if (isDryRun) console.log(`${colors.dim}[dry-run] npm install -g agent-browser${colors.reset}`);
+  else if (runShell('agent-browser --version', homeDir).ok) logOk('CLI agent-browser ya instalada');
+  else if (runNpmCli('npm', ['install', '-g', 'agent-browser'], homeDir).ok) logOk('CLI agent-browser (Chromium se baja al usarla: agent-browser install)');
+  else console.log(`  ${colors.yellow}⚠${colors.reset} CLI agent-browser falló. Correr a mano: npm install -g agent-browser`);
   const removeArgs = ['-y', 'skills', 'remove', ...UNUSED_SKILLS, '--global', '--yes'];
   if (isDryRun) console.log(`${colors.dim}[dry-run] npx ${removeArgs.join(' ')}${colors.reset}`);
   else if (runNpx(removeArgs, homeDir).ok) logOk(`sin skills que no se usan: ${UNUSED_SKILLS.join(', ')}`);

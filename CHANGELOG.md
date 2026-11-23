@@ -11,8 +11,22 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
   por el agente se corre `npm view <paquete>` y se confirma repo y autor. Versiones y flags se leen del proyecto o
   de la doc. Sale del repaso de drona23/claude-token-efficient (fila nueva en `FUENTES.md`); el resto de ese repo
   ya estaba cubierto o no aplica.
+- `03` §3.3: un número sin unidad en una propiedad de longitud (`[style.width]="500"`) no aplica nada; va con
+  sufijo de unidad o con el string completo. Desde v22.3 el compilador lo marca (`NG8119`).
+- `README.md`: sección "Opcional: modo aprendizaje con VibeWise" (qué hace, cómo instalarlo y prenderlo, costos).
+  No va en el instalador.
+- `09` §9.6: botón "Volver" que no saca al usuario de la app. `location.back()` solo si
+  `router.lastSuccessfulNavigation()?.previousNavigation` existe; si no, una ruta fija.
+- `14` §14.9 y `13` §13.31: si el pedido es copiar una animación de una referencia, el agente avisa que existe la
+  skill `reanimate` y propone instalarla, con sus requisitos (Bun, ~250 MB, Windows sin probar). No va en el
+  instalador ni se instala sin el sí del usuario; sin ella se lee la referencia con `agent-browser`.
 
 ### Cambiado
+
+- Angular 22.3.0 salió estable (18/11/2026). `04`, `09` y `18` ya no dicen "hoy `22.3.0-rc.0`" ni "no está en la
+  estable" para `HttpClient.query()`, `scrollMargin` en `@defer`, `scroll` en `routerLink`, herencia de resources
+  de ruta, `errorComponent` y `@angular/build:library`. Verificado contra el tag `v22.3.0`: `errorComponent` sigue
+  `@developerPreview` y `focusReset` `@experimental`; `@angular/build:ng-packagr` queda deprecado.
 
 - `15` §15.10, regla 8 de `SKILL.md`, `11` §11.9 y templates: con vulnerabilidades de `npm audit` se corrige
   siempre y en orden: `ng update` de Angular dentro de su major actual, `npm audit fix` y `overrides` en
@@ -26,6 +40,15 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 - `15` §15.3.1: el ejemplo de texto codificado que el validador no cubre decía `<`; ahora `\u003cscript\u003e`.
 
 ### Corregido
+
+- Instalador: `/grill-me` no hacía nada. El autor movió el método a la skill `grilling` y `grill-me` quedó como un
+  envoltorio de una línea que la llama; ahora se instalan las dos.
+- Instalador: la skill `agent-browser` es un índice que pide la CLI `agent-browser` de npm, y nadie la instalaba.
+  Ahora el instalador corre `npm install -g agent-browser` si falta (Chromium sigue bajando en el primer uso) y
+  `--doctor` la chequea. `14` §14.9 y `README.md` lo dicen.
+- `14`: el índice enlazaba §14.5 con un ancla vieja.
+- `README.md`: VibeWise se instala desde su marketplace de GitHub (`/plugin marketplace add nykooi1/vibe-wise`),
+  la ruta verificada.
 
 Revisión de concurrencia de toda la skill: ejemplos que fallaban con doble clic, respuestas fuera de orden, muchos
 usuarios a la vez o varias pestañas.

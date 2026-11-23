@@ -46,8 +46,8 @@ El resto de las opciones: `ng generate library --help`.
 
 | Builder | Versión | Entry points | Assets y `allowedNonPeerDependencies` |
 | :--- | :--- | :--- | :--- |
-| `@angular/build:ng-packagr` | Hasta v22.2 (el que hay hoy en estable) | Un `ng-package.json` por entry point | En `ng-package.json` |
-| `@angular/build:library` | v22.3+ (hoy `22.3.0-rc.0`); ng-packagr queda deprecado | Campo `exports` del `package.json` de la librería | En `options` del target `build` de `angular.json` |
+| `@angular/build:ng-packagr` | Hasta v22.2; deprecado desde v22.3 | Un `ng-package.json` por entry point | En `ng-package.json` |
+| `@angular/build:library` | v22.3+ | Campo `exports` del `package.json` de la librería | En `options` del target `build` de `angular.json` |
 
 En repos anteriores el mismo builder de ng-packagr figura como
 `@angular-devkit/build-angular:ng-packagr`. No mezclar las dos formas: el builder nuevo descubre los

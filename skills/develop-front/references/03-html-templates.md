@@ -134,6 +134,11 @@ Toda clase CSS sigue **BEM**: `bloque__elemento--modificador`.
 
 Se pueden encadenar múltiples `[class.x]` y `[style.x]` en el mismo elemento sin límite.
 
+Una propiedad de longitud (`width`, `padding`, `font-size`) con un número sin unidad no aplica nada:
+`[style.width]="500"` se descarta en silencio. Va con sufijo de unidad (`[style.width.px]="500"`) o con el
+string completo (`[style.width]="ancho() + 'px'"`). Desde v22.3 el compilador lo marca (`NG8119`,
+con `strictTemplates`).
+
 ### 3.4 Control flow nativo
 
 - **Prohibido** `*ngIf`, `*ngFor`, `*ngSwitch`. Usar la sintaxis nativa.

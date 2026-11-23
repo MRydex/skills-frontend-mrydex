@@ -9,7 +9,7 @@ ejemplos: traducirlos al agente y a los modelos en uso (§14.7).
 [14.2](#142-consultar-librerías-primero-preguntar-a-otro-agente-abierto) Consultar librerías ·
 [14.3](#143-orquestador--subagentes-baratos-estrategia-advisor) Orquestador + subagentes (advisor) ·
 [14.4](#144-autocompactación-del-contexto) Autocompactación del contexto ·
-[14.5](#145-graphify-consultar-el-grafo-antes-de-leer-archivos) Graphify · [14.6](#146-regla-de-oro) Regla de oro ·
+[14.5](#145-graphify-grafo-por-hook-git-consulta-solo-sin-nombre-conocido) Graphify · [14.6](#146-regla-de-oro) Regla de oro ·
 [14.7](#147-adaptación-al-agente-y-al-modelo-en-uso) Adaptación al agente y al modelo en uso ·
 [14.8](#148-herramientas-del-agente-instalar-y-usar-siempre) Herramientas del agente · [14.9](#149-skills-externas-por-área) Skills externas por área.
 
@@ -656,10 +656,11 @@ método o checklist. Si chocan, gana la regla del repo de la última columna. Si
 | Fijar la vara de calidad o evitar que se baje | `constraint-driven-development` | §8: nunca crear archivos de test para cumplir una vara |
 | Pantalla o componente nuevo con layout no trivial, pulido visual | `frontend-ui-engineering` (pantalla nueva sin otra parecida en el repo para copiar su patrón; sus ejemplos React/Tailwind y su lista de tests no aplican: Angular, SCSS y §8), `emil-design-eng` (pulido visual; si la tarea es solo animación, alcanza `animate`); `anti-ui-slop` (bajo demanda) para una pantalla sin referencia en el repo, para no caer en UI genérica | §01, §03, §07 (BEM), §12 (WCAG AA), librería de UI del proyecto; §11.5: sin librerías ni fuentes nuevas salvo pedido |
 | Revisar una pantalla antes de entregar (a11y + UX) | `web-design-guidelines` sobre los `.html` / `.scss` tocados (trae las reglas actualizadas en cada corrida y devuelve `archivo:línea`); sus reglas React / Next (hydration, `next/link`) no aplican | §12 (WCAG AA), §07 (BEM), librería de UI del proyecto |
-| Verificar en navegador una pantalla implementada | `agent-browser` (navegar, leer el DOM, capturar); usa la CLI `agent-browser` de npm, que la primera vez baja Chromium con `agent-browser install` | §8: no quedan archivos de test ni scripts; los datos demo se quitan antes de cerrar |
+| Verificar en navegador una pantalla implementada | `agent-browser` (navegar, leer el DOM, capturar); la skill es solo un índice: el método lo sirve la CLI `agent-browser` de npm (`agent-browser skills get core`). La instala el instalador; si falta, `npm i -g agent-browser`. La primera vez baja Chromium con `agent-browser install` | §8: no quedan archivos de test ni scripts; los datos demo se quitan antes de cerrar |
 | Animación nueva | `animate` | §13: `transform` / `opacity`, `prefers-reduced-motion`, sin librerías nuevas |
 | Revisar o auditar animaciones | `review-animations` (una), `improve-animations` (todo el proyecto) | §13 |
 | Dónde sumar movimiento, cómo se llama un efecto | `find-animation-opportunities`, `animation-vocabulary` | §13 |
+| Copiar una animación de una referencia (URL, video, gif, Lottie) | `reanimate` (NiazMorshed2007/reanimate). **No viene con el instalador y no se instala sola**: avisar que existe y proponer `npx skills add NiazMorshed2007/reanimate -g -a claude-code`, con sus requisitos (Bun 1.1+, ~250 MB en la primera corrida, Windows sin probar: mejor en WSL). Solo con el sí del usuario. Sin ella: leer la referencia con `agent-browser` y avisar que no hay verificación cuadro a cuadro | §13.31: se copia el movimiento con `animate.enter` / `animate.leave` y CSS, sin librerías nuevas; fuentes, imágenes y código del sitio de referencia no se copian |
 | Probar una pantalla que muestra datos de usuario o listas | `break-ui` (UI sin datos variables, como un indicador de estado: los casos límite son sus estados y transiciones; en una implementación sin navegador, casos razonados sin toggle y arreglos en la misma tarea) | §8: los datos demo no se entregan ni quedan como archivo de test; se quitan antes de cerrar |
 | Elegir librería de UI | `pick-ui-library`, solo en proyecto nuevo sin librería o si el usuario lo pide | §11.5: con librería instalada no se cambia ni se suma otra; setup en §10.10 |
 | Prototipo descartable | `prototype`, solo si el usuario lo pide | §11.5: no se mezcla con código productivo |

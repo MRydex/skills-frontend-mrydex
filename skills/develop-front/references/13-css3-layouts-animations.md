@@ -1207,5 +1207,9 @@ Los valores de los ejemplos de este archivo (§13.23, §13.25, §13.30) salen de
 - Movimiento que arranca solo, dura más de 5 s y convive con otro contenido (carrusel, banner): botón visible
   para pausarlo, operable con teclado (WCAG 2.2.2); `prefers-reduced-motion` no lo reemplaza. Nada parpadea más
   de 3 veces por segundo (WCAG 2.3.1), tampoco para quien no pidió movimiento reducido.
+- Copiar una animación de otro sitio o de un video: se copia el movimiento (orden, duración, curva,
+  distancia), no sus fuentes, imágenes ni código. Si lo copiado rompe una regla de arriba (dura de más,
+  anima layout, rebota en un control de uso repetido), se avisa y se ajusta. Para medir la copia contra la
+  referencia existe la skill `reanimate`, que se propone y no se instala sin el sí del usuario (§14.9).
 
 ---

@@ -105,8 +105,8 @@ plugins y la instalación o actualización del CLI de Claude Code); quedan la sk
   [ponytail](https://github.com/DietrichGebert/ponytail),
   [agent-skills](https://github.com/addyosmani/agent-skills),
   [web-design-guidelines](https://github.com/vercel-labs/agent-skills) y
-  [agent-browser](https://github.com/vercel-labs/agent-browser) de Vercel,
-  [grill-me](https://github.com/mattpocock/skills) y [find-skills](https://github.com/vercel-labs/skills).
+  [agent-browser](https://github.com/vercel-labs/agent-browser) de Vercel (skill y su CLI de npm, `npm i -g agent-browser`),
+  [grill-me](https://github.com/mattpocock/skills) (con `grilling`, que trae el método) y [find-skills](https://github.com/vercel-labs/skills).
   Plugin `claude-code-setup` en Claude Code.
 - **Hook `SessionStart`** de Claude Code: carga `tasks/lessons.md` del proyecto como contexto y avisa una vez por día si hay una versión nueva de la skill; autocompactación al 40%.
 - **Claude Code, extras** (cada uno solo si el usuario no lo configuró antes, salvo `permissions.deny`, que se suma):
@@ -228,6 +228,40 @@ del equipo:
    alcanzó.
 3. Lo prendés para esa tarea y lo apagás al terminar. Si el modelo no lo consulta (`/usage` sin gasto de
    Fable), no sirvió tenerlo.
+
+## Opcional: modo aprendizaje con VibeWise
+
+No lo instala el instalador: es para quien quiera aprender mientras programa, no un estándar del equipo.
+
+[VibeWise](https://github.com/nykooi1/vibe-wise) es un plugin de Claude Code y Codex (MIT). Con el modo
+prendido, antes de escribir código el agente te pregunta cómo lo resolverías, repasa con vos las alternativas
+y sus costos, y después de escribirlo explica qué hizo. Sirve al entrar a un proyecto o a un stack que no
+conocés.
+
+Instalarlo en tu máquina (necesita Python 3), dentro de Claude Code, un comando por vez:
+
+```text
+/plugin marketplace add nykooi1/vibe-wise
+/plugin install vibe-wise@vibe-wise
+```
+
+Su README ofrece además `/plugin install vibe-wise@anthropic-plugin-directory`, sin agregar el marketplace,
+si tu versión de Claude Code trae ese directorio.
+
+Reiniciar Claude Code en el proyecto y prender el modo solo en las sesiones donde lo quieras:
+
+```text
+/vibe-wise:learn
+```
+
+Para borrar las notas de aprendizaje: `/vibe-wise:reset`.
+
+A tener en cuenta:
+
+- Gasta más tokens y tiempo que el modo normal: pregunta de a una y explica cada paso, lo contrario de las
+  respuestas cortas que pide la skill. Usarlo para aprender, no para entregar rápido.
+- Guarda sus notas en `.vibe-wise/` dentro del repo: agregar esa carpeta al `.gitignore`.
+- Trae un hook que carga esas notas al arrancar cada sesión.
 
 ## Licencia
 
