@@ -35,10 +35,7 @@ const LINE_RULES = [
   [['.scss'], /\bline-height:\s*[\d.]+px\b/, 'line-height en px: valor sin unidad (07 §7.2)'],
   [['.ts'], /standalone:\s*true/, 'standalone: true sobra desde v19', 19],
   [['.ts'], /ChangeDetectionStrategy\.OnPush/, 'OnPush es el default desde v22: no declararlo', 22],
-];
-
-// Naming (02 §2.3), solo en archivos nuevos: en uno que ya existía manda la convención que traía.
-const NEW_FILE_RULES = [
+  // Naming (02 §2.3)
   [['.html'], /\((?:click|dblclick|change|input|submit|keyup|keydown|blur|focus)\)="\s*(?!on[A-Z])[A-Za-z_$][\w$]*\(/, 'Handler de evento sin prefijo on: onClickGuardar() (02 §2.3)'],
   [['.ts'], /^\s*private\s+(?:static\s+)?(?:readonly\s+)?(?!_)[A-Za-z$][\w$]*\s*[=:(<;]/, 'Miembro private sin prefijo _ (02 §2.3)'],
 ];
@@ -107,10 +104,6 @@ function review(root, angular) {
     for (const { line, text } of lines) {
       for (const [exts, regex, message, minMajor = 0] of LINE_RULES) {
         if (exts.includes(ext) && angular >= minMajor && regex.test(text)) add(file, line, message);
-      }
-      if (!untracked.has(file)) continue;
-      for (const [exts, regex, message] of NEW_FILE_RULES) {
-        if (exts.includes(ext) && regex.test(text)) add(file, line, message);
       }
     }
 

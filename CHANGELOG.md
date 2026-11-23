@@ -22,7 +22,7 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
   `router.lastSuccessfulNavigation()?.previousNavigation` existe; si no, una ruta fija.
 - `04` §4.13: buscador suelto sin formulario y sin parpadeo (`debounced()` + `httpResource` con `params` +
   `linkedSignal` para conservar el resultado anterior). Compilado en Angular 22.3.0.
-- Hook `guard-rules`: en archivos nuevos marca el handler de evento sin prefijo `on` y el miembro `private` sin
+- Hook `guard-rules`: en toda línea agregada (archivos nuevos y existentes) marca el handler de evento sin prefijo `on` y el miembro `private` sin
   `_` (`02` §2.3). Salieron de una prueba de punta a punta: el agente no leyó esa sección y no las aplicó.
 - `14` §14.9 y `13` §13.31: si el pedido es copiar una animación de una referencia, el agente avisa que existe la
   skill `reanimate` y propone instalarla, con sus requisitos (Bun, ~250 MB, Windows sin probar). No va en el
@@ -48,6 +48,10 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Corregido
 
+- `06` §6.3: el botón de envío va deshabilitado mientras el form sea inválido o esté guardando, también en un
+  alta que arranca vacía. La excepción queda solo para forms que arrancan con datos precargados.
+- Hook `guard-rules`: el naming de handlers y privados se revisaba solo en archivos nuevos; un handler sin `on`
+  agregado a un archivo existente pasaba sin aviso.
 - `06` §6.2: al ejemplo le faltaban los imports de `inject`, `FieldTree` y `firstValueFrom`, y el botón no
   bloqueaba el doble envío que §6.3 exige (`submitting()`). §6.3 citaba §10.4 para `ProblemDetails`; es §10.3.
 - `06` §6.3: la validación del backend puede venir sin `errors` (solo `detail`, como responde la skill de

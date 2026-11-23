@@ -142,9 +142,11 @@ inválido o pendiente.
   se pinta el formulario.
 - **Usar `invalid()`, no `!valid()`** cuando hay validación asíncrona: durante `pending()`, `valid()`
   e `invalid()` pueden ser ambos `false`.
-- **Habilitar/deshabilitar el submit** con el estado **del form** (`registroForm().valid()`), no
-  campo por campo. **Excepción**: si el form puede arrancar inválido sin que el usuario haya tocado
-  nada (precarga, filtros guardados en `localStorage`), **no** deshabilitar: el error no se ve
+- **Habilitar/deshabilitar el submit** con el estado **del form**, no campo por campo: deshabilitado
+  mientras sea inválido o esté guardando (`!registroForm().valid() || registroForm().submitting()`, §6.2).
+  Un alta que arranca vacía sigue esta regla: el botón arranca deshabilitado. **Excepción**: si el form
+  arranca con datos ya cargados que pueden ser inválidos sin que el usuario haya tocado nada (precarga,
+  filtros guardados en `localStorage`), **no** deshabilitar por `valid()`, solo por `submitting()`: el error no se ve
   (falta `touched()`) y el botón queda gris sin explicación. `submit()` marca todo como `touched`
   y `onInvalid` lleva el foco al primer error.
 - **Condicionales de campo con `disabled` / `readonly` / `hidden` + `when`**, no con lógica suelta en
@@ -188,8 +190,8 @@ inválido o pendiente.
   form entero. El error del form se muestra arriba del botón de envío, en un bloque con `role="alert"`. Mientras la `action`
   no resuelve, `submitting()` es `true` (ver siguiente punto). Ejemplo en §6.2 (`_guardar`).
 - **Doble envío bloqueado siempre.** Un doble click en "Guardar" crea dos altas. Con `submit()`, el
-  form expone `submitting()` mientras la `action` no resuelve: `[disabled]="f().submitting()"` y
-  listo. Sin `submit()` (envío manual), un `signal` `enviando` que se pone en `true` al entrar,
+  form expone `submitting()` mientras la `action` no resuelve: `submitting()` va en el `[disabled]` del
+  botón junto con `valid()` (punto anterior). Sin `submit()` (envío manual), un `signal` `enviando` que se pone en `true` al entrar,
   `return` si ya estaba, y vuelve a `false` en éxito **y** en error (`finally`): si solo se limpia
   en el éxito, el botón queda muerto tras el primer fallo.
 - **Ningún campo de texto acepta etiquetas ni código.** Formato conocido: `pattern()` con los
