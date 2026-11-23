@@ -266,6 +266,23 @@ front y en el backend):
   (patrón BFF). JavaScript no puede leerlas, así que un XSS no las roba. Nombre con prefijo `__Host-`
   (`__Host-sesion`): el navegador solo la acepta con `Secure`, `Path=/` y sin `Domain`, así un subdominio no
   puede pisarla.
+- **Sesión solo por cookie (sin token en JS)**: tras recargar, el front no sabe si hay sesión hasta preguntarle
+  al backend. `Auth` guarda el usuario en un signal y expone `restaurar()`: con el signal vacío llama una vez a
+  `GET auth/me`; `401` devuelve `false`, cualquier otro error se propaga. El guard lo espera y, si no pudo
+  confirmar la sesión, no deja pasar:
+
+```ts
+export const authGuard: CanActivateFn = async (_route, state) => {
+  const router = inject(Router);
+  const haySesion = await inject(Auth).restaurar().catch(() => false);
+  return haySesion || router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
+};
+```
+
+  Un `401` de la API propia cierra la sesión local con recarga a `/login?returnUrl=<router.url>` (el
+  `_cerrarLocal` de abajo, con `returnUrl` además de `motivo`), salvo en `auth/login`, `auth/me` y `auth/logout`:
+  ese `401` lo resuelve quien llama. El login valida `returnUrl` antes de navegar (§15.7). No hay
+  `authInterceptor` que agregue header ni renovación (§15.5.3). Probado en navegador con Angular 22.3.0.
 - Si se usa bearer token (OIDC/OAuth con PKCE), guardarlo **en memoria** (signal de un servicio),
   nunca en `localStorage`/`sessionStorage`. Refresh token solo en cookie `HttpOnly`.
 - El `authInterceptor` agrega el header **solo** si la request va al origen de la API propia.

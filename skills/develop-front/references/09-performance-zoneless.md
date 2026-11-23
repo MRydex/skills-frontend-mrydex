@@ -427,6 +427,9 @@ export const authGuard: CanActivateFn = (_route, state) =>
   inject(Router).createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
 ```
 
+`autenticado()` es síncrono: sirve con el token en memoria. Con sesión solo por cookie el front no sabe si
+hay sesión hasta preguntarle al backend: el guard es `async` y espera `restaurar()` (15 §15.5).
+
 - Para redirigir, **devolver** un `UrlTree` o un `RedirectCommand` (este acepta opciones de
   navegación: `new RedirectCommand(urlTree, { skipLocationChange: true })`). Para mostrar la página
   "no encontrado" **conservando en la barra la URL pedida**:

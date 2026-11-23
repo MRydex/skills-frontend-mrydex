@@ -53,8 +53,9 @@ migración incremental (control por control); el objetivo es no necesitarlo en c
 ### 6.2 Patrón estándar
 
 ```ts
-import { Component, signal } from '@angular/core';
-import { form, FormField, FormRoot, email, required, minLength, ValidationError } from '@angular/forms/signals';
+import { Component, inject, signal } from '@angular/core';
+import { form, FormField, FormRoot, FieldTree, email, required, minLength, ValidationError } from '@angular/forms/signals';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-registro',
@@ -122,7 +123,7 @@ export class Registro {
       <p class="registro__form-error">{{ registroForm.email().errors()[0].message }}</p>
     }
 
-    <button class="registro__form-submit" [disabled]="!registroForm().valid()">Registrarse</button>
+    <button class="registro__form-submit" [disabled]="!registroForm().valid() || registroForm().submitting()">Registrarse</button>
   </form>
 </section>
 ```
@@ -180,8 +181,11 @@ inválido o pendiente.
   **mismo** `@if (touched() && invalid())` que los validadores. Nunca un `signal` aparte
   (`errorServidor`), ni un `alert`, ni un toast genérico para un error que pertenece a un campo. Mapear
   en la `action`, no en el servicio HTTP: la respuesta de .NET (`ProblemDetails.errors`, diccionario
-  `campo → mensajes[]`, §10.4) se recorre y cada clave se traduce a su `f.<campo>`; una clave sin campo en
-  el form va al `fieldTree: f` (error del form entero, visible en `f().errors()`). Mientras la `action`
+  `campo → mensajes[]`, §10.3) se recorre y cada clave se traduce a su `f.<campo>`; una clave sin campo en
+  el form va al `fieldTree: f` (error del form entero, visible en `f().errors()`). Las claves pueden venir
+  con otra mayúscula (`Email`): comparar sin distinguirla. Una API que responde la validación solo con
+  `detail` (un mensaje, sin `errors`: las de la skill de backend) no dice qué campo falló: ese `detail` va al
+  form entero. El error del form se muestra arriba del botón de envío, en un bloque con `role="alert"`. Mientras la `action`
   no resuelve, `submitting()` es `true` (ver siguiente punto). Ejemplo en §6.2 (`_guardar`).
 - **Doble envío bloqueado siempre.** Un doble click en "Guardar" crea dos altas. Con `submit()`, el
   form expone `submitting()` mientras la `action` no resuelve: `[disabled]="f().submitting()"` y

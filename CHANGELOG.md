@@ -48,6 +48,16 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Corregido
 
+- `06` §6.2: al ejemplo le faltaban los imports de `inject`, `FieldTree` y `firstValueFrom`, y el botón no
+  bloqueaba el doble envío que §6.3 exige (`submitting()`). §6.3 citaba §10.4 para `ProblemDetails`; es §10.3.
+- `06` §6.3: la validación del backend puede venir sin `errors` (solo `detail`, como responde la skill de
+  backend): ese mensaje va al form entero. Dónde se muestra el error del form.
+- `15` §15.5 y `09` §9.6.4: sesión solo por cookie `HttpOnly`. El guard es `async` y espera `restaurar()`
+  (`GET auth/me`); un `401` de la API recarga hacia `/login?returnUrl=`. Antes solo había ejemplo con token en
+  memoria.
+- `08` §8.3: proyecto sin linter configurado: no se instala uno sin pedido y el reporte lo dice.
+- Salieron de dos pruebas de punta a punta nuevas (alta con Signal Forms y login con guard), probadas en
+  navegador con Angular 22.3.0.
 - Instalador: `/grill-me` no hacía nada. El autor movió el método a la skill `grilling` y `grill-me` quedó como un
   envoltorio de una línea que la llama; ahora se instalan las dos.
 - Instalador: la skill `agent-browser` es un índice que pide la CLI `agent-browser` de npm, y nadie la instalaba.

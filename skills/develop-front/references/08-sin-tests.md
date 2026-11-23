@@ -53,7 +53,8 @@ tests en el repo.
 "Terminado" = compila, pasa lint y, salvo riesgo trivial (§11.3), se probó en la app:
 
 1. `ng build` sin errores ni warnings nuevos.
-2. Lint sin errores (`ng lint` o el linter del proyecto).
+2. Lint sin errores (`ng lint` o el linter del proyecto). Proyecto sin linter configurado: no se instala uno
+   sin pedido; el reporte dice que lint no corrió.
 3. Prueba manual en el navegador del flujo tocado: caso feliz, errores, estados vacío y de carga.
 4. Para seguridad: probar a mano los payloads de [15-security.md](./15-security.md) §15.12.
 
