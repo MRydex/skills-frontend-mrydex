@@ -37,6 +37,12 @@ const LINE_RULES = [
   [['.ts'], /ChangeDetectionStrategy\.OnPush/, 'OnPush es el default desde v22: no declararlo', 22],
 ];
 
+// Naming (02 §2.3), solo en archivos nuevos: en uno que ya existía manda la convención que traía.
+const NEW_FILE_RULES = [
+  [['.html'], /\((?:click|dblclick|change|input|submit|keyup|keydown|blur|focus)\)="\s*(?!on[A-Z])[A-Za-z_$][\w$]*\(/, 'Handler de evento sin prefijo on: onClickGuardar() (02 §2.3)'],
+  [['.ts'], /^\s*private\s+(?:static\s+)?(?:readonly\s+)?(?!_)[A-Za-z$][\w$]*\s*[=:(<;]/, 'Miembro private sin prefijo _ (02 §2.3)'],
+];
+
 function git(args, cwd) {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   return result.status === 0 ? result.stdout : '';
@@ -101,6 +107,10 @@ function review(root, angular) {
     for (const { line, text } of lines) {
       for (const [exts, regex, message, minMajor = 0] of LINE_RULES) {
         if (exts.includes(ext) && angular >= minMajor && regex.test(text)) add(file, line, message);
+      }
+      if (!untracked.has(file)) continue;
+      for (const [exts, regex, message] of NEW_FILE_RULES) {
+        if (exts.includes(ext) && regex.test(text)) add(file, line, message);
       }
     }
 

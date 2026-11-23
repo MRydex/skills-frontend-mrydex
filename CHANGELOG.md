@@ -17,6 +17,10 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
   No va en el instalador.
 - `09` §9.6: botón "Volver" que no saca al usuario de la app. `location.back()` solo si
   `router.lastSuccessfulNavigation()?.previousNavigation` existe; si no, una ruta fija.
+- `04` §4.13: buscador suelto sin formulario y sin parpadeo (`debounced()` + `httpResource` con `params` +
+  `linkedSignal` para conservar el resultado anterior). Compilado en Angular 22.3.0.
+- Hook `guard-rules`: en archivos nuevos marca el handler de evento sin prefijo `on` y el miembro `private` sin
+  `_` (`02` §2.3). Salieron de una prueba de punta a punta: el agente no leyó esa sección y no las aplicó.
 - `14` §14.9 y `13` §13.31: si el pedido es copiar una animación de una referencia, el agente avisa que existe la
   skill `reanimate` y propone instalarla, con sus requisitos (Bun, ~250 MB, Windows sin probar). No va en el
   instalador ni se instala sin el sí del usuario; sin ella se lee la referencia con `agent-browser`.

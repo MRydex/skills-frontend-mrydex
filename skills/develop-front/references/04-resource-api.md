@@ -565,6 +565,36 @@ protected readonly resultados = httpResource<Resultado[]>(() => {
 No mezclar el debounce con lógica de carga dentro del `loader`/callback de `httpResource`: el resource
 debe reaccionar a un signal ya estable, no decidir cuándo dispararse. En v21 o menor no hay `debounced()`: §20.8.
 
+**Buscador suelto (un solo control, sin formulario)**: variable de template y handler; no hace falta un
+Signal Form para un único `<input>`. Para que la lista no parpadee en cada búsqueda, se muestra el resultado
+anterior con `linkedSignal` (§4.9) y `isLoading()` como aviso aparte, no en lugar de la lista:
+
+```html
+<label for="buscador">Buscar</label>
+<input #buscador id="buscador" type="search" [value]="termino()" (input)="onInputBuscar(buscador.value)" />
+@if (resultadosRes.isLoading()) { <p role="status">Buscando...</p> }
+<ul>
+  @for (r of resultados(); track r.id) { <li>{{ r.nombre }}</li> } @empty { <li>Sin resultados.</li> }
+</ul>
+```
+
+```ts
+protected readonly resultadosRes = httpResource<Resultado[]>(() => {
+  const q = this.terminoDebounced.value().trim();
+  return { url: `${environment.API_URL}buscar`, params: q ? { q } : undefined }; // sin texto no manda `q`
+});
+
+// Mientras llega la búsqueda nueva se sigue viendo la anterior
+protected readonly resultados = linkedSignal<Resultado[] | undefined, Resultado[]>({
+  source: () => (this.resultadosRes.hasValue() ? this.resultadosRes.value() : undefined),
+  computation: (nuevos, previos) => nuevos ?? previos?.value ?? [],
+});
+
+onInputBuscar(valor: string): void {
+  this.termino.set(valor);
+}
+```
+
 ### 4.14 Sondeo de un trabajo largo (exportación, importación, reporte)
 
 El backend arranca el trabajo con un POST y devuelve un id; el front consulta el estado hasta que
