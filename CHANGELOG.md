@@ -7,6 +7,9 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- `bin/check.js`, igual en los dos paquetes: revisa links y anclas de los `.md`, referencias `§N.M`, índice y
+  versión de `SKILL.md` y subagentes citados. `npm test` lo corre. `npm run check` suma GitHub: cada skill externa
+  existe en su repo y no delega en otra que no se instala (así se rompió `grill-me`).
 - `15` §15.10: el nombre de un paquete npm no se escribe de memoria. Antes de un `npm install <paquete>` propuesto
   por el agente se corre `npm view <paquete>` y se confirma repo y autor. Versiones y flags se leen del proyecto o
   de la doc. Sale del repaso de drona23/claude-token-efficient (fila nueva en `FUENTES.md`); el resto de ese repo

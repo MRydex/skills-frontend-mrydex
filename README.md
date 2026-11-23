@@ -263,6 +263,17 @@ A tener en cuenta:
 - Guarda sus notas en `.vibe-wise/` dentro del repo: agregar esa carpeta al `.gitignore`.
 - Trae un hook que carga esas notas al arrancar cada sesión.
 
+## Chequeo del paquete
+
+Antes de publicar una versión:
+
+```bash
+npm test        # ayuda del instalador + links, anclas, referencias §N.M, versión y subagentes citados
+npm run check   # lo anterior + GitHub: cada skill externa existe y no delega en otra que no se instala
+```
+
+Sale con 1 y lista cada falla. `npm run check` usa la API pública de GitHub (60 pedidos por hora sin token).
+
 ## Licencia
 
 MIT © [MRydex](https://github.com/MRydex)

@@ -10,7 +10,8 @@
   "scripts": {
     "version": "node bin/sync-version.js && git add skills/develop-front/SKILL.md",
     "sync-version": "node bin/sync-version.js",
-    "test": "node bin/cli.js --help",
+    "test": "node bin/cli.js --help && node bin/check.js",
+    "check": "node bin/check.js --online",
     "install:global": "node bin/cli.js --global",
     "install:workspace": "node bin/cli.js --workspace",
     "install:all": "node bin/cli.js --agent all"
