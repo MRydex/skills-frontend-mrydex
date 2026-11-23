@@ -136,7 +136,7 @@ src/
 └── certificates/              # certificado HTTPS local para ng serve
 ```
 
-**Imports con alias `@/`**: `tsconfig.json` declara `"paths": { "@/*": ["./src/*"] }` y se importa
+**Imports con alias `@/`**: `tsconfig.json` declara `"paths": { "@/*": ["./src/*"] }`, sin `baseUrl` (en TS 6 está deprecado y `ngc` corta con `TS5101`) y se importa
 `@/app/shared/services/user/user-context` o `@/environments/environment`, nunca
 `../../../..`. Entre archivos de la misma carpeta (o de una subcarpeta propia) se usa `./`.
 

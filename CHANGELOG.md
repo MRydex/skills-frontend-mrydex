@@ -47,6 +47,7 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
   Ahora el instalador corre `npm install -g agent-browser` si falta (Chromium sigue bajando en el primer uso) y
   `--doctor` la chequea. `14` §14.9 y `README.md` lo dicen.
 - `14`: el índice enlazaba §14.5 con un ancla vieja.
+- `01` §1: el alias `@/` va con `paths` sin `baseUrl`; en TypeScript 6 `baseUrl` corta la compilación con `TS5101`.
 - `04` §4: `httpResource` con `method: 'QUERY'` y `body` compila en Angular 22.3.0 (antes decía "no verificado").
 - `README.md`: VibeWise se instala desde su marketplace de GitHub (`/plugin marketplace add nykooi1/vibe-wise`),
   la ruta verificada.
