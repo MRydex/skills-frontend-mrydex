@@ -74,7 +74,7 @@ protected readonly results = httpResource<Result[]>(() => ({
 **Desde v22.3**: método HTTP `QUERY` (RFC 10008, junio
 2026). Es una lectura como `GET` (segura, idempotente, cacheable) que lleva los filtros en el body: reemplaza al
 `POST` de búsqueda de arriba cuando los filtros no entran en la URL. En el servicio, `this._http.query<Result[]>(url,
-filtros)`; en `httpResource`, `method: 'QUERY'` (acepta cualquier string; no verificado con body).
+filtros)`; en `httpResource`, `method: 'QUERY'` (con `body`; compila en 22.3.0, sin probar contra un backend).
 Usarlo solo si se cumplen las tres:
 
 - el `@angular/common` instalado trae `HttpClient.query()` (si no, no compila);
