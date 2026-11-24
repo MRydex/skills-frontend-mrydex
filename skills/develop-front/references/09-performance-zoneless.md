@@ -543,6 +543,20 @@ export class PrecargaSelectiva implements PreloadingStrategy {
 - `redirectTo` acepta una función que recibe el snapshot parcial (`params`, `queryParams`) y
   devuelve `string` o `UrlTree`; desde v20 también `Promise` u `Observable`. Para redirects que
   dependen de la URL; si dependen de permisos, es un guard.
+- `matcher` en lugar de `path` cuando la URL no se expresa con segmentos fijos y `:param` (un prefijo dentro
+  del segmento como `/@usuario`, o distinguir `/:id` numérico de `/:slug`). Recibe los `UrlSegment[]` y devuelve
+  `{ consumed, posParams }` o `null` si no coincide; los `posParams` llegan como params normales (también con
+  `withComponentInputBinding()`). No se combina con `path`, y las rutas fijas van antes en el arreglo:
+  ```ts
+  // /@ana → Perfil con usuario = 'ana'
+  export const usuarioMatcher: UrlMatcher = (segmentos) => {
+    const [primero] = segmentos;
+    return segmentos.length === 1 && primero.path.startsWith('@')
+      ? { consumed: segmentos, posParams: { usuario: new UrlSegment(primero.path.slice(1), {}) } }
+      : null;
+  };
+  // { matcher: usuarioMatcher, component: Perfil }
+  ```
 - `loadComponent` / `loadChildren` corren en el contexto de inyección de la ruta (v20.1+): pueden
   usar `inject()`.
 - `providers` en la `Route` para un servicio que vive con una feature lazy (se crea una vez y no se

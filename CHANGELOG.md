@@ -15,6 +15,8 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
   - `10` §10.2, `16` §16.9 y `checklists.md`: en IIS, subir `maxQueryString` y `maxUrl` en `requestFiltering`
     para que el `access_token` de SignalR en la query no corte la conexión con `404.15`.
   - `10` §10.1: la URL del registry de los schematics va en `.npmrc`; nunca una IP interna ni `http://`.
+- `09` §9.6.4 (Rutas): `matcher` en lugar de `path` para URLs que no se expresan con segmentos fijos y `:param`
+  (`/@usuario`, id numérico contra slug), con ejemplo.
 - `bin/check.js`, igual en los dos paquetes: revisa links y anclas de los `.md`, referencias `§N.M`, índice y
   versión de `SKILL.md` y subagentes citados. `npm test` lo corre. `npm run check` suma GitHub: cada skill externa
   existe en su repo y no delega en otra que no se instala (así se rompió `grill-me`).
