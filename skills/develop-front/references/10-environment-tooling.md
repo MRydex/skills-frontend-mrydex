@@ -39,6 +39,8 @@ ng generate @TU-ORGANIZACION/angular-template-schematic:angular-template-schemat
 
 > `@TU-ORGANIZACION` y `TU-REGISTRY-NPM-INTERNO` son placeholders: reemplazar por el nombre de paquete y
 > el registry reales del equipo. No hardcodear una URL interna a modo de ejemplo genérico.
+> En un repo, la URL del registry va en `.npmrc` y no en el comando ni en la documentación; nunca una IP
+> interna ni `http://` ([18](./18-librerias-angular.md) §18.7).
 
 ### 10.2 `web.config` para hosting en IIS
 
@@ -116,6 +118,21 @@ página), comprimir la respuesta y cachear agresivamente solo los archivos con h
 
 > **Seguridad**: sumar las cabeceras de [15-security.md](./15-security.md) §15.9 (HSTS, `nosniff`,
 > CSP de servidor, `Referrer-Policy`, `Permissions-Policy`, sin `X-Powered-By`).
+
+**Hub de SignalR detrás de IIS.** El token viaja en `?access_token=` ([16](./16-websocket-signalr.md) §16.9)
+y un JWT con muchos claims pasa el límite por defecto de la query string (2048 bytes): IIS corta la
+conexión con `404.15`. Subir el límite en el `web.config` del sitio que recibe la petición del hub (el
+del backend; el del front solo si el hub pasa por este mismo sitio), dentro de `<system.webServer>`:
+
+```xml
+<security>
+  <requestFiltering>
+    <requestLimits maxQueryString="32768" maxUrl="32768" />
+  </requestFiltering>
+</security>
+```
+
+Solo sube el tamaño permitido: el log del sitio sigue sin registrar `cs-uri-query`.
 
 **Errores comunes:**
 - Agregar `<mimeMap fileExtension=".json" .../>` cuando IIS ya lo trae registrado → error de arranque

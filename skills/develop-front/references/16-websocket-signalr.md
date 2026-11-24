@@ -402,7 +402,9 @@ protected readonly mensajes = resource({
 - **Nunca `?username=` / `?userId=` como identidad.** Cualquiera abre la consola y se conecta como
   otro. Si un hub existente lo hace, no copiarlo en código nuevo y reportarlo.
 - El navegador no permite headers en WebSocket: SignalR manda el token en `?access_token=`. El back
-  lo lee solo para la ruta del hub, y **ni el gateway ni IIS loguean la query string**.
+  lo lee solo para la ruta del hub, y **ni el gateway ni IIS loguean la query string**. Si la
+  conexión falla con `404.15` en IIS, el token pasó el límite de la query string: subir
+  `maxQueryString` ([10](./10-environment-tooling.md) §10.2).
 - **CORS no protege un WebSocket.** El back valida el header `Origin` del handshake (cross-site
   WebSocket hijacking) además de la política CORS del `negotiate`.
 - `wss://` siempre (mismo origen HTTPS). Nunca `ws://` fuera de localhost.

@@ -7,6 +7,14 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- Comparación con el doc "Desarrollo - Buenas Practicas" (24/11/2026, parcial: faltan las pestañas CSS y HTML;
+  fila nueva en `FUENTES.md`):
+  - `11` §11.4.1: nombre de ramas, igual en front y back: `features/`, `bugs/` y `hotfix/` + `nombre-tarea` en
+    minúsculas con guiones. La lista no es cerrada: otro tipo sigue el mismo formato. Gana la convención del repo
+    si ya tiene otra.
+  - `10` §10.2, `16` §16.9 y `checklists.md`: en IIS, subir `maxQueryString` y `maxUrl` en `requestFiltering`
+    para que el `access_token` de SignalR en la query no corte la conexión con `404.15`.
+  - `10` §10.1: la URL del registry de los schematics va en `.npmrc`; nunca una IP interna ni `http://`.
 - `bin/check.js`, igual en los dos paquetes: revisa links y anclas de los `.md`, referencias `§N.M`, índice y
   versión de `SKILL.md` y subagentes citados. `npm test` lo corre. `npm run check` suma GitHub: cada skill externa
   existe en su repo y no delega en otra que no se instala (así se rompió `grill-me`).

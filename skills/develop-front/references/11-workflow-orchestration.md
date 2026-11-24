@@ -136,6 +136,20 @@ revisarlo: la revisión no agrega features.
 - Si una tarea terminó tocando módulos sin relación entre sí, separarlos en commits distintos aunque se
   hayan hecho en la misma sesión de trabajo.
 
+#### 11.4.1 Nombre de ramas
+
+Formato `tipo/nombre-tarea`, igual en front y back:
+
+- `features/nombre-tarea`: funcionalidad nueva.
+- `bugs/nombre-tarea`: corrección de un error encontrado en desarrollo o pruebas.
+- `hotfix/nombre-tarea`: corrección urgente sobre producción.
+- Puede haber otros tipos: siguen el mismo formato `tipo/nombre-tarea`. Antes de inventar uno, mirar los
+  que ya usa el repo (`git branch -r`).
+
+Minúsculas, palabras separadas por guiones, sin espacios ni tildes, corto y descriptivo
+(`features/login-con-pin`). Si el repo ya usa otra convención, se sigue la del repo. Si una skill externa
+(`git-workflow-and-versioning`) propone otro formato, gana este.
+
 ### 11.5 No ampliar el alcance
 
 - Resolver exactamente lo pedido, aunque la skill prefiera otro enfoque: hacerlo y proponer la

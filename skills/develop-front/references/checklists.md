@@ -172,6 +172,7 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Eventos en objeto `as const` 1:1 con el back, payload `unknown` + parser? (§16.7)
 - [ ] ¿Todo handler de un consumidor que se destruye tiene su `off`, registrado antes del primer `await`? (§16.8)
 - [ ] ¿Identidad solo por token (`accessTokenFactory`), nunca `?username=`? (§16.9)
+- [ ] ¿Hub detrás de IIS con `maxQueryString` subido en `requestFiltering` para el `access_token`? (§10.2)
 - [ ] ¿Entrar y salir de grupos pasa por la misma cola que `iniciar` / `detener`? ¿La recarga tras reconectar fusiona por id en vez de reemplazar? (§16.4, §16.6)
 - [ ] ¿Reintentos con jitter proporcional al delay y primer reintento no inmediato? ¿`accessTokenFactory` con `tokenVigente()`? (§16.3, §16.9)
 
