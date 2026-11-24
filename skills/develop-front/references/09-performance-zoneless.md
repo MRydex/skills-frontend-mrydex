@@ -392,7 +392,7 @@ export class ProductoDetalle {
 ```ts
 resources: (ctx) => ({
   permisos: resource({
-    // ctx.resources() se lee SOLO dentro de params: en el cuerpo de `resources` lanza y la navegación falla
+    // ctx.resources() se lee SOLO dentro de params: en el cuerpo de `resources` lanza `NG04020` y la navegación falla
     params: ({ chain }) => chain(ctx.resources()['usuario'] as Resource<Usuario>).rol,
     loader: ({ params: rol }) => cargarPermisos(rol),
   }),
@@ -510,6 +510,7 @@ provideRouter(
     `withComponentInputBinding()`, los params de la ruta. Se importa eager: no admite `loadComponent`.
   - No atrapa guards ni resolvers (eso es `NavigationError`: `withNavigationErrorHandler`) ni un error
     del propio fallback. Para una parte del template: `@boundary` (§3.12).
+  - No tiene `reset` como `@boundary`: del fallback se sale navegando (un link o `router.navigateByUrl`).
   - Texto del fallback: mismas reglas que §3.12 (sin stack ni detalles internos, §15).
 
 ```ts

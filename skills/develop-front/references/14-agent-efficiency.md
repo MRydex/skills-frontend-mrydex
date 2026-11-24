@@ -685,6 +685,9 @@ método o checklist. Si chocan, gana la regla del repo de la última columna. Si
 - **Bajo demanda** (el instalador no las instala; se instalan al tocar el área, con el comando de arriba):
   `anti-ui-slop` (`github/awesome-copilot`; alternativa `frontend-design` de `anthropics/skills`),
   `seo-audit` (`coreyhaines31/marketingskills`).
+- **Skills oficiales de Angular** (`angular/skills`: `angular-developer`, `angular-new-app`): el instalador no
+  las instala y no se proponen. Si el proyecto ya las tiene, manda esta skill: sus ejemplos pueden usar
+  `effect()`, RxJS u otro orden de miembros, que acá no van (reglas duras de `SKILL.md`).
 - Las skills externas nunca habilitan crear archivos de test (§8), sumar librerías de UI (§11.5) ni bajar la
   vara de seguridad (§15).
 - Los subagentes de solo lectura no pueden cargar skills: el orquestador carga la del área antes de

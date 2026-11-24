@@ -139,6 +139,9 @@ Una propiedad de longitud (`width`, `padding`, `font-size`) con un número sin u
 string completo (`[style.width]="ancho() + 'px'"`). Desde v22.3 el compilador lo marca (`NG8119`,
 con `strictTemplates`).
 
+Desde v22.3 un handler acepta `++` y `--` (`(click)="pagina++"`), solo sobre una propiedad común. Un signal
+sigue con `update()`: `(click)="pagina.update((n) => n + 1)"`.
+
 ### 3.4 Control flow nativo
 
 - **Prohibido** `*ngIf`, `*ngFor`, `*ngSwitch`. Usar la sintaxis nativa.

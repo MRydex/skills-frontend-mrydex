@@ -14,6 +14,12 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
   por el agente se corre `npm view <paquete>` y se confirma repo y autor. Versiones y flags se leen del proyecto o
   de la doc. Sale del repaso de drona23/claude-token-efficient (fila nueva en `FUENTES.md`); el resto de ese repo
   ya estaba cubierto o no aplica.
+- Repaso de Angular 22.3 (24/11/2026), verificado contra el tag `v22.3.0` y el post de Ninja Squad:
+  `02` §2.1 y `SKILL.md` suman `strictUnknownElements` y `strictNgTemplateTypes` y el aviso de que `ngp` no
+  marca signals sin llamar en el template; `03` §3.3, `++` / `--` en handlers (un signal sigue con `update()`);
+  `09` §9.6, código `NG04020` y que `errorComponent` no tiene `reset`; `14` §14.9, las skills oficiales
+  `angular/skills` no se instalan y, si están, manda esta skill. `FUENTES.md`: filas nuevas para `angular/skills`
+  y Armen Vardanyan.
 - `03` §3.3: un número sin unidad en una propiedad de longitud (`[style.width]="500"`) no aplica nada; va con
   sufijo de unidad o con el string completo. Desde v22.3 el compilador lo marca (`NG8119`).
 - `README.md`: sección "Opcional: modo aprendizaje con VibeWise" (qué hace, cómo instalarlo y prenderlo, costos).

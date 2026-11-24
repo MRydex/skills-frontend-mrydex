@@ -23,6 +23,14 @@ APIs del navegador en servicios (y `BroadcastChannel`, §2.13.1) · [2.14](#214-
   falta listarlos; nunca ponerlos en `false` para silenciar errores (ni en `tsconfig.app.json`). Si el
   proyecto tiene `strict: false`, no se cambia sin pedido; activarlo es parte de la migración
   ([20](./20-migracion-angular.md) §20.3, Paso 1).
+- **v22.3+**, en `angularCompilerOptions`: `strictUnknownElements: true` (marca `NG8001` en un componente sin
+  importar que hoy pasa porque una directiva de atributo coincide, ej. `<app-selector formControlName="x">`) y
+  `strictNgTemplateTypes: true` (marca `NG8002` en un binding desconocido de `<ng-template>`, ej. un typo en
+  `ngTemplateOutlet`). Por defecto están en `false`; está previsto que pasen a `true` en v23. Se activan en un
+  proyecto nuevo o al migrar; en uno existente, no sin pedido.
+- Si el proyecto compila con el compilador nuevo `ngp` (v22.3, parte en Rust), los templates no pasan por el
+  type checker de TypeScript: no avisa un signal o una función sin llamar (`{{ total }}` en vez de
+  `{{ total() }}`). Revisarlo a mano en cada template tocado.
 - Preferir **inferencia** cuando el tipo es obvio (no anotar `: string` si la asignación lo dice).
 - **Nunca usar `any`**. Si el tipo es incierto, usar `unknown` y angostar con type guards. Tampoco `$any()` en el template: el valor de un `<input>` se lee con una variable de template (`#buscador` → `buscador.value`).
 - Toda variable que **no** se puede inferir lleva tipo explícito.
