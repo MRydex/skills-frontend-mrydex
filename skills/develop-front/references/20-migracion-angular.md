@@ -70,6 +70,7 @@ ng update @angular/core@20 @angular/cli@20     # N = el siguiente major, nunca s
 - Librerías que van atadas a Angular (`ng-zorro-antd`, `@angular/material`, `angular-eslint`): `ng
   update` también, en el mismo paso. Las que no tienen versión compatible se reportan, no se parchean.
 - Actualizar Node y TypeScript a lo que pide cada major (se ve en el error de `ng update` o en la doc).
+  TypeScript no pasa de 6.0.x aunque exista TS 7: Angular todavía no lo soporta ([02](./02-typescript-signals.md) §2.1).
 - `tsconfig.json` con `strict: false` (o sin `strict`): activar de a un flag, en este orden, corrigiendo
   los errores de cada uno antes del siguiente: `strictNullChecks: true` (el que más errores saca y más
   bugs evita: `null` / `undefined` sin chequear), `noImplicitAny: true`, después `strict: true` y borrar

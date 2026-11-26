@@ -31,6 +31,12 @@ APIs del navegador en servicios (y `BroadcastChannel`, §2.13.1) · [2.14](#214-
 - Si el proyecto compila con el compilador nuevo `ngp` (v22.3, parte en Rust), los templates no pasan por el
   type checker de TypeScript: no avisa un signal o una función sin llamar (`{{ total }}` en vez de
   `{{ total() }}`). Revisarlo a mano en cada template tocado.
+- **TypeScript queda en 6.0.x** (`"typescript": "~6.0.3"`) hasta que Angular publique soporte para TS 7.1.
+  TS 7.0 (jul 2026, compilador nativo en Go) no trae API programática: Angular y typescript-eslint no pueden
+  usarlo, y un `^7` da `ERESOLVE` o rompe el build. TS 7.1 la restaura, pero al 25/11/2026 solo hay beta. El
+  peer de `@angular/compiler-cli` 22.3.0 es `typescript >=6.0 <6.1`. Para probar `tsc` 7 en CI sin tocar
+  el compilador de Angular: alias `@typescript/typescript6` (el 6 queda como `typescript`, el 7 como
+  `@typescript/native`); no reemplaza el type-check de templates de `ngc`.
 - Preferir **inferencia** cuando el tipo es obvio (no anotar `: string` si la asignación lo dice).
 - **Nunca usar `any`**. Si el tipo es incierto, usar `unknown` y angostar con type guards. Tampoco `$any()` en el template: el valor de un `<input>` se lee con una variable de template (`#buscador` → `buscador.value`).
 - Toda variable que **no** se puede inferir lleva tipo explícito.
@@ -143,7 +149,8 @@ export class Users {
 - Declarar siempre `private` o `protected` cuando corresponda.
 - Las propiedades `private` llevan **prefijo `_`**.
 - Usar `protected` para lo que solo lee el template; `private _` para lo interno. Si el template
-  lo lee, es `protected` (desde v22.2 compila también con `private`; la regla es de legibilidad).
+  lo lee, es `protected` (desde v22.2 compila también con `private`, sin aviso del compilador: la regla
+  es de legibilidad y el hook `guard-rules` avisa un `_x` leído en un `.html`).
 - **Encapsulación de estado escribible** (regla de oro del equipo): lo que deba estar protegido se
   guarda en un `private _signal` **escribible**, se expone una **`readonly` derivada**
   (`asReadonly()` / `computed`), y para mutarlo se ofrece un **método público** (`setX()` /
@@ -573,6 +580,9 @@ constructor() {
    `switchMap` + `timer`, convertido con `toSignal()`. `switchMap` cancela el timer anterior en
    cada evento (reemplaza el `setTimeout` / `clearTimeout` a mano) y `toSignal` se desuscribe al
    destruir el componente. Es un signal derivado de eventos, no estado modelado con streams.
+5. **Stream de eventos sin estado que guardar** (un `fromEvent` que solo dispara una acción y no alcanza
+   con un listener de `host`): no se convierte con `toSignal()`; queda en RxJS con `takeUntilDestroyed()`.
+   Estado = signal, eventos = RxJS.
 
 ```ts
 // ✅ BIEN — aviso de inactividad: cualquier evento reinicia la cuenta

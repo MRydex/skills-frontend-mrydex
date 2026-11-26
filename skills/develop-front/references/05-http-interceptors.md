@@ -173,7 +173,9 @@ provideBrowserGlobalErrorListeners(), // window.onerror + unhandledrejection al 
 ```
 
 - **Filtrar por tipo**: el handler recibe cualquier error. Sin filtro, un `HttpErrorResponse` ya
-  notificado muestra un segundo modal.
+  notificado muestra un segundo modal. Con `provideBrowserGlobalErrorListeners()` también llegan errores
+  de fuera de Angular (una imagen que no carga, errores inocuos de una librería): se filtran antes de
+  reportar o de avisarle al usuario.
 - Loguear sin PII ni tokens (§15). Nunca mostrar el stack al usuario.
 - API que responde 200 con `{ success: false }`: normalizar una sola vez en un interceptor que lance
   `HttpErrorResponse`, para que el resto de la app vea un error real.

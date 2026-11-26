@@ -7,6 +7,38 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- Repaso de Angular, seguridad y tooling (25/11/2026; `FUENTES.md`: cuatro filas nuevas y fecha en cuatro
+  existentes):
+  - `15` §15.10: tabla de versiones mínimas de `@angular/*` por major (14 avisos, ene a oct 2026) y piso
+    22.2.1 / 21.2.25 / 20.3.34; 19.x sin parche. Node de build, CI y SSR en 22.23.5 / 24.22.3 / 26.13.1 o más.
+    `min-release-age` y su choque con `npm audit fix`, `npm approve-scripts` (npm 12), sin dependencias
+    `github:` ni por URL, CI de publicación y la campaña ChainDrop.
+  - `15` §15.3 y §15.7: ningún `i18n-on*`; `i18n-href` / `i18n-src` nunca con datos no confiables; sin
+    `[attr.href]` en `<script>` SVG; host bindings sensibles con esquema validado.
+  - `15` §15.4: SSR en el borde (path con `/.//`, `;`, `()`, query de más de 2.048 bytes, con middleware de
+    contención), `transferCache` y `Cache-Control` para HTML personalizado. §15.8: WebMCP no se activa sin
+    revisión. §15.14: fila SSR y piso de versiones en la revisión base.
+  - `02` §2.1, `20` §20.3 y `SKILL.md`: TypeScript queda en 6.0.x hasta que Angular soporte TS 7.1.
+    `02` §2.9: un stream de eventos sin estado no se convierte con `toSignal()`.
+  - `02` §2.3 y hook `guard-rules`: aviso de un `_privado` leído en un `.html` (22.2 lo compila sin avisar).
+  - `09` §9.6.4: ejemplo de `RedirectCommand` lanzado desde un helper anidado. §9.12: INP de campo con
+    `web-vitals`. `05` §5.3.1: filtrar los errores de fuera de Angular. `13` §13.25: bindings de función y
+    signal en `animate.*` y revisión del CSS anidado al subir a 22.2.
+  - `checklists.md`: cinco puntos nuevos de seguridad (versiones, i18n, host bindings, `.npmrc`, SSR).
+- Repaso del resto de las filas de `FUENTES.md` (25/11/2026), con fecha en cada una:
+  - `19` §19.6 y §19.7: `pdfjs-dist` >= 6.2.108 desde 5.6.83 (GHSA-hq66-cqwq-w95j) e `isEvalSupported` solo
+    hasta 5.6.x; `@tiptap/*` >= 3.30.5 (GHSA-cp6q-959q-f8rh, GHSA-j95f-988m-3j2f).
+  - `13`: scroll-driven animations es Baseline desde oct 2026 (decía nov 2025); el fallback de scrollbar
+    resetea `scrollbar-width`; soporte de `base-select` (Chrome 135, Safari 27) y de view transitions.
+    `07`: `light-dark()` es Baseline Widely. `09` §9.6.3: la Navigation API es Baseline.
+  - `14`: el advisor funciona también en Claude Platform on AWS y Claude Models on Google Cloud; Haiku 5.5
+    puede ser advisor; consentimiento de usage credits para Fable; Codex usa `/subagents` y su
+    `sandbox_mode` por agente no pisa al padre; Antigravity CLI reemplaza a Gemini CLI en el tier gratuito;
+    el instalador crea el `Explore` en Haiku. `bin/cli.js`: mismo aviso del advisor.
+  - `README.md`, `bin/cli.js` y `14`: graphify pide Python 3.11.5 a 3.14 (decía 3.10+).
+  - Verificado en una app Angular 22.3.0: `RedirectCommand` lanzado desde guard, helper anidado y resolver;
+    `private` leído en el template compila sin aviso. `02` §2.1: peer `typescript >=6.0 <6.1`.
+    `06` §6.3: `hidden(path, fn)` está deprecado. `03` §3.1: exports reales de `@angular/aria`.
 - Comparación con el doc "Desarrollo - Buenas Practicas" (24/11/2026, parcial: faltan las pestañas CSS y HTML;
   fila nueva en `FUENTES.md`):
   - `11` §11.4.1: nombre de ramas, igual en front y back: `features/`, `bugs/` y `hotfix/` + `nombre-tarea` en
@@ -46,6 +78,9 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Cambiado
 
+- Exploración en Claude Code: `Explore` (Haiku) por defecto, también para "cómo funciona X"; `investigador` queda para
+  docs web, auth o seguridad y respuestas incompletas. Regla nueva: no releer lo que cubrió el subagente. `14` §14.3.4,
+  medición real 3: flujo entre servicios $0.98 → $0.42, acierto 23.7/24 → 23.3/24.
 - Angular 22.3.0 salió estable (18/11/2026). `04`, `09` y `18` ya no dicen "hoy `22.3.0-rc.0`" ni "no está en la
   estable" para `HttpClient.query()`, `scrollMargin` en `@defer`, `scroll` en `routerLink`, herencia de resources
   de ruta, `errorComponent` y `@angular/build:library`. Verificado contra el tag `v22.3.0`: `errorComponent` sigue

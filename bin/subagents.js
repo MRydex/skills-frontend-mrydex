@@ -2,7 +2,7 @@
  * Subagentes del equipo para cada agente de IA, generados desde una sola definición.
  * Formatos verificados en la documentación oficial de cada agente (ver §14.3.2 de la skill).
  *
- * El orquestador delega en ellos solo cuando baja el total de tokens (§14.3.4):
+ * El orquestador delega en ellos solo cuando baja el costo total (§14.3.4):
  * búsquedas/lecturas grandes y ediciones mecánicas en 8+ archivos. Lo chico lo hace él.
  */
 
@@ -13,8 +13,10 @@ const ROLES = [
   {
     name: 'investigador',
     readonly: true,
-    // Modelo intermedio: en la prueba real Haiku no encontró el mecanismo principal de una búsqueda amplia
+    // Modelo intermedio. En Claude Code la exploración va primero a `Explore` (Haiku): §14.3.4, medición 3
     cheap: false,
+    claudeDescription:
+      'Use for web docs, auth or security analysis, or when the Explore answer is incomplete. Broad code search goes to Explore first. Read-only. Returns a short caveman file:line list. Skip for 1-2 known files.',
     description:
       'Use when searching or reading would pull a lot into the main context (3+ files, big files, logs, build output, web docs). Read-only. Returns a short caveman file:line list (plus a short flow summary for "how does X work", or the decisive lines for logs, builds and docs). Skip for 1-2 known files.',
     instructions: `Localizá código y devolvé solo \`archivo:línea — qué hay ahí\`, en modo caveman (frases cortas, sin relleno).
@@ -119,7 +121,7 @@ const EXPLORE_ROLE = {
   readonly: true,
   cheap: true,
   description:
-    'Fast read-only codebase explorer on a cheap model. Use for file search, "where is X defined", "who calls Y", directory maps and reading logs or build output when the location is unknown. Returns file:line lists, never edits.',
+    'Fast read-only codebase explorer on a cheap model. Use for file search, "where is X defined", "who calls Y", "how does X work", directory maps and reading logs or build output when the location is unknown. Returns file:line lists, never edits.',
   instructions: `Localizá código o leé salidas grandes y devolvé solo lo decisivo, en modo caveman (frases cortas, sin relleno).
 
 1. \`Grep\` / \`Glob\` por nombre; \`graphify query "<pregunta>" --budget 800\` solo si no hay nombre conocido; leé archivos solo en el rango que hace falta.
@@ -140,7 +142,7 @@ const TARGETS = [
       markdown(
         [
           `name: ${r.name}`,
-          `description: ${r.description}`,
+          `description: ${r.claudeDescription ?? r.description}`,
           `model: ${r.cheap ? 'haiku' : 'sonnet'}`,
           `effort: ${r.cheap ? 'low' : 'medium'}`,
           ...(r.readonly ? ['tools: Read, Grep, Glob, Bash'] : []),
@@ -240,9 +242,10 @@ Installed by skills-frontend-mrydex. Use them in every session; if one is missin
 
 ## Delegation to subagents (explicit, standing user request)
 
-You orchestrate. I explicitly authorize and ask you to delegate to subagents, without waiting for me to ask, **only when it lowers total token usage**:
+You orchestrate. I explicitly authorize and ask you to delegate to subagents, without waiting for me to ask, **only when it lowers total cost**:
 
-- Finding where something is when the location is unknown, or reads over 3+ files, big files, logs, build output or web docs: \`investigador\`. Questions like "how does X work in this app" start here.
+- Any exploration over 3+ files or with unknown location, and "how does X work in this app", logs or build output: \`Explore\` in Claude Code (Haiku; one call with the whole question, never pass \`model\`), \`investigador\` in other agents. In Claude Code use \`investigador\` only for web docs, auth or security analysis, or when the \`Explore\` answer is incomplete.
+- After delegating, answer from the report. Do not re-read or re-search what it covered: that pays twice and cancels the saving. Read only the files you will edit, or one exact range for a claim that looks wrong or that a risky decision depends on.
 - Mechanical edits across 8+ files once the approach is decided: \`ejecutor\`. Orient with grep / Glob, write a short brief (files, pattern, one example), hand it off, then review the diff. For fewer files, edit yourself: in a measured test (3 files), delegating cost 38% more.
 - Checking a large diff against the checklists: \`revisor-checklist\` (\`revisor_checklist\` in Codex, cheap).
 - Upgrading or migrating an Angular project, only when I ask for it: \`migrador-angular\`, one step at a time.

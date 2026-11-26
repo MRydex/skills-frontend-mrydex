@@ -38,6 +38,7 @@ const LINE_RULES = [
   // Naming (02 §2.3)
   [['.html'], /\((?:click|dblclick|change|input|submit|keyup|keydown|blur|focus)\)="\s*(?!on[A-Z])[A-Za-z_$][\w$]*\(/, 'Handler de evento sin prefijo on: onClickGuardar() (02 §2.3)'],
   [['.ts'], /^\s*private\s+(?:static\s+)?(?:readonly\s+)?(?!_)[A-Za-z$][\w$]*\s*[=:(<;]/, 'Miembro private sin prefijo _ (02 §2.3)'],
+  [['.html'], /(?:\{\{|[\])]="|@(?:if|for|switch|let)\b)(?:\s*|[^\n]*?(?<![\w$.'"-]))_[A-Za-z][\w$]*/, 'Miembro _privado leído en el template: lo que lee el template es protected (02 §2.3)'],
 ];
 
 function git(args, cwd) {

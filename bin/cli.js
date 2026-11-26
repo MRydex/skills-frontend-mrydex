@@ -350,7 +350,7 @@ function extractZip(archivePath, destDir) {
 function bootstrapUv() {
   const target = UV_TARGETS[`${process.platform}-${process.arch}`];
   if (!target) {
-    console.log(`  ${colors.yellow}⚠${colors.reset} uv no publica binario para ${process.platform}-${process.arch}: instalar Python 3.10+ con pip`);
+    console.log(`  ${colors.yellow}⚠${colors.reset} uv no publica binario para ${process.platform}-${process.arch}: instalar Python 3.11.5 a 3.14 con pip`);
     return false;
   }
   const isWindows = process.platform === 'win32';
@@ -1233,7 +1233,7 @@ function configureAdvisor(settings, ownRoute) {
   }
   if (advisorArg) settings.advisorModel = advisorArg;
   if (settings.advisorModel) {
-    const warn = ownRoute ? `\n  ${colors.yellow}⚠${colors.reset} El advisor solo funciona con la API de Anthropic, no con Bedrock, Vertex ni Foundry` : '';
+    const warn = ownRoute ? `\n  ${colors.yellow}⚠${colors.reset} El advisor funciona con la API de Anthropic, Claude Platform on AWS y Claude Models on Google Cloud; no con Bedrock, Agent Platform ni Foundry. Si el plan cobra Fable con usage credits, correr /model fable antes` : '';
     return `  ${colors.green}✔${colors.reset} Claude Code: advisor ${settings.advisorModel} (se cobra al precio del advisor; el modelo lo consulta solo al orientarse, al trabarse y antes de terminar; quitar con --advisor off)${warn}`;
   }
   if (sessionIsFable) return `  ${colors.dim}Advisor: la sesión ya es Fable, un advisor del mismo nivel no suma${colors.reset}`;

@@ -100,6 +100,18 @@ Esa protección se pierde cuando se esquiva el framework.
 - **Nunca** `ElementRef.nativeElement.innerHTML`, `document.write`, `insertAdjacentHTML`,
   `eval`, `new Function` ni `setTimeout('string')`. Usar `Renderer2` o el template.
 - **Nunca construir templates en runtime** con texto del usuario (compilación JIT dinámica).
+- **i18n**: ningún `i18n-on*`, y `i18n-href` / `i18n-src` nunca sobre un valor no confiable: la traducción
+  reemplazaba el handler por código arbitrario (CVE-2026-69151) y el atributo traducido salteaba el
+  sanitizador (CVE-2026-32635). Los `.xlf` los revisa el equipo en el PR; ningún tercero los edita.
+  Trusted Types (§15.4) queda como defensa en profundidad.
+
+  ```html
+  <!-- ❌ una traducción reemplaza el handler -->
+  <img src="a.jpg" onerror="void 0" i18n-onerror>
+  <!-- ❌ i18n-href saltea el sanitizador -->
+  <a [href]="urlDelUsuario" i18n-href>Ver</a>
+  ```
+- **Nunca** `[attr.href]` ni `[attr.xlink:href]` sobre un `<script>` SVG (CVE-2026-22610).
 - Pipes que devuelven HTML (ej. resaltar búsqueda) **escapan primero** el texto y la búsqueda:
 
 ```ts
@@ -250,6 +262,39 @@ front y en el backend):
 
   También en `new AngularNodeAppEngine({ allowedHosts: [...] })` o con `NG_ALLOWED_HOSTS`.
   `trustProxyHeaders` (`NG_TRUST_PROXY_HEADERS`) solo detrás de un proxy propio y confiable.
+- **SSR, resto del borde** (solo si la app renderiza en servidor). El arreglo real de estos avisos es subir
+  al piso de versiones de §15.10; lo de abajo vale igual con la versión parcheada:
+  - Texto de usuario al DOM del servidor: interpolación, no `[innerHTML]` (GHSA-f67j).
+  - Nunca `document.createProcessingInstruction()` con datos no confiables dentro de `<noscript>`,
+    `<iframe>`, `<noembed>` o `<noframes>` (GHSA-j3r3).
+  - HTML con datos del usuario: `Cache-Control: private` o `no-store`; un CDN no cachea HTML personalizado
+    (GHSA-p297, GHSA-jhpw). Endpoint sensible: `transferCache: false` o
+    `withHttpTransferCacheOptions({ filter })` ([09](./09-performance-zoneless.md) §9.7).
+  - Un interceptor que adjunta credenciales del servidor nunca lo hace sobre una URL derivada de input: el
+    chequeo `new URL(x, base).origin` no alcanzaba con espacios Unicode al inicio (GHSA-f6mr).
+  - Evitar `defaultQueryParamsHandling: 'merge' | 'preserve'` en links renderizados por SSR (GHSA-57xq).
+  - Contención mientras no se sube de versión, en el proxy o en el server:
+
+    ```ts
+    // server.ts, ANTES del handler de Angular SSR. Mitiga GHSA-w739, 62vg, ff3f y 57xq
+    app.use((req, res, next) => {
+      const i = req.url.indexOf('?');
+      if (i !== -1 && req.url.length - i > 2048) return res.status(414).send('URI Too Long');
+      let ruta: string;
+      try {
+        ruta = decodeURI(i === -1 ? req.url : req.url.slice(0, i));
+      } catch {
+        return res.status(400).send('Bad Request');
+      }
+      if (/\/\.\/\/|\/\.\.\/\/|\/\.;\//.test(ruta)) return res.status(400).send('Bad Request');
+      // Solo si la app NO usa matrix params ni outlets nombrados en las URLs:
+      if (/[;()]/.test(ruta)) return res.status(400).send('Bad Request');
+      next();
+    });
+    ```
+
+    Con outlets nombrados no se bloquean los paréntesis: se rechazan solo las secuencias de outlet vacío
+    (`:/(`, `(//(`, `///(`).
 - Toda CSP nueva o endurecida se despliega primero como **`Content-Security-Policy-Report-Only`**,
   se revisan los reportes y después se pasa a modo bloqueo.
 - **Nunca** `'unsafe-eval'`. `'unsafe-inline'` en `script-src` tampoco.
@@ -570,7 +615,8 @@ provideHttpClient(
   interceptor decidía "URL relativa" con una regex y el navegador resuelve distinto (`/\evil.example`,
   `/\t/evil.example` van a otro origen), así que el token salía a un dominio ajeno. `@angular/common`
   **>= 20.3.34** o **>= 21.0.3**; 22.x no está afectada; <= 19 no tiene parche. Nunca armar la URL de
-  un request con un valor del usuario sin validar.
+  un request con un valor del usuario sin validar. El piso general por major, con el resto de los avisos
+  de 2026, está en §15.10.
 - El backend .NET valida el token (antiforgery) y usa `SameSite` en la cookie de sesión.
 - **Nunca** mutar estado con `GET`.
 
@@ -592,6 +638,18 @@ this._router.navigateByUrl(destino);
 - Links externos: `target="_blank" rel="noopener noreferrer"`.
 - URLs dinámicas en `[href]`: validar esquema `https:` (o `mailto:`/`tel:` si aplica). Angular
   marca `javascript:` como `unsafe:`, pero no validar el dominio.
+- **Host binding sensible** (`host: { '[attr.href]': ... }`, `[attr.src]`) con un valor no confiable: validar
+  el esquema antes, aunque la versión esté parcheada. Angular decidía el contexto de seguridad por el
+  selector de quien declara la directiva, no por el elemento real, y el valor llegaba al DOM sin sanitizar
+  con `hostDirectives`, herencia, `createComponent` con `hostElement` propio y SVG / MathML (GHSA-hh8m).
+
+  ```ts
+  // ❌ url() llega sin sanitizar en esos casos
+  @Directive({ selector: '[appLink]', host: { '[attr.href]': 'url()' } })
+
+  // ✅ el binding lee un valor ya validado
+  const urlSegura = (u: string): string | null => (/^https?:\/\//i.test(u) ? u : null);
+  ```
 - `postMessage`: validar siempre `event.origin` contra una lista blanca y la forma del `data`. Rechazar antes
   `event.origin === 'null'` (los iframes `sandbox` y las URLs `data:` comparten ese valor) y comparar con
   `new URL(origen).origin`, nunca con `startsWith` / `includes`. Al enviar, `targetOrigin` explícito, nunca `'*'`.
@@ -621,6 +679,8 @@ this._router.navigateByUrl(destino);
   reglas del usuario: `~/.ssh/**`, `~/.aws/credentials`, `.env`, `.env.*`, `*.pem`,
   `*.key`, `*.pfx` y `secrets/**`. Bloquea Read/Edit/Write, no `cat` por Bash: nunca leer esos
   archivos por otra vía. Si una tarea necesita un valor, pedírselo al usuario o usar un placeholder.
+- **WebMCP** (experimental en v22): expone la app y sus Signal Forms como herramientas para agentes del
+  navegador. No se activa sin una revisión de seguridad de qué acciones y datos quedan expuestos.
 
 ### 15.9 Cabeceras de seguridad en IIS
 
@@ -683,7 +743,76 @@ Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
   archivo conocido, URL con versión fija (nunca `latest`), `crossorigin="anonymous"` (sin él el recurso se
   bloquea) y `referrerpolicy="no-referrer"`. Un script que su dueño cambia en el lugar no admite `integrity`: se
   limita con CSP.
+- **Cooldown de versiones nuevas** en `.npmrc` (npm ≥ 11.10; por defecto no hay): npm ignora lo publicado
+  hace menos de N días, que es la ventana en la que se detecta un paquete comprometido. El valor lo decide
+  el equipo; 3 es un punto de partida, no una medición. En pnpm la opción es `minimumReleaseAge`
+  (confirmar el default en `pnpm.io`).
+
+  ```ini
+  # .npmrc
+  min-release-age=3
+  # npm 12+: excepciones por nombre
+  min-release-age-exclude[]=@empresa/*
+  ```
+
+  El cooldown y `npm audit fix` chocan: si bloquea el fix, npm deja la versión vulnerable, avisa y sale con
+  código distinto de 0. Para un parche urgente: `npm install <paquete>@<versión> --min-release-age=0`,
+  después del `npm view` de arriba. Ese flujo se deja escrito en `tasks/lessons.md` o en el `CLAUDE.md` del
+  repo.
+- **Scripts de instalación de dependencias** (`preinstall`, `install`, `postinstall`, y el `node-gyp rebuild`
+  implícito): npm 12 no los corre sin aprobación; npm ≥ 11.16 ya avisa. `npm approve-scripts
+  --allow-scripts-pending` lista los pendientes, `npm approve-scripts <paquete>` aprueba solo los confiables
+  y deja el allowlist en `package.json` (se commitea), `npm deny-scripts` para el resto. Nunca aprobar en
+  bloque para que el install pase.
+- **Sin dependencias `github:` ni por URL**: npm 12 no las resuelve por defecto (`--allow-git` y
+  `--allow-remote` pasan a `none`). El código interno va por el registry privado
+  ([10](./10-environment-tooling.md) §10.1).
+- El pipeline que publica la librería interna corre con permisos mínimos y sin secretos accesibles desde
+  PRs de forks: con los tokens de larga vida revocados, los atacantes toman el CI y publican por trusted
+  publishing (Databricks, nov 2026).
+- **Campaña ChainDrop** (ago 2026): gusano que agrega un hook `preinstall`, sube el patch y republica; más
+  de 400 paquetes, entre ellos `keyv`, `flat-cache`, `file-entry-cache` y `cache-manager`. Los dos del medio
+  suelen venir con ESLint: en la auditoría se revisa el lockfile contra el aviso CSA AD-2026-009 y que el
+  dominio `npm-cache[.]com` no aparezca en el repo ni en logs de CI. Cooldown, scripts bloqueados y
+  lockfile son la defensa; bloquear los scripts solo cubre cerca de la mitad del malware observado.
 - Dependabot / Renovate activos en el repo.
+
+#### Versiones mínimas con parche: `@angular/*` y Node
+
+Repasado el 25/11/2026 (`FUENTES.md`). Antes de citarlo en un reporte, mirar si hay avisos más nuevos en
+`github.com/angular/angular/security/advisories`.
+
+- **Piso de `@angular/*`: 22.x ≥ 22.2.1, 21.x ≥ 21.2.25, 20.x ≥ 20.3.34.** Mejor la última de la major
+  (22.2.3 endurece la codificación de params contra prototype pollution). 19.x y anteriores no tienen
+  parche para los avisos de jul a oct 2026: migrar ([20](./20-migracion-angular.md)) o dejar el riesgo
+  aceptado por escrito. Se sube con el paso 1 de "Auditoría de dependencias", sin cambiar de major sin
+  pedido.
+- **Node de build, CI y SSR: 22.23.5, 24.22.3 o 26.13.1 como mínimo** (release de seguridad del 11/11/2026:
+  16 CVE, 7 altos, HTTP/2 y TLS). El tag de Docker lleva el parche y se revisa en cada release de seguridad
+  de Node ([10](./10-environment-tooling.md) §10.13). Angular 22 no soporta Node 20.
+- No hay major de Angular hasta v23 (~jun 2027); v22 tiene soporte activo hasta 2027-06 y LTS hasta 2028-06.
+  Hasta entonces, mantenerse en la última 22.x.
+
+"SSR" = afecta solo a apps con render en servidor. Las columnas dan la primera versión con parche.
+
+| Aviso (`GHSA-…` · CVE) | Tema | Aplica | 22.x | 21.x | 20.x |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| jrmj-c5cx-3cw6 · CVE-2026-22610 | XSS: `href` / `xlink:href` de `<script>` SVG sin sanitizar | SPA y SSR | 22.0.0 | 21.0.7 | 20.3.16 |
+| g93w-mfhg-p222 · CVE-2026-32635 | XSS: `i18n-<atributo>` saltea el sanitizador | SPA y SSR | 22.0.0 | 21.2.4 | 20.3.18 |
+| f3m7-gqxr-g87x · CVE-2026-50557 | XSS: bypass por namespaces (SVG / MathML) | SPA y SSR | 22.0.0 | 21.2.15 | 20.3.22 |
+| jj27-h5hq-8x99 · CVE-2026-69151 | XSS: `i18n-on*` en el compilador | SPA y SSR | 22.0.1 | 21.2.19 | 20.3.27 |
+| jhpw-976m-542j · CVE-2026-68945 | `HttpTransferCache`: claves ambiguas, respuesta equivocada | SSR | 22.0.2 | 21.2.19 | 20.3.27 |
+| hh8m-fm6v-7cvg · CVE-2026-88057 | Sanitización salteada en host bindings | SPA y SSR | 22.1.0 | 21.2.20 | 20.3.28 |
+| p297-fm68-3q8c · CVE-2026-88059 | Fuga por `HttpTransferCache` con `withRequestsMadeViaParent` | SSR | 22.1.1 | 21.2.20 | 20.3.28 |
+| f6mr-pjwc-34m4 · CVE-2026-88056 | SSRF y fuga de credenciales (URL con espacio Unicode inicial) | SSR | 22.1.4 | 21.2.22 | 20.3.30 |
+| j3r3-mxqp-r2p4 · CVE-2026-88058 | XSS por processing instruction en `<noscript>` e iframes | SSR | 22.1.4 | 21.2.22 | 20.3.30 |
+| f67j-2jqw-jpq7 · CVE-2026-101895 | DoS: bucle infinito con `<!DOCTYPE html ` | SSR | 22.1.6 | 21.2.23 | 20.3.31 |
+| ff3f-86qr-9cv3 · CVE-2026-101896 | DoS: matrix params numéricos (heap de V8) | SSR | 22.2.0 | 21.2.24 | 20.3.32 |
+| w739-gvwx-grc3 · CVE-2026-111754 | Open redirect (`/.//evil.test`, `/.;/(//evil.test)`) | SSR | 22.2.1 | 21.2.25 | 20.3.33 |
+| 57xq-rjx2-v5xh · CVE-2026-111751 | DoS: `RouterLink` retiene `UrlTree` con query merge / preserve | SSR | 22.2.1 | 21.2.25 | no afectada |
+| 62vg-58rm-qff7 · CVE-2026-111752 | DoS: outlets vacíos no configurados | SSR | 22.2.1 | 21.2.25 | 20.3.33 |
+
+El piso de 20.x es 20.3.34 por el aviso de XSRF de §15.6 (GHSA-jfgx-762w-99vr).
 
 #### Auditoría de dependencias: siempre, no solo en CI
 
@@ -839,7 +968,8 @@ saltea en silencio, y la profundidad de cada una la decide el agente según lo q
 | Inyección en backend (SQL, SSRF, SSTI, XXE, deserialización) | §15.2 | `offensive-sqli`, `offensive-ssrf`, `offensive-ssti`, `offensive-xxe`, `offensive-deserialization` |
 | Uploads | §15.2 | `offensive-file-upload` |
 | Concurrencia y parámetros | §15.2 | `offensive-race-condition`, `offensive-parameter-pollution`, `offensive-request-smuggling` |
-| Dependencias y supply chain | §15.10 | `detecting-malicious-npm-packages`, `detecting-typosquatting-packages-in-npm-pypi`, `offensive-dependency-confusion`, `offensive-supply-chain`, `generating-and-analyzing-sboms` |
+| SSR (solo si existe) | §15.4: `allowedHosts`, borde que rechaza `/.//`, `/.;/` y query de más de 2.048 bytes, `transferCache` y `Cache-Control` en HTML con datos del usuario, interceptores de servidor sin credenciales hacia URLs derivadas de input | `offensive-ssrf`, `offensive-open-redirect`, `performing-web-cache-poisoning-attack` |
+| Dependencias y supply chain | §15.10, con el piso de versiones de `@angular/*` y de Node (`npm ls @angular/core @angular/common @angular/router @angular/compiler @angular/platform-server`, `node -v` en pipeline, Docker y servidor), cooldown, scripts aprobados y lockfile contra las campañas activas | `detecting-malicious-npm-packages`, `detecting-typosquatting-packages-in-npm-pypi`, `offensive-dependency-confusion`, `offensive-supply-chain`, `generating-and-analyzing-sboms` |
 | Logging y respuesta (Blue Team) | §15.11 | `analyzing-web-server-logs-for-intrusion`, `security-audit` |
 
 **Pruebas en vivo (network).** Escaneo de puertos, evaluación TLS y cabeceras contra un host real son

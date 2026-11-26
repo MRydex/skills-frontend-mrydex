@@ -288,8 +288,10 @@ Con la CSP de §15.4, un `<iframe>` con URL `blob:` necesita `frame-src 'self' b
 `pdfjs-dist` solo si hace falta control (paginado propio, zoom, búsqueda, resaltado) o el proyecto ya
 lo usa. Reglas:
 
-- **Versión**: `pdfjs-dist` **>= 4.2.67** (CVE-2024-4367, ejecución de JS vía fuentes) y siempre
-  `getDocument({ data, isEvalSupported: false })`. Si el proyecto tiene una versión menor, reportarlo (§15.10).
+- **Versión**: `pdfjs-dist` **>= 4.2.67** (CVE-2024-4367, ejecución de JS vía fuentes) y, desde 5.6.83,
+  **>= 6.2.108** (GHSA-hq66-cqwq-w95j, ejecución de JS al abrir un PDF malicioso). Hasta 5.6.x, siempre
+  `getDocument({ data, isEvalSupported: false })`; desde 5.7 la opción ya no está en el build y se quita.
+  Si el proyecto tiene una versión menor, reportarlo (§15.10).
 - **Worker**: PDF.js corre en un Web Worker. Copiar el archivo con un `assets` glob de `angular.json`
   y apuntar `workerSrc` a esa ruta (nada de CDN de terceros: viola la CSP, §15.4):
 
@@ -328,6 +330,9 @@ private async _open(data: ArrayBuffer): Promise<void> {
 
 **Aplica solo** si el proyecto ya usa TipTap (`@tiptap/*`) o el usuario lo pide. Si no, un `<textarea>`
 alcanza; no agregues un editor por un campo de observaciones.
+
+**Versión**: `@tiptap/*` **>= 3.30.5**, todos los paquetes en el mismo número (GHSA-cp6q-959q-f8rh,
+`mergeAttributes()` con `__proto__`; GHSA-j95f-988m-3j2f, ReDoS al parsear atributos de Markdown).
 
 - Crear el editor en **`afterNextRender`** (necesita el DOM) y destruirlo con **`DestroyRef`**. Nunca
   en el constructor ni en `ngOnInit`.

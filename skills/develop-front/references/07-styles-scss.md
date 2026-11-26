@@ -244,7 +244,7 @@ Dónde más aplica, sin token:
 
 #### Tema claro/oscuro con `light-dark()` y `color-scheme`
 
-`light-dark()` es Baseline (soportado en los motores modernos desde 2024). Solo funciona si el
+`light-dark()` es Baseline Widely desde nov 2026 (Newly desde may 2024). Solo funciona si el
 elemento (o un ancestro) declaró `color-scheme`; si no está declarado, el navegador asume `light`
 y el segundo valor nunca se usa.
 

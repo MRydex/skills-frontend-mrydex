@@ -499,7 +499,7 @@ fuera del repo; `format-prettier` sí reescribe el archivo editado). Saber qué 
 | `guard-spec` | Pide confirmación antes de crear `*.spec.ts` / `*.test.ts` en repos Angular (§8). Aprobar **solo** si el usuario pidió tests |
 | `guard-secrets` | Bloquea escribir secretos: claves privadas, tokens de npm, connection strings, `"Password"` en JSON, valores literales entre comillas de `Password` / `ApiKey` de 8+ caracteres, claves y tokens de formatos conocidos; ignora valores con `(` o `[` (regex o código). Revisa solo Edit / Write / MultiEdit (no Bash); no revisa `.md` / `.mdx`; acepta placeholders (`${VAR}`, `#{token}#`, `<valor>`, `{0}`, `%VAR%`) |
 | `format-prettier` | Corre el `prettier` **local** sobre el archivo editado, busca la config y `prettier` en `node_modules` subiendo hasta la raíz del repo (sirve para librerías en `projects/`). Si el archivo está versionado y en HEAD no pasaba `prettier --check`, no lo formatea (no ensucia el diff). Nunca descarga nada |
-| `guard-rules` | Al cerrar el turno (hook `Stop`), en repos Angular: revisa las líneas agregadas y los archivos nuevos contra las reglas que más se violan (`effect()`, `@Input`, `*ngIf`, `style` inline, `row` / `col-*`, `::ng-deep`, `components/` fuera de `shared/`, límites de líneas; en archivos nuevos, handler sin prefijo `on` y `private` sin `_`; según la versión: Reactive Forms, `ControlValueAccessor` propio, `standalone: true`, `OnPush`). Con hallazgos devuelve el turno una vez con la lista. Sin hallazgos no imprime nada |
+| `guard-rules` | Al cerrar el turno (hook `Stop`), en repos Angular: revisa las líneas agregadas y los archivos nuevos contra las reglas que más se violan (`effect()`, `@Input`, `*ngIf`, `style` inline, `row` / `col-*`, `::ng-deep`, un `_privado` leído en un `.html`, `components/` fuera de `shared/`, límites de líneas; en archivos nuevos, handler sin prefijo `on` y `private` sin `_`; según la versión: Reactive Forms, `ControlValueAccessor` propio, `standalone: true`, `OnPush`). Con hallazgos devuelve el turno una vez con la lista. Sin hallazgos no imprime nada |
 
 - Si `guard-secrets` bloquea, el contenido es un secreto de verdad o lo parece: sacarlo a una variable
   de entorno o al secreto del pipeline (§15.8). No se "desactiva" el hook.
@@ -565,7 +565,7 @@ COPY --from=build /app/dist/mi-app/browser /usr/share/nginx/html
 EXPOSE 8080
 ```
 
-- Versiones de imagen **fijas con tag exacto** (no `latest`; verificá el tag vigente en Docker Hub) y la de Node igual a la del proyecto. `npm ci`, no
+- Versiones de imagen **fijas con tag exacto** (no `latest`; verificá el tag vigente en Docker Hub) y la de Node igual a la del proyecto y con el parche de seguridad vigente ([15](./15-security.md) §15.10). `npm ci`, no
   `npm install`.
 - Nada de secretos en el `Dockerfile`, en `ARG` ni en la imagen (todo lo del bundle es público, §15.8).
 - La imagen `nginx-unprivileged` escucha en **8080**: `listen 8080;` en `nginx.conf` y mapear ese puerto.

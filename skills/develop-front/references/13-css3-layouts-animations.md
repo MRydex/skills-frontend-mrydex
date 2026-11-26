@@ -169,6 +169,7 @@
   }
 
   @supports not (scrollbar-color: auto) {
+    .panel { scrollbar-width: auto; } /* si no, thin desactiva ::-webkit-scrollbar */
     .panel::-webkit-scrollbar { width: 8px; height: 8px; }
     .panel::-webkit-scrollbar-thumb { background: var(--barra-pulgar); }
     .panel::-webkit-scrollbar-track { background: var(--barra-fondo); }
@@ -595,7 +596,7 @@ activa para todo el documento desde `:root`.
 
 ### 13.18 Animaciones ligadas al scroll (sin JavaScript)
 
-**Baseline Newly Available desde noviembre de 2025** (Chrome/Edge 115+, Safari 26+, Firefox 145+).
+**Baseline Newly Available desde octubre de 2026** (Chrome/Edge 115+, Safari 26+, Firefox 159+).
 Reemplazan los listeners de scroll y el `IntersectionObserver` para animar por scroll: corren en el
 compositor, fuera del hilo principal, y en zoneless Angular no participa (sin change detection).
 
@@ -889,7 +890,7 @@ option {
 }
 ```
 
-- **Soporte: todavía no es Baseline**, es muy reciente (Chromium primero). **Mejora progresiva**
+- **Soporte: todavía no es Baseline** (Chrome/Edge 135, Safari 27; falta Firefox). **Mejora progresiva**
   obligatoria: proveer siempre un `<select>` con estilo base aceptable para navegadores sin
   soporte (el `appearance: base-select` simplemente no se aplica ahí, y el select nativo sigue
   funcionando).
@@ -1050,6 +1051,10 @@ espera a que termine la animación CSS y recién ahí saca el elemento.
 - Para `<dialog>` / popovers sin `@if`, alcanza con `@starting-style` (§13.19).
 - `animate.leave` de un componente hijo **no** corre cuando se saca el elemento padre: solo corre
   dentro del mismo template. Si la salida importa, ponerla en el elemento que controla el `@if`.
+- Desde v22.2, `animate.enter` / `animate.leave` aceptan también un binding de función o de signal. La
+  clase CSS sigue siendo lo primero.
+- Al subir desde 22.1 o menos, revisar a la vista los estilos con nesting: 22.2 corrigió la encapsulación del
+  CSS anidado (las reglas anidadas ahora se scopean; lo anidado bajo un padre con `::ng-deep`, no).
 - Para controlar una animación desde código (pausar, cancelar, invertir), usar la API nativa
   `elemento.getAnimations()` (`cancel()`, `pause()`, `reverse()`), no `AnimationPlayer`.
 
@@ -1161,7 +1166,8 @@ Registrar la custom property con tipo deja que el navegador la interpole en `@ke
 ### 13.30 Transiciones entre rutas (`withViewTransitions`)
 
 El router anima el cambio de página con la View Transitions API (developer preview hasta v22.2; estable desde v22.3). Sin soporte
-del navegador, navega igual, sin animación.
+del navegador, navega igual, sin animación. Las view transitions en el mismo documento son Baseline desde
+oct 2025; entre documentos (`@view-transition`) todavía no (falta Firefox).
 
 ```ts
 // app.config.ts

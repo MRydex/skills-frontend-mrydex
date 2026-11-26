@@ -157,7 +157,7 @@ inválido o pendiente.
   hidden(path.direccionEnvio, { when: ({ valueOf }) => !valueOf(path.requiereEnvio) });
   required(path.direccionEnvio); // solo valida mientras está visible
   ```
-  Usar la forma `{ when: ... }`, la de la documentación: deja lugar a otras opciones y se lee igual en todas las reglas.
+  Usar la forma `{ when: ... }`, la de la documentación (pasar la función directa, `hidden(path, fn)`, está deprecado): deja lugar a otras opciones y se lee igual en todas las reglas.
   Los campos `hidden` / `disabled` / `readonly` **no participan de la validación** ni afectan el
   estado del padre.
   > **Campo `hidden` ⇒ sacarlo del DOM con `@if`.** Angular avisa en dev mode si un campo marcado

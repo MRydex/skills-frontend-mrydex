@@ -275,6 +275,11 @@ Proceso del agente · Verificación rápida (Do & Don't).
 - [ ] ¿Sin `postinstall` que edite `node_modules`? ¿Paquetes internos con versión exacta y `ng build` tras el upgrade? (§15.10)
 - [ ] ¿Eventos de seguridad reportados sin datos sensibles? (§15.11)
 - [ ] ¿Payload XSS probado a mano en componentes/pipes que renderizan datos externos? (§15.12)
+- [ ] ¿`@angular/*` en el piso con parche o más (22.2.1 / 21.2.25 / 20.3.34) y Node de build, CI y SSR en 22.23.5 / 24.22.3 / 26.13.1 o más? ¿TypeScript en 6.0.x, sin `typescript@7` en `package.json` ni en el lockfile? (§15.10, §2.1)
+- [ ] ¿Sin `i18n-on*`, y cada `i18n-href` / `i18n-src` sobre un valor que el usuario no controla (`grep -rnE "i18n-(on|href|src)" src`)? ¿Origen de los `.xlf` revisado en el PR? ¿Sin `[attr.href]` / `[attr.xlink:href]` en `<script>` SVG? (§15.3)
+- [ ] ¿Host bindings `attr.href` / `attr.src` (`host:` y `@HostBinding`) con valor constante o con esquema validado? (§15.7)
+- [ ] ¿`.npmrc` con `min-release-age` y el flujo de parche urgente escrito? ¿Scripts de instalación aprobados uno por uno con el allowlist commiteado? ¿Sin dependencias `github:` ni por URL? ¿CI de publicación sin secretos accesibles desde forks? (§15.10)
+- [ ] (SSR, si existe) ¿`allowedHosts`, borde que rechaza `/.//`, `/.;/` y query de más de 2.048 bytes, `transferCache` revisado, HTML con datos del usuario con `Cache-Control: private` o `no-store`, sin `defaultQueryParamsHandling: 'merge' | 'preserve'` sin necesidad? (§15.4)
 - [ ] ¿"Auditá" a secas o pedido de seguridad? ¿Auditoría completa red + blue + network con cobertura por área, y pruebas en vivo solo contra hosts autorizados por el usuario? (§15.14)
 - [ ] ¿Cookie de sesión con prefijo `__Host-`? ¿El logout responde `Clear-Site-Data`? ¿`postMessage` rechaza el origen `"null"` y envía con `targetOrigin` explícito? (§15.5, §15.7)
 - [ ] ¿`X-Frame-Options`, `Cross-Origin-Opener-Policy` y `Cross-Origin-Resource-Policy` en el `web.config`? ¿Script de CDN con `integrity`, versión fija y `crossorigin`? (§15.9, §15.10)
@@ -308,7 +313,7 @@ Antes de publicar un sitio o una app nueva, además de los bloques anteriores:
 - [ ] ¿Sin subcomponentes innecesarios? Solo se dividió por límite, reutilización o lógica propia. (§1.4)
 - [ ] ¿Sin sobreingeniería? Cada archivo, clase, input y parámetro nuevo tiene un uso hoy; nada "por si acaso". (§11.7.1)
 - [ ] ¿Auditoría pedida? ¿Cubrió todas las áreas de §11.9 con tabla de cobertura, candidatos verificados y correcciones en tandas con build y prueba manual? ¿Vulnerabilidades de `npm audit` corregidas y `npm audit` repetido en limpio? (§11.9)
-- [ ] ¿Se delegó solo lo que bajaba el total de tokens (lecturas 3+ archivos, ediciones 8+ archivos) y lo chico se hizo directo? (§14.3.4)
+- [ ] ¿Se delegó solo lo que bajaba el costo total (lecturas 3+ archivos, ediciones 8+ archivos) y lo chico se hizo directo? (§14.3.4)
 - [ ] ¿Respuestas al usuario en modo caveman (salvo excepciones de seguridad y artefactos persistidos)? (§14.1)
 
 ---

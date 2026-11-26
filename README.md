@@ -8,7 +8,7 @@ Hermana de [skills-backend-mrydex](https://github.com/MRydex/skills-backend-mryd
 
 ## Instalar
 
-Requisitos: Node.js 18+. Python 3.10+ para graphify (si falta, el instalador avisa y sigue).
+Requisitos: Node.js 18+. Python 3.11.5 a 3.14 para graphify (si falta, el instalador avisa y sigue).
 
 Interactivo (pregunta agente y destino):
 
@@ -188,7 +188,7 @@ Resumen de lo que deja el instalador, según lo que publicó Anthropic
 | Qué | Modelo | Quién lo decide |
 | :--- | :--- | :--- |
 | La sesión (pensar, decidir, editar, revisar) | El que elegís con `/model`; queda fijo | Vos |
-| `Explore` (búsquedas, "dónde está X") | Haiku, `effort: low` (agente propio que reemplaza al de fábrica, que corría con el modelo de la sesión) | Instalador |
+| `Explore` (exploración por defecto: "dónde está X", "cómo funciona X") | Haiku, `effort: low` (agente propio que reemplaza al de fábrica, que corría con el modelo de la sesión) | Instalador |
 | `general-purpose`, subagentes de skills y plugins sin `model` propio | Sonnet (`CLAUDE_CODE_SUBAGENT_MODEL=sonnet`; antes heredaban la sesión) | Instalador |
 | Subagentes del equipo (`investigador`, ejecutores, revisores) | Sonnet; revisor y `Explore` en Haiku | Instalador |
 | Advisor (consulta hacia arriba) | Apagado | Vos, con `--advisor` o `/advisor` |

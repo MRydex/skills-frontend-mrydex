@@ -45,9 +45,11 @@
     múltiple.
   - `accordion` → paneles que se expanden de a uno para reducir el scroll en páginas densas.
   - `toolbar`, `tabs`, `menu`, `tree`, `grid` → mismo enfoque headless para cada patrón WAI-ARIA.
-  - Antes de usar un export puntual de `tabs`/`menu`/`tree`/`grid` que no esté en este documento,
-    confirmar el nombre exacto en `angular.dev/guide/aria/<patrón>`: son subpaths nuevos y los
-    nombres exportados pueden variar entre minors.
+  - Exports de los otros subpaths (leídos en 22.3.0): `tabs` → `Tabs`, `TabList`, `Tab`, `TabPanel`,
+    `TabContent`; `menu` → `Menu`, `MenuBar`, `MenuContent`, `MenuItem`, `MenuTrigger`; `tree` → `Tree`,
+    `TreeItem`, `TreeItemGroup`; `grid` → `Grid`, `GridRow`, `GridCell`, `GridCellWidget`; `combobox` suma
+    `ComboboxPopup` y `ComboboxWidget`. En otra versión, confirmar el nombre en
+    `angular.dev/guide/aria/<patrón>`. `@angular/aria/private` no es API pública: no se importa.
   - Si el patrón no está cubierto por `@angular/aria`, usar **Angular CDK** (`@angular/cdk/a11y`,
     `@angular/cdk/overlay`, `@angular/cdk/drag-drop`) antes que armar el manejo de teclado a mano.
 - **Regla de oro:** *"sin ARIA es mejor que con ARIA mal puesta"* — un botón nativo mal decorado con

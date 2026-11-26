@@ -408,7 +408,8 @@ resources: (ctx) => ({
 
 `provideRouter(routes, withExperimentalPlatformNavigation())` (v21.1+) hace que el router intercepte
 la Navigation API del navegador: un `<a href="/usuarios/5">` plano navega como SPA sin `routerLink`,
-y el navegador restaura scroll y foco.
+y el navegador restaura scroll y foco. La Navigation API es Baseline desde ene 2026; lo experimental es
+la integración del router.
 
 - **No usar en producción**: la doc oficial lo marca "highly experimental". Bugs conocidos: intercepta
   `<a download>` (el archivo no se descarga) y formularios POST nativos.
@@ -436,7 +437,13 @@ hay sesión hasta preguntarle al backend: el guard es `async` y espera `restaura
   `new RedirectCommand(router.parseUrl('/no-encontrado'), { browserUrl: router.currentNavigation()?.finalUrl })`.
   `browserUrl` cambia solo la barra de direcciones; `params` y `data` son los de la ruta real. Desde v22.2 también se
   puede **lanzar** el `RedirectCommand` (22.2.4+ para que respete el orden de los guards); preferir
-  devolverlo.
+  devolverlo. Lanzarlo sirve desde un helper anidado, donde un `return` no llega al guard:
+
+  ```ts
+  const exigirSesion = (url: string): never => {
+    throw new RedirectCommand(inject(Router).createUrlTree(['/login'], { queryParams: { returnUrl: url } }));
+  };
+  ```
   - ❌ `router.navigate()` dentro del guard y `return false`.
   - ❌ `alert()` / `confirm()` o tocar el DOM (`document.body.innerHTML = ...`) dentro del guard: se
     devuelve un `UrlTree` a una ruta que explica (`/limite-pestanas`, `/sin-permiso`).
@@ -1087,6 +1094,9 @@ export class GeolocationWatcher {
 - **Lighthouse** (integrado en Chrome DevTools) para métricas de Core Web Vitals (LCP, CLS, INP) en
   una carga real — el punto de partida para saber si `priority`/lazy loading/hydration incremental
   están dando resultado.
+- **Medición de campo**: LCP e INP son Baseline desde dic 2025 (Safari 26.2), así que el INP real se mide en
+  los navegadores principales. Lighthouse es laboratorio; para datos de usuarios, la librería `web-vitals`,
+  solo si el proyecto ya tiene un endpoint de métricas.
 - **Interacción lenta (INP)**: en el panel Performance, separar las tres fases: demora de entrada (algo ya
   ocupaba el hilo), procesamiento (el handler) y presentación (estilo, layout, pintado). Layout alto con
   lecturas de geometría (`offsetHeight`, `getBoundingClientRect()`) intercaladas con escrituras es layout
