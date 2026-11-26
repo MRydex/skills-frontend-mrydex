@@ -19,7 +19,8 @@ const IGNORED = /(^|\/)(node_modules|dist|\.angular|\.claude|\.agents|graphify-o
 const LIMITS = { component: 200, html: 200, service: 250, scss: 150 };
 const FORMS_MSG = 'usar Signal Forms (06)';
 
-// Reglas por línea agregada: [extensiones, regex, mensaje, versión mínima de Angular]
+// Reglas por línea agregada: [extensiones, regex, mensaje, versión mínima de Angular, alcance]
+// Alcance: 'app' no corre en una librería, 'lib' corre solo en una librería; sin alcance, siempre.
 const LINE_RULES = [
   [['.ts'], /(^|[^\w.])effect\s*\(/, 'effect(): computed / linkedSignal / resource, salvo las excepciones de 02 §2.7'],
   [['.ts'], /new\s+BehaviorSubject\b/, 'BehaviorSubject como estado: usar signal (02)'],
@@ -31,7 +32,8 @@ const LINE_RULES = [
   [['.html'], /\sstyle="/, 'style inline: va en el SCSS del componente con BEM (07)'],
   [['.html'], /class="(?:[^"]*\s)?(row|col(-(xs|sm|md|lg|xl))?-\d{1,2})(?=[\s"])/, 'Grilla utilitaria (row / col-*): BEM + CSS Grid en el SCSS (07)'],
   [['.scss'], /::ng-deep/, '::ng-deep: theming o clases globales con prefijo (07)'],
-  [['.scss'], /\bfont-size:\s*[\d.]+px\b/, 'font-size en px: rem o token clamp() (07 §7.2)'],
+  [['.scss'], /\bfont-size:\s*[\d.]+px\b/, 'font-size en px: rem o token clamp() (07 §7.2)', 0, 'app'],
+  [['.scss'], /(^|[\s:(,])[\d.]+rem\b/, 'rem en una librería: px, depende del html de cada app consumidora (07 §7.2)', 0, 'lib'],
   [['.scss'], /\bline-height:\s*[\d.]+px\b/, 'line-height en px: valor sin unidad (07 §7.2)'],
   [['.ts'], /standalone:\s*true/, 'standalone: true sobra desde v19', 19],
   [['.ts'], /ChangeDetectionStrategy\.OnPush/, 'OnPush es el default desde v22: no declararlo', 22],
@@ -86,7 +88,21 @@ function addedLines(root) {
   return { changes, untracked: new Set(untracked) };
 }
 
+// Carpetas de las librerías del workspace (`projectType: "library"` en angular.json). Una librería se
+// renderiza dentro de apps cuyo html no controla: sus tamaños van en px y no en rem.
+function libraryRoots(root) {
+  try {
+    const { projects = {} } = JSON.parse(fs.readFileSync(path.join(root, 'angular.json'), 'utf8'));
+    return Object.values(projects)
+      .filter((project) => project.projectType === 'library' && project.root)
+      .map((project) => project.root.replace(/\\/g, '/').replace(/\/?$/, '/'));
+  } catch {
+    return [];
+  }
+}
+
 function review(root, angular) {
+  const libraries = libraryRoots(root);
   const { changes, untracked } = addedLines(root);
   const findings = [];
   const add = (file, line, message) => findings.push(`${file}:${line}: ${message}`);
@@ -102,9 +118,10 @@ function review(root, angular) {
       if (/\/components\//.test(file) && !/(^|\/)shared\/components\//.test(file)) add(file, 1, 'Carpeta components/ fuera de shared/: anidar en la carpeta del padre (01)');
     }
 
+    const scope = libraries.some((library) => file.startsWith(library)) ? 'lib' : 'app';
     for (const { line, text } of lines) {
-      for (const [exts, regex, message, minMajor = 0] of LINE_RULES) {
-        if (exts.includes(ext) && angular >= minMajor && regex.test(text)) add(file, line, message);
+      for (const [exts, regex, message, minMajor = 0, only] of LINE_RULES) {
+        if (exts.includes(ext) && angular >= minMajor && (!only || only === scope) && regex.test(text)) add(file, line, message);
       }
     }
 

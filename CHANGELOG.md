@@ -11,6 +11,8 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
   pasar `px` a `rem` se revisa ese valor; una librería compartida o un remote de microfrontend usan `px`.
   Sale de un caso real: una librería pasada a `rem` se vio con el texto a la mitad en una app consumidora.
   `18` §18.4 y `checklists.md` repiten la regla.
+- Hook `guard-rules`: en una librería del workspace (`projectType: "library"` en `angular.json`) deja de pedir
+  `rem` en `font-size` y avisa un `rem` agregado; en una app sigue igual.
 
 - Repaso de seguridad y Angular (26/11/2026), cada punto verificado contra su fuente primaria (`FUENTES.md`:
   tres filas nuevas y fecha en dos existentes):
