@@ -28,6 +28,8 @@
   cerrarse.
 - **Omitir etiquetas**: la spec permite omitir ciertos cierres (ej. `</li>`), pero la buena
   práctica es **cerrarlas siempre** por consistencia y legibilidad.
+- **Criterio de accesibilidad**: se audita contra **WCAG 2.2 AA**. WCAG 3.0 es Working Draft (10/09/2026),
+  no reemplaza ni depreca WCAG 2: sus criterios no se citan como requisito.
 
 ### 12.2 Estructura global y `<head>`
 

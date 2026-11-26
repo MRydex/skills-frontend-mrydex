@@ -7,6 +7,17 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- Repaso de seguridad y Angular (26/11/2026), cada punto verificado contra su fuente primaria (`FUENTES.md`:
+  tres filas nuevas y fecha en dos existentes):
+  - `15` §15.10: compromiso de axios (`1.14.1`, `0.30.4`, `plain-crypto-js@4.2.1`) y la regla de frenar un
+    release que perdió la provenance; extensión Angular Language Service de VS Code ≥ 21.2.4
+    (CVE-2026-49241); v20 pierde el LTS el 2026-11-28; fila GHSA-rgjc-h3x7-9mwg (CVE-2026-54267) en la tabla
+    de versiones mínimas, ya cubierta por el piso.
+  - `15` §15.4: ningún `id` del DOM tomado de un dato del usuario (pisa `ng-state`) y `APP_ID` propio como
+    mitigación. §15.5: referencia a la RFC 10017.
+  - `09` §9.6.5: `limpiar()` destruye los componentes guardados con `destroyDetachedRouteHandle()` (v22.2+).
+  - `12` §12.1: la auditoría es contra WCAG 2.2 AA; WCAG 3.0 sigue como Working Draft.
+  - `checklists.md`: un punto nuevo de seguridad y el `id` dinámico en el de SSR.
 - Repaso de Angular, seguridad y tooling (25/11/2026; `FUENTES.md`: cuatro filas nuevas y fecha en cuatro
   existentes):
   - `15` §15.10: tabla de versiones mínimas de `@angular/*` por major (14 avisos, ene a oct 2026) y piso

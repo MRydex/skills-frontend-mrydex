@@ -15,7 +15,7 @@ Al terminar, decir qué filas se repasaron y cuáles no, con el motivo. Si apare
 | Fuente | Qué mirar | Dónde impacta | Último repaso |
 |---|---|---|---|
 | Angular: releases, angular.dev, blog | Versión objetivo (hoy Angular 22, TypeScript 6, Node), APIs nuevas, estables o deprecadas, schematics de migración | `SKILL.md`, `01` a `06`, `09`, `17`, `20`, `checklists.md` | 2026-11-25 |
-| Avisos de seguridad de `@angular/*` y de los paquetes npm nombrados (GHSA, CVE) | Versiones mínimas con parche | `15` (§15.3, §15.4, §15.6, §15.7, §15.10), `18`, `19`, `checklists.md` | 2026-11-25 (avisos de npm; sin revisar dependencias transitivas) |
+| Avisos de seguridad de `@angular/*` y de los paquetes npm nombrados (GHSA, CVE) | Versiones mínimas con parche | `15` (§15.3, §15.4, §15.6, §15.7, §15.10), `18`, `19`, `checklists.md` | 2026-11-26 (suma GHSA-rgjc-h3x7-9mwg; sin revisar dependencias transitivas) |
 | [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance) | Guías nuevas o cambiadas desde el último repaso (75 revisadas). Fuera de alcance: built-in AI, WebMCP, wasm, PWA | `07`, `09`, `12`, `13`, `15` | 2026-11-25 (v1.0.2) |
 | MDN y Baseline | Fechas de Baseline citadas (`grep -rn Baseline skills/`), APIs que pasaron a Baseline y ya no piden `@supports` | `02`, `07`, `09`, `12`, `13`, `15`, `checklists.md` | 2026-11-25 (contra `api.webstatus.dev` y `web-features`) |
 | developer.chrome.com y CSSWG (scroll-driven, anchor positioning, `base-select`, view transitions) | Cambios de sintaxis y de soporte | `13` | 2026-11-25 (soporte contra `api.webstatus.dev`; sintaxis sin errores, solo el select abierto en MDN) |
@@ -34,4 +34,7 @@ Al terminar, decir qué filas se repasaron y cuáles no, con el motivo. Si apare
 | Node.js: avisos de seguridad (`nodejs.org/en/blog/vulnerability`) | Versión mínima por línea (22, 24, 26) y CVE altos de HTTP/2 y TLS | `10`, `15` (§15.10), `checklists.md` | 2026-11-25 |
 | npm y pnpm: changelog de GitHub (`github.blog/changelog`), `docs.npmjs.com`, `pnpm.io` | Defaults de scripts de instalación, `min-release-age` / `minimumReleaseAge`, `allowBuilds`, `allow-git`, `allow-remote` | `10`, `15` (§15.10) | 2026-11-25 |
 | TypeScript: `devblogs.microsoft.com/typescript` | TS 7.1 estable y soporte de Angular y typescript-eslint | `SKILL.md`, `02` (§2.1), `20` | 2026-11-25 |
-| Campañas de supply chain npm (Microsoft Security Blog, CSA Singapur, Databricks) | Campañas activas, paquetes e IoC | `15` (§15.10) | 2026-11-25 |
+| Campañas de supply chain npm (Microsoft Security Blog, CSA Singapur, Databricks) | Campañas activas, paquetes e IoC | `15` (§15.10) | 2026-11-26 (suma axios, 31/03/2026: post mortem `axios/axios#10636` y Elastic Security Labs) |
+| RFC 10017, OAuth 2.0 for Browser-Based Applications (`rfc-editor.org/rfc/rfc10017`) | Errata o una BCP nueva de OAuth para SPA | `15` (§15.5) | 2026-11-26 (leído el inicio; secciones 6 a 8 solo por resumen) |
+| W3C WAI: WCAG 3 (`w3.org/TR/wcag-3.0`) | Si pasa de Working Draft a Candidate Recommendation | `12` (§12.1) | 2026-11-26 (WD del 2026-09-10) |
+| Extensión Angular Language Service de VS Code (avisos en `github.com/angular/angular/security/advisories`) | Versión mínima con parche | `15` (§15.10), `checklists.md` | 2026-11-26 |

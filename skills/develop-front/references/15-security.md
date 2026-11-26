@@ -273,6 +273,10 @@ front y en el backend):
   - Un interceptor que adjunta credenciales del servidor nunca lo hace sobre una URL derivada de input: el
     chequeo `new URL(x, base).origin` no alcanzaba con espacios Unicode al inicio (GHSA-f6mr).
   - Evitar `defaultQueryParamsHandling: 'merge' | 'preserve'` en links renderizados por SSR (GHSA-57xq).
+  - Ningún `id` del DOM sale tal cual de un dato del usuario o de un CMS: puede pisar el elemento `ng-state`
+    de la hidratación (GHSA-rgjc). Si hace falta un id dinámico, lleva un prefijo fijo. Sin poder subir de
+    versión, un `APP_ID` propio cambia el id de ese elemento:
+    `{ provide: APP_ID, useValue: 'mi-app' }`.
   - Contención mientras no se sube de versión, en el proxy o en el server:
 
     ```ts
@@ -310,7 +314,10 @@ front y en el backend):
 - **Preferir cookies de sesión `HttpOnly; Secure; SameSite=Strict|Lax`** emitidas por el backend
   (patrón BFF). JavaScript no puede leerlas, así que un XSS no las roba. Nombre con prefijo `__Host-`
   (`__Host-sesion`): el navegador solo la acepta con `Secure`, `Path=/` y sin `Domain`, así un subdominio no
-  puede pisarla.
+  puede pisarla. Es también el orden de la RFC 10017 (OAuth 2.0 for Browser-Based Applications, ago 2026),
+  que lista las arquitecturas de más a menos seguras: BFF, backend que media el token, cliente OAuth en el
+  navegador. Con frontend y API en el mismo dominio, la RFC admite no usar OAuth en el navegador. Antes de
+  decidir dónde guardar un token, leer su sección de almacenamiento en el navegador.
 - **Sesión solo por cookie (sin token en JS)**: tras recargar, el front no sabe si hay sesión hasta preguntarle
   al backend. `Auth` guarda el usuario en un signal y expone `restaurar()`: con el signal vacío llama una vez a
   `GET auth/me`; `401` devuelve `false`, cualquier otro error se propaga. El guard lo espera y, si no pudo
@@ -775,11 +782,23 @@ Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
   suelen venir con ESLint: en la auditoría se revisa el lockfile contra el aviso CSA AD-2026-009 y que el
   dominio `npm-cache[.]com` no aparezca en el repo ni en logs de CI. Cooldown, scripts bloqueados y
   lockfile son la defensa; bloquear los scripts solo cubre cerca de la mitad del malware observado.
+- **Compromiso de axios** (31/03/2026): `axios@1.14.1` y `axios@0.30.4` traían `plain-crypto-js@4.2.1`, con un
+  `postinstall` que instalaba un RAT; estuvieron publicadas unas 3 horas. Seguras: `1.14.0` y `0.30.3`. Si
+  alguna de las tres aparece en el lockfile o en `node_modules`, la máquina o el runner se trata como
+  comprometido y se rotan las credenciales. Los releases maliciosos no traían la atestación de provenance
+  que sí tenían los legítimos: **un release nuevo sin la provenance que tenían los anteriores frena la
+  actualización** hasta revisarlo a mano (`npm view <paquete>@<versión> dist.attestations`,
+  `npm audit signatures`).
+- **Extensión Angular Language Service de VS Code ≥ 21.2.4** (CVE-2026-49241, GHSA-ccq4-xmxr-8hcq, CVSS 4.0
+  8.7): las versiones anteriores leen `typescript.tsdk` y `js/ts.tsdk.path` del `.vscode/settings.json` sin
+  consultar Workspace Trust y cargan el `tsserverlibrary.js` de esa ruta: abrir un repo clonado ejecuta
+  código. Un repo ajeno se abre en Restricted Mode, y en un `.vscode/settings.json` propio esas dos claves
+  nunca apuntan a una carpeta que no sea `node_modules/typescript/lib`.
 - Dependabot / Renovate activos en el repo.
 
 #### Versiones mínimas con parche: `@angular/*` y Node
 
-Repasado el 25/11/2026 (`FUENTES.md`). Antes de citarlo en un reporte, mirar si hay avisos más nuevos en
+Repasado el 26/11/2026 (`FUENTES.md`). Antes de citarlo en un reporte, mirar si hay avisos más nuevos en
 `github.com/angular/angular/security/advisories`.
 
 - **Piso de `@angular/*`: 22.x ≥ 22.2.1, 21.x ≥ 21.2.25, 20.x ≥ 20.3.34.** Mejor la última de la major
@@ -791,7 +810,9 @@ Repasado el 25/11/2026 (`FUENTES.md`). Antes de citarlo en un reporte, mirar si 
   16 CVE, 7 altos, HTTP/2 y TLS). El tag de Docker lleva el parche y se revisa en cada release de seguridad
   de Node ([10](./10-environment-tooling.md) §10.13). Angular 22 no soporta Node 20.
 - No hay major de Angular hasta v23 (~jun 2027); v22 tiene soporte activo hasta 2027-06 y LTS hasta 2028-06.
-  Hasta entonces, mantenerse en la última 22.x.
+  Hasta entonces, mantenerse en la última 22.x. **v20 pierde el LTS el 2026-11-28** y v21 en 2027-06
+  (`angular.dev/reference/releases`): después de esa fecha no reciben parches de seguridad. Un proyecto en
+  `^20` necesita plan de migración ([20](./20-migracion-angular.md)) o el riesgo aceptado por escrito.
 
 "SSR" = afecta solo a apps con render en servidor. Las columnas dan la primera versión con parche.
 
@@ -800,6 +821,7 @@ Repasado el 25/11/2026 (`FUENTES.md`). Antes de citarlo en un reporte, mirar si 
 | jrmj-c5cx-3cw6 · CVE-2026-22610 | XSS: `href` / `xlink:href` de `<script>` SVG sin sanitizar | SPA y SSR | 22.0.0 | 21.0.7 | 20.3.16 |
 | g93w-mfhg-p222 · CVE-2026-32635 | XSS: `i18n-<atributo>` saltea el sanitizador | SPA y SSR | 22.0.0 | 21.2.4 | 20.3.18 |
 | f3m7-gqxr-g87x · CVE-2026-50557 | XSS: bypass por namespaces (SVG / MathML) | SPA y SSR | 22.0.0 | 21.2.15 | 20.3.22 |
+| rgjc-h3x7-9mwg · CVE-2026-54267 | DOM clobbering de `ng-state` en la hidratación y caché de respuestas envenenada | SSR | 22.0.1 | 21.2.17 | 20.3.25 |
 | jj27-h5hq-8x99 · CVE-2026-69151 | XSS: `i18n-on*` en el compilador | SPA y SSR | 22.0.1 | 21.2.19 | 20.3.27 |
 | jhpw-976m-542j · CVE-2026-68945 | `HttpTransferCache`: claves ambiguas, respuesta equivocada | SSR | 22.0.2 | 21.2.19 | 20.3.27 |
 | hh8m-fm6v-7cvg · CVE-2026-88057 | Sanitización salteada en host bindings | SPA y SSR | 22.1.0 | 21.2.20 | 20.3.28 |

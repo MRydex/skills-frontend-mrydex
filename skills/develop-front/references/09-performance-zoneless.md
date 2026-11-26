@@ -635,7 +635,9 @@ export class ConservarRutaStrategy extends BaseRouteReuseStrategy {
   }
 
   // Logout: inject(RouteReuseStrategy) as ConservarRutaStrategy → limpiar()
+  // v22.2+: destroyDetachedRouteHandle (@angular/router) destruye el componente guardado; sin él queda vivo
   limpiar(): void {
+    this._guardadas.forEach((handle) => destroyDetachedRouteHandle(handle));
     this._guardadas.clear();
   }
 }
