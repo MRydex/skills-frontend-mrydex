@@ -173,6 +173,20 @@ del equipo.
 > Para pasar de `px` a `rem` se divide por 16 (`24px` = `1.5rem`). Código existente en `px` no se migra salvo
 > pedido: la regla aplica a lo que se escribe o se toca.
 
+**`rem` depende del `html` de la app que renderiza.** `1rem` es el `font-size` del elemento `html`, no un
+valor fijo: la tabla de arriba vale solo si ese `html` queda en el default del navegador (`100%`, 16px).
+
+- **Antes de escribir `rem` o de pasar `px` a `rem`**: buscar el `font-size` de `html` / `:root` en los estilos
+  globales (`grep -rnE "(html|:root)[^{]*{" src/styles*`). Con `62.5%`, `10px` o cualquier valor distinto de
+  `100%`, `0.75rem` no son 12px (con `62.5%` son 7,5px): se sigue la unidad que ya usa el proyecto y se avisa.
+- **Librería compartida ([18](./18-librerias-angular.md) §18.4) o remote de microfrontend: `px`, nunca `rem`**, en
+  `font-size`, espaciado y tamaños. Se renderizan dentro de apps cuyo `html` la librería no controla: el mismo
+  build se ve bien en una app y con el texto a la mitad en otra. Si un tamaño tiene que seguir al texto del
+  contenedor, `em`. La excepción es una librería cuyas apps consumidoras tienen todas el `html` en `100%`,
+  verificado app por app y anotado en su README.
+- **Migrar `px` a `rem` en una librería ya publicada es un cambio visible** para cada app consumidora: no se
+  hace sin pedido y sin revisar el `html` de esas apps.
+
 #### Tokens fluidos con `clamp()`: texto, espaciado y tamaños
 
 `clamp(MÍN, IDEAL, MÁX)` da un valor que escala entre un piso y un techo sin media queries. Sirve para

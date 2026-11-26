@@ -221,7 +221,7 @@ copian solos. Qué hacer según el recurso:
 
 | Recurso | Cómo se distribuye | Qué hace la app |
 | :--- | :--- | :--- |
-| Estilos de un componente | Dentro del componente (encapsulados, [07](./07-styles-scss.md)) | Nada |
+| Estilos de un componente | Dentro del componente (encapsulados, [07](./07-styles-scss.md)). Tamaños en `px`, nunca `rem`: dependen del `html` de cada app consumidora ([07](./07-styles-scss.md) §7.2) | Nada |
 | Imagen de fondo de un componente | `url('./img/fondo.svg')` **relativo** en los estilos del componente: el build la incrusta como data URL | Nada |
 | Tokens, mixins, tema (SCSS) | Asset + condición `sass` en `exports` | `@use '@acme/ui-lib/styles/theme'` |
 | Hoja con reglas globales (clases, reset) | Asset | La declara en `styles` de su `angular.json` |

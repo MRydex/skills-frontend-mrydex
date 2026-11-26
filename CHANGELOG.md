@@ -7,6 +7,11 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 
 ### Agregado
 
+- `07` §7.2: `rem` depende del `font-size` del `html` de la app que renderiza. Antes de escribir `rem` o de
+  pasar `px` a `rem` se revisa ese valor; una librería compartida o un remote de microfrontend usan `px`.
+  Sale de un caso real: una librería pasada a `rem` se vio con el texto a la mitad en una app consumidora.
+  `18` §18.4 y `checklists.md` repiten la regla.
+
 - Repaso de seguridad y Angular (26/11/2026), cada punto verificado contra su fuente primaria (`FUENTES.md`:
   tres filas nuevas y fecha en dos existentes):
   - `15` §15.10: compromiso de axios (`1.14.1`, `0.30.4`, `plain-crypto-js@4.2.1`) y la regla de frenar un
