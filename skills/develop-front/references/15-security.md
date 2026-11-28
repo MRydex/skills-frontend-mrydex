@@ -782,23 +782,60 @@ Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
   suelen venir con ESLint: en la auditoría se revisa el lockfile contra el aviso CSA AD-2026-009 y que el
   dominio `npm-cache[.]com` no aparezca en el repo ni en logs de CI. Cooldown, scripts bloqueados y
   lockfile son la defensa; bloquear los scripts solo cubre cerca de la mitad del malware observado.
+- **La misma campaña persiste en el repo y en el host** (SANS ISC y Snyk, ago 2026): el gusano commitea un
+  `.claude/settings.json` con un hook `SessionStart` y un `.vscode/tasks.json` con `"runOn": "folderOpen"`,
+  que corren al **abrir la carpeta**, sin `npm install`. En el host deja un watcher
+  (`~/.config/gh-token-monitor/`, con un LaunchAgent en macOS o un servicio systemd de usuario en Linux) que
+  ejecuta un handler remoto cuando el token deja de funcionar.
+  - Antes de abrir en el IDE o en el agente un repo clonado, un PR de fork o un checkout tocado por una
+    dependencia, se listan los archivos que se ejecutan solos:
+
+    ```bash
+    git ls-files -- .claude .vscode/tasks.json .vscode/settings.json
+    git log --oneline -- .claude .vscode/tasks.json
+    ```
+
+    Un `SessionStart`, un `folderOpen`, o un `.claude/setup.mjs`, `.claude/math_init.js` o
+    `.vscode/setup.mjs` que nadie del equipo agregó: no se abre y se trata como incidente.
+  - El commit "Verified" no prueba nada: la firma dice que GitHub lo firmó, no que el mantenedor lo
+    autorizó (el commit del implante venía de `github-actions[bot]` y figuraba verificado).
+  - Con el compromiso confirmado **no se revocan ni rotan las credenciales primero**: la revocación es lo
+    que dispara el handler. Orden: aislar el host de la red (sin apagarlo), preservar la evidencia, buscar
+    y quitar el watcher y su persistencia, y recién entonces revocar y rotar desde una máquina limpia.
 - **Compromiso de axios** (31/03/2026): `axios@1.14.1` y `axios@0.30.4` traían `plain-crypto-js@4.2.1`, con un
   `postinstall` que instalaba un RAT; estuvieron publicadas unas 3 horas. Seguras: `1.14.0` y `0.30.3`. Si
   alguna de las tres aparece en el lockfile o en `node_modules`, la máquina o el runner se trata como
   comprometido y se rotan las credenciales. Los releases maliciosos no traían la atestación de provenance
   que sí tenían los legítimos: **un release nuevo sin la provenance que tenían los anteriores frena la
   actualización** hasta revisarlo a mano (`npm view <paquete>@<versión> dist.attestations`,
-  `npm audit signatures`).
+  `npm audit signatures`). **La provenance presente tampoco prueba un release limpio**: `keyv@6.0.0` salió
+  con atestación válida, porque el código malicioso ya estaba en el tag y el workflow legítimo lo
+  construyó y firmó. En un release nuevo de una dependencia de build o de runtime se compara además que
+  el tag exista en el repo y que el `package.json` publicado no tenga un `preinstall` / `postinstall` que
+  el anterior no tenía:
+
+  ```bash
+  npm view <paquete>@<versión> scripts dist.attestations --json
+  npm view <paquete>@<anterior> scripts --json
+  ```
+
+  Ante la sospecha se reinstala con los scripts bloqueados: `npm install --package-lock-only
+  --ignore-scripts`, borrar `node_modules`, limpiar el caché y `npm ci --ignore-scripts`. Las versiones
+  limpias se toman del aviso vigente (Snyk publica el bloque de `overrides`), no de memoria.
 - **Extensión Angular Language Service de VS Code ≥ 21.2.4** (CVE-2026-49241, GHSA-ccq4-xmxr-8hcq, CVSS 4.0
   8.7): las versiones anteriores leen `typescript.tsdk` y `js/ts.tsdk.path` del `.vscode/settings.json` sin
   consultar Workspace Trust y cargan el `tsserverlibrary.js` de esa ruta: abrir un repo clonado ejecuta
   código. Un repo ajeno se abre en Restricted Mode, y en un `.vscode/settings.json` propio esas dos claves
   nunca apuntan a una carpeta que no sea `node_modules/typescript/lib`.
+- **Extensión Angular DevTools ≥ 1.21.1** (CVE-2026-101897, GHSA-r653-wxfp-pp9c, CVSS 4.0 5.1): en
+  `>= 1.20.0, < 1.21.1` una página web puede mandar mensajes al service worker de la extensión y colgar
+  pestañas con `chrome.debugger`. Es un DoS local, sin RCE ni fuga de datos. No se perfila con una versión
+  afectada en un navegador que además navega sitios ajenos ([09](./09-performance-zoneless.md) §9.12).
 - Dependabot / Renovate activos en el repo.
 
 #### Versiones mínimas con parche: `@angular/*` y Node
 
-Repasado el 26/11/2026 (`FUENTES.md`). Antes de citarlo en un reporte, mirar si hay avisos más nuevos en
+Repasado el 27/11/2026 (`FUENTES.md`). Antes de citarlo en un reporte, mirar si hay avisos más nuevos en
 `github.com/angular/angular/security/advisories`.
 
 - **Piso de `@angular/*`: 22.x ≥ 22.2.1, 21.x ≥ 21.2.25, 20.x ≥ 20.3.34.** Mejor la última de la major
@@ -821,6 +858,7 @@ Repasado el 26/11/2026 (`FUENTES.md`). Antes de citarlo en un reporte, mirar si 
 | jrmj-c5cx-3cw6 · CVE-2026-22610 | XSS: `href` / `xlink:href` de `<script>` SVG sin sanitizar | SPA y SSR | 22.0.0 | 21.0.7 | 20.3.16 |
 | g93w-mfhg-p222 · CVE-2026-32635 | XSS: `i18n-<atributo>` saltea el sanitizador | SPA y SSR | 22.0.0 | 21.2.4 | 20.3.18 |
 | f3m7-gqxr-g87x · CVE-2026-50557 | XSS: bypass por namespaces (SVG / MathML) | SPA y SSR | 22.0.0 | 21.2.15 | 20.3.22 |
+| hqr9-c56f-3x7f · CVE-2026-50555 | XSS: `domino` serializa mal un dato dentro de `<script>`, `<style>` o `<iframe>` | SSR | 22.0.0 | 21.2.16 | 20.3.24 |
 | rgjc-h3x7-9mwg · CVE-2026-54267 | DOM clobbering de `ng-state` en la hidratación y caché de respuestas envenenada | SSR | 22.0.1 | 21.2.17 | 20.3.25 |
 | jj27-h5hq-8x99 · CVE-2026-69151 | XSS: `i18n-on*` en el compilador | SPA y SSR | 22.0.1 | 21.2.19 | 20.3.27 |
 | jhpw-976m-542j · CVE-2026-68945 | `HttpTransferCache`: claves ambiguas, respuesta equivocada | SSR | 22.0.2 | 21.2.19 | 20.3.27 |

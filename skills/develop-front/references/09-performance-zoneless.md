@@ -1089,7 +1089,9 @@ export class GeolocationWatcher {
 - **Angular DevTools → pestaña Profiler**: graba una sesión y muestra cada ciclo de detección de
   cambios, cuánto tardó y qué componentes se re-evaluaron. Señales de alarma: ciclos muy frecuentes
   sin interacción del usuario (algo dispara CD de más, ver §9.1) o un componente puntual que aparece
-  en **todos** los ciclos (candidato a que su `computed()` no esté memoizando bien, §9.10).
+  en **todos** los ciclos (candidato a que su `computed()` no esté memoizando bien, §9.10). La
+  extensión va en **1.21.1 o más** (Chrome: `chrome://extensions` → Update; Firefox: `about:addons` →
+  Check for Updates): las `>= 1.20.0, < 1.21.1` tienen un DoS local ([15](./15-security.md) §15.10).
 - **Chrome DevTools → Performance**: graba CPU/paint/layout real del navegador. Útil para separar
   "Angular re-renderiza de más" (se ve en Angular DevTools) de "el navegador tarda en pintar/hacer
   layout" (listas gigantes sin virtualizar, §9.9; imágenes sin `width`/`height`, §9.5).

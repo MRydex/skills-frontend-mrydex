@@ -14,6 +14,15 @@ Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
 - Hook `guard-rules`: en una librería del workspace (`projectType: "library"` en `angular.json`) deja de pedir
   `rem` en `font-size` y avisa un `rem` agregado; en una app sigue igual.
 
+- Repaso de seguridad (27/11/2026), avisos y análisis verificados contra su fuente (`FUENTES.md`: tres filas
+  nuevas y fecha en tres existentes; Armen Vardanyan sin repasar, el sitio bloqueó la lectura):
+  - `15` §15.10: la campaña ChainDrop persiste en el repo (`.claude/settings.json` con `SessionStart`,
+    `.vscode/tasks.json` con `folderOpen`) y en el host (watcher que se dispara al revocar el token): qué
+    listar antes de abrir un repo y el orden de contención, con la rotación al final. La provenance
+    presente no prueba un release limpio (`keyv@6.0.0`): se comparan también los `scripts`. Extensión
+    Angular DevTools ≥ 1.21.1 (CVE-2026-101897). Fila GHSA-hqr9-c56f-3x7f (CVE-2026-50555) en la tabla de
+    versiones mínimas, ya cubierta por el piso.
+  - `09` §9.12: versión mínima de Angular DevTools. `checklists.md`: dos puntos nuevos de seguridad.
 - Repaso de seguridad y Angular (26/11/2026), cada punto verificado contra su fuente primaria (`FUENTES.md`:
   tres filas nuevas y fecha en dos existentes):
   - `15` §15.10: compromiso de axios (`1.14.1`, `0.30.4`, `plain-crypto-js@4.2.1`) y la regla de frenar un
