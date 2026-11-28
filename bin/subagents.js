@@ -155,13 +155,13 @@ const TARGETS = [
     requires: '.codex',
     dir: ['.codex', 'agents'],
     file: (r) => `${r.name.replace(/-/g, '_')}.toml`,
-    // Sin `model`: hereda el del usuario y abarata con menos razonamiento (los ids cambian seguido)
+    // Sin `model`: hereda el del usuario y abarata con menos razonamiento (los ids cambian seguido).
+    // Sin `sandbox_mode`: en el archivo de un agente Codex lo ignora, rige el de la sesión (doc de subagents).
     render: (r) =>
       [
         `name = "${r.name.replace(/-/g, '_')}"`,
         `description = "${r.description.replace(/"/g, '\\"')}"`,
         `model_reasoning_effort = "${r.cheap ? 'low' : 'medium'}"`,
-        `sandbox_mode = "${r.readonly ? 'read-only' : 'workspace-write'}"`,
         `developer_instructions = """\n${r.instructions}\n"""`,
         '',
       ].join('\n'),
@@ -209,7 +209,8 @@ const TARGETS = [
         [
           `name: ${r.name}`,
           `description: ${r.description}`,
-          ...(r.readonly ? ["tools: ['search/codebase', 'search/usages', 'web/fetch']"] : []),
+          // Alias que valen en el harness Copilot y en el Local (los nombres `search/codebase` son solo del Local, deprecado)
+          ...(r.readonly ? ["tools: ['read', 'search', 'web']"] : []),
         ],
         r.instructions,
       ),

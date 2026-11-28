@@ -16,10 +16,10 @@ Interactivo (pregunta agente y destino):
 npx github:MRydex/skills-frontend-mrydex
 ```
 
-Si `npx` rechaza el origen git, correr esto una vez y repetir el comando de arriba:
+Con npm 12 o más, `npx` no baja de un origen git por defecto (`EALLOWGIT`). Se permite solo para ese comando:
 
 ```bash
-npx --allow-git github:MRydex/skills-frontend-mrydex
+npx --allow-git=root github:MRydex/skills-frontend-mrydex
 ```
 
 Todos los agentes en el proyecto actual:

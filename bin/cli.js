@@ -612,7 +612,9 @@ function doctor(homeDir, repoRoot) {
     ['hook SessionStart', SIBLING_HOOK_MARKERS.some((marker) => JSON.stringify(settings.hooks?.SessionStart ?? []).includes(marker))],
     ['hooks de edición', EDIT_HOOKS.every(({ event, file }) => JSON.stringify(settings.hooks?.[event] ?? []).includes(file))],
     ['permissions.deny', Array.isArray(settings.permissions?.deny)],
-    ['MCP context7', runShell('claude mcp get context7', homeDir).ok],
+    // CLI de Claude Code roto o ausente: el MCP de usuario se lee de ~/.claude.json
+    ['MCP context7', runShell('claude mcp get context7', homeDir).ok
+      || Boolean(readClaudeSettings(path.join(homeDir, '.claude.json'))?.mcpServers?.context7)],
     ['CLI agent-browser (skill agent-browser)', runShell('agent-browser --version', homeDir).ok],
   ];
   const oldDirs = ['.claude', '.agents'].map((dir) => path.join(homeDir, dir, 'skills', OLD_SKILL_NAME)).filter(fs.existsSync);
@@ -622,7 +624,7 @@ function doctor(homeDir, repoRoot) {
     const mark = ok ? colors.green + '✔' : colors.yellow + '✗';
     console.log(`  ${mark}${colors.reset} ${label}`);
   }
-  if (checks.some(([, ok]) => !ok)) console.log(`${colors.dim}Para completar: npx -y github:MRydex/skills-frontend-mrydex${colors.reset}`);
+  if (checks.some(([, ok]) => !ok)) console.log(`${colors.dim}Para completar: npx -y --allow-git=root github:MRydex/skills-frontend-mrydex${colors.reset}`);
 }
 // Subagentes y bloque global se escriben al final (finish): `graphify install` reescribe
 // ~/.claude/CLAUDE.md y borraría el bloque si corriera después. Los bloques que ya estaban (este, en una
@@ -807,7 +809,8 @@ function installCaveman(homeDir, repoRoots) {
   console.log(`
 ${colors.bold}${colors.cyan}Caveman:${colors.reset} instalando el plugin para los agentes detectados...`);
   // --no-hooks: en Claude Code los hooks los trae el plugin; sumarlos en settings.json los duplica
-  const base = ['-y', CAVEMAN_PKG, '--', '--non-interactive', '--no-color', '--no-hooks'];
+  // --allow-git=root: npm 12 no baja de un origen git por defecto (EALLOWGIT); npm 10 y 11 ignoran el flag
+  const base = ['-y', '--allow-git=root', CAVEMAN_PKG, '--', '--non-interactive', '--no-color', '--no-hooks'];
   if (isDryRun) {
     console.log(`${colors.dim}[dry-run] npx ${base.join(' ')}${colors.reset}`);
     for (const root of repoRoots) console.log(`${colors.dim}[dry-run] (en ${root}) npx ${base.join(' ')} --with-init${colors.reset}`);
@@ -826,7 +829,7 @@ ${colors.bold}${colors.cyan}Caveman:${colors.reset} instalando el plugin para lo
     globalOk = commands.length > 0 && commands.every((cmdArgs) => runNpx(['-y', ...cmdArgs], homeDir).ok);
   }
   if (globalOk) logOk(`caveman global: ${agents.length > 0 ? agents.join(', ') : 'sin agentes detectados'}`);
-  else console.log(`  ${colors.yellow}⚠${colors.reset} caveman global falló. Correr a mano: npx -y ${CAVEMAN_PKG}`);
+  else console.log(`  ${colors.yellow}⚠${colors.reset} caveman global falló. Correr a mano: npx -y --allow-git=root ${CAVEMAN_PKG}`);
   enableCavemanInClaude(homeDir);
 
   for (const root of repoRoots) {
@@ -1067,8 +1070,15 @@ function runShell(commandLine, cwd) {
 // puede dejarlos registrados sin descargar.
 function installClaudePlugins(homeDir) {
   if (!fs.existsSync(path.join(homeDir, '.claude'))) return;
-  if (!runShell('claude --version').ok) runNpmCli('npm', ['install', '-g', '@anthropic-ai/claude-code'], homeDir);
-  else runShell('claude update', homeDir);
+  // npm 12 no corre el postinstall sin aprobación y el CLI queda sin su binario nativo ("claude native
+  // binary not installed"). Se aprueba solo este paquete; npm 10 y 11 aceptan el flag. Un `claude update`
+  // por npm 12 lo vuelve a romper (doc de Claude Code, "Fix an npm 12 install"): se reinstala después.
+  const installCli = () => runNpmCli('npm', ['install', '-g', '--allow-scripts=@anthropic-ai/claude-code', '@anthropic-ai/claude-code'], homeDir);
+  if (!runShell('claude --version').ok) installCli();
+  else {
+    runShell('claude update', homeDir);
+    if (!runShell('claude --version').ok) installCli();
+  }
 
   if (!runShell('claude --version').ok) {
     console.log(`  ${colors.yellow}⚠${colors.reset} sin CLI de Claude Code: plugins activados en settings.json (se descargan al reiniciar)`);

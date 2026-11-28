@@ -97,9 +97,15 @@ function skillLists() {
 
 async function online() {
   for (const { repo, skills } of skillLists()) {
-    const response = await fetch(`https://api.github.com/repos/${repo}/git/trees/HEAD?recursive=1`, { headers: { 'User-Agent': 'skills-check' } });
+    // Sin token la API da 60 pedidos por hora por IP: con GITHUB_TOKEN, 5000
+    const headers = { 'User-Agent': 'skills-check', ...(process.env.GITHUB_TOKEN && { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` }) };
+    const response = await fetch(`https://api.github.com/repos/${repo}/git/trees/HEAD?recursive=1`, { headers });
     if (!response.ok) {
-      check(false, `${repo}: GitHub respondió ${response.status}`);
+      const limited = response.headers.get('x-ratelimit-remaining') === '0';
+      const reset = new Date(Number(response.headers.get('x-ratelimit-reset')) * 1000).toLocaleTimeString();
+      check(false, limited
+        ? `${repo}: sin verificar, límite de la API de GitHub agotado hasta las ${reset} (o definir GITHUB_TOKEN)`
+        : `${repo}: GitHub respondió ${response.status}`);
       continue;
     }
     const files = (await response.json()).tree.filter((item) => /(^|\/)SKILL\.md$/.test(item.path));

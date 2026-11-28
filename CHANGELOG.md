@@ -1,11 +1,39 @@
 # Changelog
 
 Cambios de la skill `develop-front` (antes `desarrollo-buenas-practicas`) y del instalador `skills-frontend-mrydex`.
-Para actualizar en un proyecto: `npx -y github:MRydex/skills-frontend-mrydex`.
+Para actualizar en un proyecto: `npx -y --allow-git=root github:MRydex/skills-frontend-mrydex`.
 
 ## [Unreleased]
 
+### Corregido
+
+- Instalador con npm 12: `npm install -g @anthropic-ai/claude-code` dejaba el CLI sin su binario nativo
+  ("claude native binary not installed"), porque npm 12 no corre el `postinstall` sin aprobación. Ahora
+  pasa `--allow-scripts=@anthropic-ai/claude-code` (npm 10 y 11 aceptan el flag) y reinstala si
+  `claude update` lo vuelve a romper. Sin el CLI no se instalaban los plugins ni el MCP context7.
+- Instalador con npm 12 corrido sin `npx` (`node bin/cli.js`): el `npx github:JuliusBrussee/caveman`
+  interno daba `EALLOWGIT`. Ahora lleva `--allow-git=root`.
+- `check --online`: usa `GITHUB_TOKEN` si está definido y, con el límite de la API agotado, lo dice en
+  vez de "GitHub respondió 403" (mismo archivo que el back).
+- `--doctor`: con el CLI de Claude Code roto o ausente marcaba en falta el MCP context7 aunque estuviera
+  configurado. Ahora también lo lee de `~/.claude.json`.
+- Comando de instalación con npm 12: `npx --allow-git github:...` falla (npm toma el paquete como valor del
+  flag) y `npx github:...` sin flag da `EALLOWGIT`. `README.md`, `--doctor` y el aviso de versión nueva del
+  hook `SessionStart` usan `npx --allow-git=root github:MRydex/skills-frontend-mrydex` (probado en npm 10,
+  11 y 12; el `npx` interno de caveman hereda el permiso).
+
+- Subagentes de Copilot (VS Code): los de solo lectura llevaban `tools` con nombres del harness Local
+  (`search/codebase`, `search/usages`, `web/fetch`), deprecado. Ahora usan los alias `read`, `search` y
+  `web`, que valen en los dos harness.
+- Subagentes de Codex: ya no se escribe `sandbox_mode`, que Codex ignora en el archivo de un agente.
+
 ### Agregado
+
+- Repaso de `FUENTES.md` (28/11/2026):
+  - `15` §15.10: fila GHSA-ffj9-42qx-f38h (XSS en `downgradeComponent()` de `@angular/upgrade`, 09/11/2026)
+    en la tabla de versiones mínimas; una app híbrida Angular / AngularJS sube el piso a 22.2.4 / 21.2.26 /
+    20.3.35. ChainDrop: la lista de dominios no es cerrada (se lee de un contrato de Ethereum), dos
+    dominios más y dos rastros en el repo (análisis de Wiz, que faltaba leer).
 
 - `07` §7.2: `rem` depende del `font-size` del `html` de la app que renderiza. Antes de escribir `rem` o de
   pasar `px` a `rem` se revisa ese valor; una librería compartida o un remote de microfrontend usan `px`.

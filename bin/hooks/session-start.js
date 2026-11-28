@@ -109,7 +109,7 @@ async function updateNotice(name) {
       { signal: AbortSignal.timeout(UPDATE_CHECK_TIMEOUT_MS) });
     if (!response.ok) return '';
     const latest = String((await response.json()).version);
-    return isNewer(latest, installed) ? `${name} ${installed} → ${latest}. Actualizar: npx -y github:MRydex/${name}` : '';
+    return isNewer(latest, installed) ? `${name} ${installed} → ${latest}. Actualizar: npx -y --allow-git=root github:MRydex/${name}` : '';
   } catch {
     return ''; // skill no instalada, sin red o respuesta rara: sin aviso
   }

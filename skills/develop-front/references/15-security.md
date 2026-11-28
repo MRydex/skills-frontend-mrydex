@@ -780,7 +780,10 @@ Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
 - **Campaña ChainDrop** (ago 2026): gusano que agrega un hook `preinstall`, sube el patch y republica; más
   de 400 paquetes, entre ellos `keyv`, `flat-cache`, `file-entry-cache` y `cache-manager`. Los dos del medio
   suelen venir con ESLint: en la auditoría se revisa el lockfile contra el aviso CSA AD-2026-009 y que el
-  dominio `npm-cache[.]com` no aparezca en el repo ni en logs de CI. Cooldown, scripts bloqueados y
+  dominio `npm-cache[.]com` no aparezca en el repo ni en logs de CI. La lista de dominios no es cerrada: el
+  malware la lee de un contrato de Ethereum (Wiz, 04/08/2026, que suma `pypi-get[.]com` y
+  `js-mirror[.]com`). Otros rastros: `node_modules/keyv/Math_Symbol.js` y un commit `chore: update config`
+  que nadie del equipo hizo. Cooldown, scripts bloqueados y
   lockfile son la defensa; bloquear los scripts solo cubre cerca de la mitad del malware observado.
 - **La misma campaña persiste en el repo y en el host** (SANS ISC y Snyk, ago 2026): el gusano commitea un
   `.claude/settings.json` con un hook `SessionStart` y un `.vscode/tasks.json` con `"runOn": "folderOpen"`,
@@ -835,7 +838,7 @@ Sumar al `web.config` de §10.2, dentro de `<system.webServer>`:
 
 #### Versiones mínimas con parche: `@angular/*` y Node
 
-Repasado el 27/11/2026 (`FUENTES.md`). Antes de citarlo en un reporte, mirar si hay avisos más nuevos en
+Repasado el 28/11/2026 (`FUENTES.md`). Antes de citarlo en un reporte, mirar si hay avisos más nuevos en
 `github.com/angular/angular/security/advisories`.
 
 - **Piso de `@angular/*`: 22.x ≥ 22.2.1, 21.x ≥ 21.2.25, 20.x ≥ 20.3.34.** Mejor la última de la major
@@ -871,8 +874,11 @@ Repasado el 27/11/2026 (`FUENTES.md`). Antes de citarlo en un reporte, mirar si 
 | w739-gvwx-grc3 · CVE-2026-111754 | Open redirect (`/.//evil.test`, `/.;/(//evil.test)`) | SSR | 22.2.1 | 21.2.25 | 20.3.33 |
 | 57xq-rjx2-v5xh · CVE-2026-111751 | DoS: `RouterLink` retiene `UrlTree` con query merge / preserve | SSR | 22.2.1 | 21.2.25 | no afectada |
 | 62vg-58rm-qff7 · CVE-2026-111752 | DoS: outlets vacíos no configurados | SSR | 22.2.1 | 21.2.25 | 20.3.33 |
+| ffj9-42qx-f38h · sin CVE | XSS: `downgradeComponent()` de `@angular/upgrade` compila dos veces el contenido con AngularJS | Híbridas Angular / AngularJS | 22.2.4 | 21.2.26 | 20.3.35 |
 
-El piso de 20.x es 20.3.34 por el aviso de XSRF de §15.6 (GHSA-jfgx-762w-99vr).
+El piso de 20.x es 20.3.34 por el aviso de XSRF de §15.6 (GHSA-jfgx-762w-99vr). Una app híbrida que usa
+`downgradeComponent()` sube el piso a 22.2.4 / 21.2.26 / 20.3.35; el resto no carga `@angular/upgrade` y
+no le aplica.
 
 #### Auditoría de dependencias: siempre, no solo en CI
 
